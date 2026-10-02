@@ -122,7 +122,7 @@
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 卡池配置
+      // 卡池配置（預設四張）
       const [roleCounts, setRoleCounts] = useState({
         pres: 1, bomb: 1, doctor: 1, engineer: 1
       });
@@ -143,7 +143,7 @@
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
-      // 同步最新狀態參照，全員持久化保存個人進度快照
+      // 保持最新狀態映射，持續儲存全體快照
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -177,7 +177,7 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState]);
 
-      // 廣播全場狀態
+      // 廣播全場最新狀態
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -193,7 +193,7 @@
         }), { qos: 1 });
       }, []);
 
-      // 本地重置狀態並返回首頁
+      // 重置並返回首頁
       const resetToHome = useCallback(() => {
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch(e) {}
@@ -216,7 +216,7 @@
         setConnStatus('未連線');
       }, []);
 
-      // 房長執行交換核心
+      // 房長執行身分互換
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
           const p1 = prev.find(p => p.id === id1);
@@ -287,7 +287,6 @@
             };
 
             if (asHost) {
-              // 房長重連：廣播點名訊號喚醒所有人，並同步自身最新狀態
               client.publish(topic, JSON.stringify({
                 type: 'HOST_RECONNECTED',
                 senderId: uid
@@ -297,7 +296,6 @@
                 broadcastLatest();
               }, 400);
             } else {
-              // 一般玩家重連：攜帶自身本地快取的完整身分與分房資料向房長報到
               client.publish(topic, JSON.stringify({
                 type: 'PLAYER_PING_SYNC',
                 senderId: uid,
@@ -312,14 +310,12 @@
           try {
             const data = JSON.parse(msg.toString());
 
-            // 房間解散通知
             if (data.type === 'ROOM_DISBANDED') {
               alert('房長已離開，房間已解散！');
               resetToHome();
               return;
             }
 
-            // 一般玩家收到房長重連訊號，自動向房長上報當前身分與分房
             if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
               const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
                 id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
@@ -332,7 +328,6 @@
               return;
             }
 
-            // 房長收到玩家報到，彙整名單並維持進度
             if (data.type === 'REPORT_PRESENCE' && latestStateRef.current.isHost) {
               setPlayers(prev => {
                 const exists = prev.some(p => p.id === data.player.id);
@@ -345,7 +340,6 @@
               return;
             }
 
-            // 新玩家驗證房間房長在線請求
             if (data.type === 'CHECK_ROOM_REQ' && latestStateRef.current.isHost) {
               client.publish(topic, JSON.stringify({
                 type: 'ROOM_VERIFIED',
@@ -363,7 +357,6 @@
                     const existing = prev.find(p => p.id === data.player.id);
                     let next;
                     if (existing) {
-                      // 保留既有身分資料，避免被空資料覆蓋
                       next = prev.map(p => p.id === data.player.id ? {
                         ...p,
                         name: data.player.name,
@@ -505,7 +498,6 @@
                 if (savedContext.isTimerRunning) setIsTimerRunning(true);
               }
 
-              // 還原名單或自身身分資料
               if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
                 initialList = savedContext.players;
               } else if (savedContext.myProfile) {
@@ -850,6 +842,18 @@
           fromId: swapRequestData.fromId
         }));
         setSwapRequestData(null);
+      };
+
+      // 點擊切換角色應用 (Toggle 啟用/停用)
+      const handleToggleRole = (roleId) => {
+        if (!isHost) return;
+        setTempRoleCounts(prev => {
+          const isSelected = (prev[roleId] || 0) > 0;
+          return {
+            ...prev,
+            [roleId]: isSelected ? 0 : 1
+          };
+        });
       };
 
       const formatTime = (secs) => {
@@ -1456,7 +1460,7 @@
             </div>
           )}
 
-          {/* 卡池配置彈窗 */}
+          {/* 卡池配置彈窗（優化：點擊整張卡片開關啟用/停用） */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
@@ -1477,49 +1481,46 @@
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {rolesCatalog.map(role => {
-                      const count = tempRoleCounts[role.id] || 0;
+                      const isSelected = (tempRoleCounts[role.id] || 0) > 0;
                       const meta = getTeamMeta(role.team);
                       return (
                         <div 
                           key={role.id} 
-                          className="p-3.5 rounded-xl border flex flex-col justify-between gap-3 bg-zinc-800/80 border-zinc-700 hover:border-zinc-600 transition"
+                          onClick={() => handleToggleRole(role.id)}
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3 transition cursor-pointer select-none ${
+                            isSelected 
+                              ? `${meta.listBg} border-indigo-400 ring-2 ring-indigo-500/40 shadow-lg scale-[1.01]` 
+                              : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 opacity-60'
+                          }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <span className="text-2xl shrink-0">{role.icon}</span>
-                              <span className="text-sm font-bold text-zinc-100">{role.name}</span>
+                              <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
+                                {role.name}
+                              </span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>
                                 {meta.label}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0 bg-zinc-900/60 p-1 rounded-xl border border-zinc-700/60">
-                              <button
-                                disabled={!isHost}
-                                type="button"
-                                onClick={() => {
-                                  const next = Math.max(0, count - 1);
-                                  setTempRoleCounts({ ...tempRoleCounts, [role.id]: next });
-                                }}
-                                className="w-7 h-7 bg-zinc-700 hover:bg-zinc-600 rounded-lg flex items-center justify-center font-bold text-sm active:scale-95 disabled:opacity-40"
-                              >
-                                -
-                              </button>
-                              <span className="w-5 text-center font-mono font-bold text-sm text-amber-400">{count}</span>
-                              <button
-                                disabled={!isHost}
-                                type="button"
-                                onClick={() => {
-                                  setTempRoleCounts({ ...tempRoleCounts, [role.id]: count + 1 });
-                                }}
-                                className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm active:scale-95 disabled:opacity-40"
-                              >
-                                +
-                              </button>
+                            {/* 點擊切換狀態標籤 */}
+                            <div className="shrink-0">
+                              <span className={`text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
+                                isSelected 
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' 
+                                  : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
+                              }`}>
+                                {isSelected ? '✔ 已啟用' : '未加入'}
+                              </span>
                             </div>
                           </div>
 
-                          <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-800/80 break-words">
+                          <p className={`text-xs leading-relaxed p-2.5 rounded-lg border break-words ${
+                            isSelected 
+                              ? 'text-zinc-200 bg-zinc-950/60 border-zinc-800/80' 
+                              : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
+                          }`}>
                             {role.desc}
                           </p>
                         </div>
