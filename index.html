@@ -42,7 +42,7 @@
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      const [gameState, setGameState] = useState('home'); // 'home' | 'lobby' | 'game'
+      const [gameState, setGameState] = useState('home'); 
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
       const [playerName, setPlayerName] = useState('');
@@ -50,7 +50,7 @@
       const [isHost, setIsHost] = useState(false);
       const [connStatus, setConnStatus] = useState('未連線');
 
-      // 房間狀態: 'waiting' (大廳) | 'room_assigned' (分房就位中) | 'round_active' (進行中) | 'round_paused' (換人質暫停) | 'ended' (結束揭曉)
+      // 房間狀態: 'waiting' | 'room_assigned' | 'round_active' | 'round_paused' | 'ended'
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting'); 
 
@@ -72,9 +72,8 @@
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
 
-      // 身分防窺與上帝視角
+      // 身分防窺
       const [isRevealed, setIsRevealed] = useState(false);
-      const [isGodMode, setIsGodMode] = useState(false);
 
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
@@ -165,9 +164,7 @@
                 } else {
                   next = [...prev, data.player];
                 }
-                setTimeout(() => {
-                  broadcastLatest({ players: next });
-                }, 80);
+                setTimeout(() => { broadcastLatest({ players: next }); }, 80);
                 return next;
               });
             }
@@ -371,7 +368,7 @@
           }));
       }, [rolesCatalog, roleCounts]);
 
-      // 【流程步驟 1】按下「開始遊戲 & 分房」：僅先隨機均分 房間 A 與 房間 B，不發身分卡
+      // 步驟 1: 分房就位
       const handleStartAssignRooms = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
@@ -389,19 +386,18 @@
           return;
         }
 
-        // 隨機洗牌玩家，並對半均分至 房間 A 與 房間 B
         const shuffled = [...players].sort(() => Math.random() - 0.5);
         const half = Math.ceil(shuffled.length / 2);
 
         const assigned = shuffled.map((p, idx) => ({
           ...p,
           team: null,
-          role: null, // 先不給身分
+          role: null,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
 
         setPlayers(assigned);
-        setRoomStatus('room_assigned'); // 進入分房就位階段
+        setRoomStatus('room_assigned');
         setIsTimerRunning(false);
         setGameState('game');
 
@@ -413,7 +409,7 @@
         });
       };
 
-      // 【流程步驟 2】房長確認就位完畢：發放身分並正式啟動計時
+      // 步驟 2: 發放身分並計時
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -421,10 +417,8 @@
           for (let i = 0; i < count; i++) deck.push({ ...role });
         });
 
-        // 洗牌卡片庫
         deck.sort(() => Math.random() - 0.5);
 
-        // 為已經在房間 A / 房間 B 的玩家指派身分卡
         const assignedWithRoles = players.map((p, idx) => {
           const r = deck[idx];
           return {
@@ -467,7 +461,6 @@
         } else {
           setRoomStatus('ended');
           setIsTimerRunning(false);
-          setIsGodMode(true);
 
           broadcastLatest({
             roomStatus: 'ended',
@@ -523,7 +516,7 @@
             )}
           </header>
 
-          {/* 首頁：建立 / 加入 */}
+          {/* 首頁 */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
               <div className="space-y-4">
@@ -662,11 +655,11 @@
             </div>
           )}
 
-          {/* 遊戲階段：包含「分房就位階段」與「正式進行/暫停/結束」 */}
+          {/* 遊戲階段 */}
           {gameState === 'game' && (
             <div className="space-y-6">
               
-              {/* 【狀態 A: 分房就位階段 (room_assigned)】 */}
+              {/* 分房就位階段 */}
               {roomStatus === 'room_assigned' && (
                 <div className="space-y-5">
                   <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-blue-900/40 border border-indigo-500/50 p-5 rounded-2xl text-center shadow-xl space-y-3">
@@ -678,13 +671,11 @@
                       全員就位前身分尚未發放。請確認自己所在的房間，等候全員移動完畢後由房長按下發放按鈕！
                     </p>
 
-                    {/* 玩家個人所屬房間提示 */}
                     <div className="inline-flex items-center gap-2 bg-indigo-950 border border-indigo-400 px-4 py-2 rounded-xl mt-2">
                       <span className="text-xs text-indigo-200">你被分配到：</span>
                       <strong className="text-base text-amber-300 font-black">{myInfo.gameRoom || '未分配'}</strong>
                     </div>
 
-                    {/* 房長發牌按鈕 */}
                     {isHost ? (
                       <div className="pt-2">
                         <button
@@ -701,7 +692,7 @@
                     )}
                   </div>
 
-                  {/* 實體房間分配名單 (就位期間方便大家對照) */}
+                  {/* 實體房間分配名單 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-zinc-900/80 border border-indigo-500/30 rounded-2xl p-4">
                       <h3 className="font-bold text-indigo-300 mb-3 flex items-center justify-between">
@@ -736,7 +727,7 @@
                 </div>
               )}
 
-              {/* 【狀態 B: 正式進行 / 換人質暫停 / 遊戲結束】 */}
+              {/* 正式進行 / 換人質暫停 / 遊戲結束 */}
               {roomStatus !== 'room_assigned' && (
                 <div className="space-y-6">
                   {/* 頂部回合計時看板 */}
@@ -768,17 +759,6 @@
                           className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl shadow-lg transition"
                         >
                           👉 房長確認：{currentRoundIndex + 1 < roundSettings.length ? `進入第 ${currentRoundIndex + 2} 輪` : '揭開身分結算'}
-                        </button>
-                      )}
-
-                      {isHost && (
-                        <button
-                          onClick={() => setIsGodMode(!isGodMode)}
-                          className={`text-xs px-3 py-2 rounded-xl border transition ${
-                            isGodMode ? 'bg-amber-500 text-black border-amber-400 font-bold' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
-                          }`}
-                        >
-                          {isGodMode ? '👁️ 上帝視角 (開)' : '🔒 上帝視角 (關)'}
                         </button>
                       )}
 
