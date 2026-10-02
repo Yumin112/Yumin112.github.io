@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>陣營風雲：身分對決 - 自訂卡池版</title>
+  <title>陣營風雲：身分對決 - 真實多人連線版</title>
   
-  <!-- Tailwind CSS & Lucide Icons -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   
-  <!-- React & ReactDOM -->
+  <!-- MQTT.js (提供跨手機、跨網路即時通訊中繼，免任何後端設定) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  
+  <!-- React & Babel -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -32,110 +34,142 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useRef, useMemo } = React;
 
-    // 預設卡池庫
     const DEFAULT_ROLES_CATALOG = [
-      { id: 'r1', name: '隊長 / 指揮官', team: 'red', icon: '👑', desc: '負責統籌戰術，擁有每輪一次的戰術指揮權。' },
+      { id: 'r1', name: '隊長 / 指揮官', team: 'red', icon: '👑', desc: '負責統籌戰術，擁有關鍵決策引導權。' },
       { id: 'r2', name: '機密特工', team: 'red', icon: '🕵️', desc: '擅長隱蔽行動，負責執行核心機密任務。' },
-      { id: 'r3', name: '破壞狂', team: 'red', icon: '💣', desc: '可暗中擾亂敵方判斷與進度。' },
+      { id: 'r3', name: '破壞狂', team: 'red', icon: '💣', desc: '暗中擾亂敵方判斷與進度。' },
       { id: 'r4', name: '狙擊手', team: 'red', icon: '🎯', desc: '關鍵時刻可指定鎖定一名可疑目標。' },
-      { id: 'r5', name: '駭客', team: 'red', icon: '💻', desc: '可截聽通訊資訊。' },
+      { id: 'r5', name: '駭客', team: 'red', icon: '💻', desc: '截聽通訊資訊，破解暗號。' },
       
       { id: 'b1', name: '艦長 / 先鋒官', team: 'blue', icon: '⚔️', desc: '引領陣營防線，具有關鍵投票權力。' },
-      { id: 'b2', name: '防衛官', team: 'blue', icon: '🛡️', desc: '守護同伴，可免疫一次排查或質疑。' },
+      { id: 'b2', name: '防衛官', team: 'blue', icon: '🛡️', desc: '守護同伴，免疫一次排查或質疑。' },
       { id: 'b3', name: '審訊官', team: 'blue', icon: '🔍', desc: '可私下檢視一名玩家是否屬於特定陣營。' },
       { id: 'b4', name: '醫療兵', team: 'blue', icon: '💉', desc: '支援被針對的隊友，恢復其行動資格。' },
-      { id: 'b5', name: '間諜通訊員', team: 'blue', icon: '📡', desc: '負責掌握場內情報流動。' },
+      { id: 'b5', name: '間諜通訊員', team: 'blue', icon: '📡', desc: '掌握場內情報流動與通訊線索。' },
       
       { id: 'n1', name: '雙面間諜', team: 'neutral', icon: '🎭', desc: '中立身分！任何一隊獲勝且自己存活即獲勝。' },
-      { id: 'n2', name: '小丑 / 攪局者', team: 'neutral', icon: '🃏', desc: '中立身分！如果第一輪被全場投票出局則單獨獲勝。' }
+      { id: 'n2', name: '小丑 / 攪局者', team: 'neutral', icon: '🃏', desc: '中立身分！若第一輪被全場投票出局則單獨獲勝。' }
     ];
 
     function App() {
-      // 頁面狀態: 'home' | 'lobby' | 'game'
-      const [gameState, setGameState] = useState('home');
+      const [gameState, setGameState] = useState('home'); // 'home' | 'lobby' | 'game'
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
       const [playerName, setPlayerName] = useState('');
       const [myPlayerId, setMyPlayerId] = useState('');
       const [isHost, setIsHost] = useState(false);
+      const [isConnected, setIsConnected] = useState(false);
       
-      // 房間資料
+      // 房間狀態
       const [players, setPlayers] = useState([]);
-      const [roomStatus, setRoomStatus] = useState('waiting'); // 'waiting' | 'started'
+      const [roomStatus, setRoomStatus] = useState('waiting');
       
-      // 卡池自訂設定
+      // 卡池管理
       const [rolesCatalog, setRolesCatalog] = useState(DEFAULT_ROLES_CATALOG);
-      // roleCountMap: { roleId: count }
       const [roleCounts, setRoleCounts] = useState({
         'r1': 1, 'r2': 3, 'r3': 2, 'r4': 2, 'r5': 2,
         'b1': 1, 'b2': 3, 'b3': 2, 'b4': 2, 'b5': 2
       });
       const [showDeckModal, setShowDeckModal] = useState(false);
-      
-      // 新增角色用表單
       const [newRoleName, setNewRoleName] = useState('');
       const [newRoleTeam, setNewRoleTeam] = useState('red');
       const [newRoleDesc, setNewRoleDesc] = useState('');
-      const [newRoleIcon, setNewRoleIcon] = useState('⭐');
 
-      // 玩家防窺翻牌 (按住翻牌)
+      // 身分防窺與上帝視角
       const [isRevealed, setIsRevealed] = useState(false);
-      // 房主專屬上帝視角 (預設關閉)
       const [isGodMode, setIsGodMode] = useState(false);
 
-      // 本地多標籤廣播通訊 (免後端即可在同瀏覽器不同分頁即時互動測試)
-      const channel = useMemo(() => new BroadcastChannel('faction_clash_sync'), []);
+      // MQTT 網路連線 Ref
+      const clientRef = useRef(null);
 
-      // 初始化 PlayerId
+      // 初始化唯一的個人 ID
       useEffect(() => {
-        let storedId = sessionStorage.getItem('fc_player_id');
+        let storedId = localStorage.getItem('fc_real_uid');
         if (!storedId) {
-          storedId = 'p_' + Math.random().toString(36).substring(2, 9);
-          sessionStorage.setItem('fc_player_id', storedId);
+          storedId = 'u_' + Math.random().toString(36).substring(2, 9);
+          localStorage.setItem('fc_real_uid', storedId);
         }
         setMyPlayerId(storedId);
       }, []);
 
-      // 跨分頁訊息同步監聽
-      useEffect(() => {
-        channel.onmessage = (event) => {
-          const { type, payload } = event.data;
-          if (payload.roomId !== roomId) return;
+      // 建立雲端即時連線 (使用公共 MQTT WebSocket Broker)
+      const connectToRoom = (targetRoomId, hostFlag, name) => {
+        // 公共安全 WebSocket Broker
+        const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+        const topic = `faction_clash_game_room_${targetRoomId}`;
 
-          if (type === 'SYNC_ROOM') {
-            setPlayers(payload.players);
-            setRoomStatus(payload.roomStatus);
-            if (payload.roleCounts) setRoleCounts(payload.roleCounts);
-            if (payload.rolesCatalog) setRolesCatalog(payload.rolesCatalog);
-            if (payload.roomStatus === 'started') setGameState('game');
-          } else if (type === 'PLAYER_JOINED') {
-            setPlayers(prev => {
-              if (prev.some(p => p.id === payload.player.id)) return prev;
-              const next = [...prev, payload.player];
-              if (isHost) syncRoomData(next, roomStatus, roleCounts, rolesCatalog);
-              return next;
-            });
+        const client = mqtt.connect(brokerUrl, {
+          clientId: `fc_${myPlayerId}_${Math.random().toString(16).substr(2, 5)}`,
+          clean: true,
+          reconnectPeriod: 3000
+        });
+
+        clientRef.current = client;
+
+        client.on('connect', () => {
+          setIsConnected(true);
+          client.subscribe(topic, { qos: 1 }, (err) => {
+            if (!err) {
+              if (!hostFlag) {
+                // 一般玩家加入：向房間廣播請求加入與索取房間資料
+                client.publish(topic, JSON.stringify({
+                  type: 'PLAYER_JOIN_REQ',
+                  player: { id: myPlayerId, name: name.trim(), isHost: false, team: null, role: null }
+                }));
+              }
+            }
+          });
+        });
+
+        client.on('message', (t, message) => {
+          try {
+            const data = JSON.parse(message.toString());
+
+            // 房主收到玩家加入請求
+            if (data.type === 'PLAYER_JOIN_REQ' && hostFlag) {
+              setPlayers(prev => {
+                const exists = prev.find(p => p.id === data.player.id);
+                const next = exists ? prev.map(p => p.id === data.player.id ? data.player : p) : [...prev, data.player];
+                // 房主廣播最新狀態給全體
+                client.publish(topic, JSON.stringify({
+                  type: 'SYNC_STATE',
+                  players: next,
+                  roomStatus,
+                  roleCounts,
+                  rolesCatalog
+                }));
+                return next;
+              });
+            }
+
+            // 所有玩家同步狀態
+            if (data.type === 'SYNC_STATE') {
+              setPlayers(data.players);
+              setRoomStatus(data.roomStatus);
+              if (data.roleCounts) setRoleCounts(data.roleCounts);
+              if (data.rolesCatalog) setRolesCatalog(data.rolesCatalog);
+              if (data.roomStatus === 'started') {
+                setGameState('game');
+              } else if (data.roomStatus === 'waiting') {
+                setGameState('lobby');
+              }
+            }
+          } catch (e) {
+            console.error('訊息解析錯誤', e);
           }
-        };
-      }, [channel, roomId, isHost, roomStatus, roleCounts, rolesCatalog]);
-
-      const syncRoomData = (currentPlayers, status, counts = roleCounts, catalog = rolesCatalog) => {
-        channel.postMessage({
-          type: 'SYNC_ROOM',
-          payload: { roomId, players: currentPlayers, roomStatus: status, roleCounts: counts, rolesCatalog: catalog }
         });
       };
 
-      // 計算當前卡池總卡片數
+      // 計算當前卡片張數
       const totalCardsInDeck = useMemo(() => {
-        return Object.values(roleCounts).reduce((sum, count) => sum + (count || 0), 0);
+        return Object.values(roleCounts).reduce((sum, c) => sum + (c || 0), 0);
       }, [roleCounts]);
 
-      // 1. 建立房間 (只有房主 1 人，不再塞滿 20 人)
+      // 1. 房主開房
       const handleCreateRoom = () => {
-        if (!playerName.trim()) { alert('請輸入您的暱稱'); return; }
+        if (!playerName.trim()) { alert('請輸入暱稱！'); return; }
         const newCode = Math.floor(100000 + Math.random() * 900000).toString();
         const hostPlayer = { id: myPlayerId, name: playerName.trim(), isHost: true, team: null, role: null };
         
@@ -144,37 +178,40 @@
         setPlayers([hostPlayer]);
         setRoomStatus('waiting');
         setGameState('lobby');
+
+        connectToRoom(newCode, true, playerName);
       };
 
-      // 2. 加入房間
+      // 2. 玩家輸入 6 碼加入
       const handleJoinRoom = () => {
-        if (!playerName.trim()) { alert('請輸入您的暱稱'); return; }
-        if (!joinRoomInput.trim()) { alert('請輸入 6 碼房間號'); return; }
+        if (!playerName.trim()) { alert('請輸入暱稱！'); return; }
+        if (joinRoomInput.trim().length !== 6) { alert('請輸入 6 碼數字房間號！'); return; }
         
         const code = joinRoomInput.trim();
         setRoomId(code);
         setIsHost(false);
-        const newPlayer = { id: myPlayerId, name: playerName.trim(), isHost: false, team: null, role: null };
-        setPlayers([newPlayer]);
         setGameState('lobby');
 
-        // 通知房主與其他玩家
-        channel.postMessage({
-          type: 'PLAYER_JOINED',
-          payload: { roomId: code, player: newPlayer }
-        });
+        connectToRoom(code, false, playerName);
       };
 
-      // 3. 調整卡池角色數量 (+ / -)
+      // 調整卡池數量
       const updateRoleCount = (roleId, delta) => {
-        const current = roleCounts[roleId] || 0;
-        const next = Math.max(0, current + delta);
+        const next = Math.max(0, (roleCounts[roleId] || 0) + delta);
         const updated = { ...roleCounts, [roleId]: next };
         setRoleCounts(updated);
-        if (isHost) syncRoomData(players, roomStatus, updated, rolesCatalog);
+        if (clientRef.current && isHost) {
+          clientRef.current.publish(`faction_clash_game_room_${roomId}`, JSON.stringify({
+            type: 'SYNC_STATE',
+            players,
+            roomStatus,
+            roleCounts: updated,
+            rolesCatalog
+          }));
+        }
       };
 
-      // 4. 新增自訂角色至卡池庫
+      // 新增自訂角色
       const handleAddNewRole = (e) => {
         e.preventDefault();
         if (!newRoleName.trim()) return;
@@ -183,8 +220,8 @@
           id: newId,
           name: newRoleName.trim(),
           team: newRoleTeam,
-          icon: newRoleIcon || '⭐',
-          desc: newRoleDesc.trim() || '自訂特殊角色'
+          icon: '⭐',
+          desc: newRoleDesc.trim() || '自訂專屬技能'
         };
         const updatedCatalog = [...rolesCatalog, newRole];
         const updatedCounts = { ...roleCounts, [newId]: 1 };
@@ -192,62 +229,69 @@
         setRoleCounts(updatedCounts);
         setNewRoleName('');
         setNewRoleDesc('');
-        if (isHost) syncRoomData(players, roomStatus, updatedCounts, updatedCatalog);
+
+        if (clientRef.current && isHost) {
+          clientRef.current.publish(`faction_clash_game_room_${roomId}`, JSON.stringify({
+            type: 'SYNC_STATE',
+            players,
+            roomStatus,
+            roleCounts: updatedCounts,
+            rolesCatalog: updatedCatalog
+          }));
+        }
       };
 
-      // 5. 開始遊戲：隨機分隊並發放卡池身分
+      // 3. 房主分隊並發牌
       const handleStartGame = () => {
         if (players.length < 2) {
-          alert('至少需要 2 位玩家才能開始分隊！');
+          alert('至少需要 2 位玩家加入才能開始！');
           return;
         }
 
-        // 展開目前設定的所有卡片
         let deck = [];
         rolesCatalog.forEach(role => {
           const count = roleCounts[role.id] || 0;
-          for (let i = 0; i < count; i++) {
-            deck.push({ ...role });
-          }
+          for (let i = 0; i < count; i++) deck.push({ ...role });
         });
 
         if (deck.length < players.length) {
-          alert(`卡池張數 (${deck.length} 張) 少於目前在線人數 (${players.length} 人)！請點擊「卡池設定」增加角色張數。`);
+          alert(`卡池張數 (${deck.length} 張) 少於玩家人數 (${players.length} 人)！請點擊角色池設定增加卡片。`);
           return;
         }
 
-        // 洗牌卡池
+        // 洗牌卡池與分隊
         deck.sort(() => Math.random() - 0.5);
+        const shuffled = [...players].sort(() => Math.random() - 0.5);
+        const half = Math.ceil(shuffled.length / 2);
 
-        // 洗牌玩家並平均分兩隊 (紅 vs 藍)
-        const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-        const half = Math.ceil(shuffledPlayers.length / 2);
-
-        const assignedPlayers = shuffledPlayers.map((p, idx) => {
-          const assignedRole = deck[idx];
-          // 若身分有指定陣營以身分優先，否則依序分成紅白兩隊
-          let assignedTeam = assignedRole.team !== 'neutral' ? assignedRole.team : (idx < half ? 'red' : 'blue');
-          return {
-            ...p,
-            team: assignedTeam,
-            role: assignedRole
-          };
+        const assigned = shuffled.map((p, idx) => {
+          const r = deck[idx];
+          const t = r.team !== 'neutral' ? r.team : (idx < half ? 'red' : 'blue');
+          return { ...p, team: t, role: r };
         });
 
-        setPlayers(assignedPlayers);
+        setPlayers(assigned);
         setRoomStatus('started');
         setGameState('game');
-        syncRoomData(assignedPlayers, 'started', roleCounts, rolesCatalog);
+
+        if (clientRef.current) {
+          clientRef.current.publish(`faction_clash_game_room_${roomId}`, JSON.stringify({
+            type: 'SYNC_STATE',
+            players: assigned,
+            roomStatus: 'started',
+            roleCounts,
+            rolesCatalog
+          }));
+        }
       };
 
-      // 取得本人資訊
       const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null };
       const redTeam = players.filter(p => p.team === 'red');
       const blueTeam = players.filter(p => p.team === 'blue');
 
       return (
-        <div className="max-w-4xl mx-auto pb-12">
-          {/* Header 導覽列 */}
+        <div className="max-w-4xl mx-auto pb-10">
+          {/* Header 導覽 */}
           <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
             <div className="flex items-center gap-2">
               <span className="text-3xl">⚔️</span>
@@ -255,14 +299,17 @@
                 <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">
                   陣營風雲：身分對決
                 </h1>
-                <p className="text-xs text-zinc-400">支援 2-24 人隨機分隊 & 自訂身分卡池</p>
+                <div className="flex items-center gap-2 text-xs text-zinc-400">
+                  <span className={`inline-block w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span>{isConnected ? '雲端即時連線中' : '等待連線中'}</span>
+                </div>
               </div>
             </div>
 
             {roomId && (
               <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
                 <span className="text-xs text-zinc-400">房間號:</span>
-                <span className="text-sm font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
+                <span className="text-base font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
                 <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
                   {isHost ? '房主' : '玩家'}
                 </span>
@@ -270,9 +317,9 @@
             )}
           </header>
 
-          {/* 視圖 1: 首頁開房 / 加入 */}
+          {/* 首頁：輸入暱稱與房號 */}
           {gameState === 'home' && (
-            <div className="max-w-md mx-auto bg-zinc-900/90 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
+            <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-1">您的暱稱</label>
@@ -280,15 +327,15 @@
                     type="text"
                     value={playerName}
                     onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="例如：特工 007"
+                    placeholder="例如：特工小明"
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
-                <div className="pt-2 border-t border-zinc-800/60">
+                <div className="pt-2">
                   <button
                     onClick={handleCreateRoom}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white font-semibold py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2"
                   >
                     <span>👑 建立新房間 (當房主)</span>
                   </button>
@@ -302,7 +349,7 @@
 
                 <div className="flex gap-2">
                   <input
-                    type="text"
+                    type="tel"
                     maxLength={6}
                     value={joinRoomInput}
                     onChange={(e) => setJoinRoomInput(e.target.value)}
@@ -311,7 +358,7 @@
                   />
                   <button
                     onClick={handleJoinRoom}
-                    className="bg-zinc-700 hover:bg-zinc-600 px-5 py-2 rounded-xl text-white font-medium transition"
+                    className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl text-white font-medium transition"
                   >
                     加入
                   </button>
@@ -320,52 +367,49 @@
             </div>
           )}
 
-          {/* 視圖 2: 等待大廳 (含卡池設定與名單) */}
+          {/* 等待大廳 */}
           {gameState === 'lobby' && (
             <div className="space-y-6">
-              {/* 大廳頂部控制卡 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                   <h2 className="text-lg font-bold flex items-center gap-2">
                     <span>等待大廳</span>
-                    <span className="text-sm font-normal bg-zinc-800 px-2.5 py-0.5 rounded-full text-zinc-300">
-                      目前人數: <strong className="text-white">{players.length}</strong> 人
+                    <span className="text-sm bg-zinc-800 px-3 py-0.5 rounded-full text-zinc-300">
+                      目前人數: <strong className="text-indigo-400">{players.length}</strong> 人
                     </span>
                   </h2>
-                  <p className="text-xs text-zinc-400 mt-1">請等待所有朋友輸入房間號碼加入大廳。</p>
+                  <p className="text-xs text-zinc-400 mt-1">請讓朋友在手機輸入上方 6 碼房間號加入。</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* 卡池設定按鈕 */}
                   <button
                     onClick={() => setShowDeckModal(true)}
                     className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition"
                   >
-                    <span>🛠️ 編輯/選擇角色池</span>
+                    <span>🛠️️ 角色池設定</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${totalCardsInDeck >= players.length ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                       {totalCardsInDeck} 張卡
                     </span>
                   </button>
 
-                  {/* 房主開始按鈕 */}
                   {isHost ? (
                     <button
                       onClick={handleStartGame}
-                      className="bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 hover:opacity-90 px-6 py-2 rounded-xl font-bold text-white shadow-lg transition"
+                      className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 px-6 py-2 rounded-xl font-bold text-white shadow-lg transition"
                     >
-                      🎲 開始隨機分隊抽身分
+                      🎲 開始分隊並發卡
                     </button>
                   ) : (
-                    <span className="text-xs text-amber-400/80 bg-amber-400/10 px-3 py-2 rounded-xl border border-amber-400/20">
+                    <span className="text-xs text-amber-400 bg-amber-400/10 px-3 py-2 rounded-xl border border-amber-400/20 animate-pulse">
                       ⏳ 等待房主開始遊戲...
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* 玩家列表 */}
+              {/* 即時在線玩家名單 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
-                <h3 className="text-sm font-semibold text-zinc-400 mb-3">大廳玩家名單 ({players.length})</h3>
+                <h3 className="text-sm font-semibold text-zinc-400 mb-3">線上玩家列表 ({players.length})</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                   {players.map((p, idx) => (
                     <div
@@ -391,26 +435,23 @@
             </div>
           )}
 
-          {/* 視圖 3: 遊戲開始 (防窺抽卡 & 兩隊名單) */}
+          {/* 遊戲進行中：防窺抽卡 & 隊伍名單 */}
           {gameState === 'game' && (
             <div className="space-y-6">
-              {/* 控制列: 上帝視角與重新開始 */}
               <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-400">遊戲狀態:</span>
-                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-medium">進行中</span>
-                </div>
+                <span className="text-xs text-emerald-400 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md">
+                  ● 分隊與身分指派完成
+                </span>
 
-                <div className="flex items-center gap-3">
-                  {/* 房主上帝視角切換 (預設關閉) */}
+                <div className="flex items-center gap-2">
                   {isHost && (
                     <button
                       onClick={() => setIsGodMode(!isGodMode)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border font-medium flex items-center gap-1.5 transition ${
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition ${
                         isGodMode ? 'bg-amber-500 text-black border-amber-400 font-bold' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
                       }`}
                     >
-                      <span>{isGodMode ? '👁️ 上帝視角 (開啟中)' : '🔒 上帝視角 (已關閉)'}</span>
+                      {isGodMode ? '👁️ 上帝視角 (開)' : '🔒 上帝視角 (關)'}
                     </button>
                   )}
                   {isHost && (
@@ -418,20 +459,28 @@
                       onClick={() => {
                         setRoomStatus('waiting');
                         setGameState('lobby');
-                        syncRoomData(players, 'waiting');
+                        if (clientRef.current) {
+                          clientRef.current.publish(`faction_clash_game_room_${roomId}`, JSON.stringify({
+                            type: 'SYNC_STATE',
+                            players,
+                            roomStatus: 'waiting',
+                            roleCounts,
+                            rolesCatalog
+                          }));
+                        }
                       }}
                       className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition"
                     >
-                      重新分隊 / 返回大廳
+                      重新分隊
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* 個人防窺翻牌卡片區 */}
-              <div className="max-w-md mx-auto">
+              {/* 手機防窺卡片 */}
+              <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
-                  <span className="text-xs text-zinc-400">👇 按住下方卡片不放可查看身分，放開立刻自動蓋牌（防偷看）</span>
+                  <span className="text-xs text-zinc-400">👇 按住卡片檢視身分，手放開立刻蓋牌遮蔽</span>
                 </div>
 
                 <div
@@ -442,26 +491,26 @@
                   className="w-full h-80 cursor-pointer select-none perspective-1000"
                 >
                   <div className={`relative w-full h-full duration-300 transform-style-3d ${isRevealed ? 'rotate-y-180' : ''}`}>
-                    {/* 卡片背面 (未翻開) */}
+                    {/* 卡背 */}
                     <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-6 shadow-2xl">
                       <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-4xl mb-4">
                         🔒
                       </div>
                       <h3 className="text-lg font-bold text-zinc-100">機密身分卡</h3>
-                      <p className="text-xs text-zinc-400 mt-2">按住此處翻開檢視</p>
+                      <p className="text-xs text-zinc-400 mt-2">按住檢視身分與陣營</p>
                       <div className="mt-4 text-[11px] text-zinc-500 bg-zinc-950/60 px-3 py-1 rounded-full">
                         玩家: {myInfo.name}
                       </div>
                     </div>
 
-                    {/* 卡片正面 (翻開後) */}
+                    {/* 卡面 */}
                     <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 ${
                       myInfo.team === 'red' ? 'bg-gradient-to-br from-red-950 via-zinc-900 to-zinc-900 border-red-500' :
                       myInfo.team === 'blue' ? 'bg-gradient-to-br from-blue-950 via-zinc-900 to-zinc-900 border-blue-500' :
                       'bg-gradient-to-br from-amber-950 via-zinc-900 to-zinc-900 border-amber-500'
                     }`}>
                       <div className="flex justify-between items-start">
-                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider ${
+                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${
                           myInfo.team === 'red' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                           myInfo.team === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                           'bg-amber-500/20 text-amber-400 border border-amber-500/30'
@@ -472,30 +521,27 @@
                       </div>
 
                       <div className="text-center my-auto">
-                        <h2 className="text-2xl font-black text-white tracking-wide">{myInfo.role?.name || '特工'}</h2>
+                        <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '未知身分'}</h2>
                         <p className="text-xs text-zinc-300 mt-3 px-2 leading-relaxed bg-zinc-950/40 py-2.5 rounded-xl border border-zinc-800">
                           {myInfo.role?.desc || '暫無專屬技能說明'}
                         </p>
                       </div>
 
                       <div className="text-[11px] text-zinc-400 text-center">
-                        鬆開手指立即蓋牌隱藏
+                        鬆開手立刻蓋牌隱藏
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 兩隊玩家陣營名單 (預設不洩漏他人身分) */}
+              {/* 紅白隊名單 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 紅隊名單 */}
                 <div className="bg-red-950/20 border border-red-900/40 rounded-2xl p-4">
-                  <div className="flex justify-between items-center pb-2 mb-3 border-b border-red-900/40">
-                    <h3 className="font-bold text-red-400 flex items-center gap-2">
-                      <span>🔥 熾焰紅隊</span>
-                      <span className="text-xs bg-red-900/40 px-2 py-0.5 rounded-full">{redTeam.length} 人</span>
-                    </h3>
-                  </div>
+                  <h3 className="font-bold text-red-400 mb-3 flex items-center justify-between">
+                    <span>🔥 熾焰紅隊</span>
+                    <span className="text-xs bg-red-900/40 px-2 py-0.5 rounded-full">{redTeam.length} 人</span>
+                  </h3>
                   <div className="space-y-2">
                     {redTeam.map(p => (
                       <div key={p.id} className="flex justify-between items-center bg-zinc-900/70 p-2.5 rounded-xl border border-red-950">
@@ -512,14 +558,11 @@
                   </div>
                 </div>
 
-                {/* 藍隊名單 */}
                 <div className="bg-blue-950/20 border border-blue-900/40 rounded-2xl p-4">
-                  <div className="flex justify-between items-center pb-2 mb-3 border-b border-blue-900/40">
-                    <h3 className="font-bold text-blue-400 flex items-center gap-2">
-                      <span>💧 深海藍隊</span>
-                      <span className="text-xs bg-blue-900/40 px-2 py-0.5 rounded-full">{blueTeam.length} 人</span>
-                    </h3>
-                  </div>
+                  <h3 className="font-bold text-blue-400 mb-3 flex items-center justify-between">
+                    <span>💧 深海藍隊</span>
+                    <span className="text-xs bg-blue-900/40 px-2 py-0.5 rounded-full">{blueTeam.length} 人</span>
+                  </h3>
                   <div className="space-y-2">
                     {blueTeam.map(p => (
                       <div key={p.id} className="flex justify-between items-center bg-zinc-900/70 p-2.5 rounded-xl border border-blue-950">
@@ -539,89 +582,62 @@
             </div>
           )}
 
-          {/* 卡池自訂設定彈窗 Modal */}
+          {/* 卡池設定彈窗 */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
-                {/* 彈窗 Header */}
                 <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span>🛠️️ 角色池配置</span>
+                      <span>🛠 角色池配置</span>
                       <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">
-                        總共加入: {totalCardsInDeck} 張卡
+                        總共: {totalCardsInDeck} 張
                       </span>
                     </h3>
-                    <p className="text-xs text-zinc-400">依需求調整各身分卡加入數量，也可自行新增全新角色。</p>
                   </div>
-                  <button
-                    onClick={() => setShowDeckModal(false)}
-                    className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center"
-                  >
+                  <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center">
                     ✕
                   </button>
                 </div>
 
-                {/* 角色數量調整清單 */}
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {rolesCatalog.map(role => {
                       const count = roleCounts[role.id] || 0;
                       return (
-                        <div
-                          key={role.id}
-                          className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
-                            count > 0 ? 'bg-zinc-800/80 border-zinc-600' : 'bg-zinc-900/50 border-zinc-800 opacity-60'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 truncate">
+                        <div key={role.id} className="p-3 rounded-xl border flex items-center justify-between gap-3 bg-zinc-800/80 border-zinc-700">
+                          <div className="flex items-center gap-2 truncate">
                             <span className="text-2xl">{role.icon}</span>
                             <div className="truncate">
-                              <div className="text-sm font-semibold truncate flex items-center gap-1.5">
-                                {role.name}
-                                <span className={`text-[10px] px-1 rounded ${
-                                  role.team === 'red' ? 'bg-red-500/20 text-red-400' :
-                                  role.team === 'blue' ? 'bg-blue-500/20 text-blue-400' :
-                                  'bg-amber-500/20 text-amber-400'
-                                }`}>
-                                  {role.team === 'red' ? '紅' : role.team === 'blue' ? '藍' : '中立'}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-zinc-400 truncate max-w-[140px]">{role.desc}</p>
+                              <div className="text-sm font-semibold truncate">{role.name}</div>
+                              <p className="text-[11px] text-zinc-400 truncate max-w-[130px]">{role.desc}</p>
                             </div>
                           </div>
-
-                          {/* 增減數量按鈕 */}
                           <div className="flex items-center gap-2">
                             <button
                               disabled={!isHost}
                               onClick={() => updateRoleCount(role.id, -1)}
-                              className="w-7 h-7 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-30 rounded-lg flex items-center justify-center font-bold text-sm"
-                            >
-                              -
-                            </button>
+                              className="w-7 h-7 bg-zinc-700 rounded-lg flex items-center justify-center font-bold"
+                            >-</button>
                             <span className="w-5 text-center font-mono font-bold text-sm">{count}</span>
                             <button
                               disabled={!isHost}
                               onClick={() => updateRoleCount(role.id, 1)}
-                              className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 rounded-lg flex items-center justify-center font-bold text-sm"
-                            >
-                              +
-                            </button>
+                              className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center font-bold"
+                            >+</button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* 自訂新增角色區塊 (僅房主可見) */}
                   {isHost && (
                     <form onSubmit={handleAddNewRole} className="mt-4 pt-4 border-t border-zinc-800">
-                      <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">➕ 新增自訂角色</h4>
+                      <h4 className="text-xs font-bold text-zinc-400 mb-2">➕ 新增自訂角色</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                         <input
                           type="text"
-                          placeholder="角色名稱 (例: 隱形刺客)"
+                          placeholder="角色名稱"
                           value={newRoleName}
                           onChange={(e) => setNewRoleName(e.target.value)}
                           className="bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs text-white"
@@ -642,27 +658,18 @@
                           onChange={(e) => setNewRoleDesc(e.target.value)}
                           className="bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs text-white"
                         />
-                        <button
-                          type="submit"
-                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-1.5 rounded-lg"
-                        >
-                          加入角色庫
+                        <button type="submit" className="bg-indigo-600 text-white font-medium text-xs py-1.5 rounded-lg">
+                          加入卡池
                         </button>
                       </div>
                     </form>
                   )}
                 </div>
 
-                {/* 彈窗 Footer */}
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
-                  <span className="text-xs text-zinc-400">
-                    目前總卡數: <strong className={totalCardsInDeck >= players.length ? "text-emerald-400" : "text-rose-400"}>{totalCardsInDeck}</strong> / 玩家數: {players.length}
-                  </span>
-                  <button
-                    onClick={() => setShowDeckModal(false)}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2 rounded-xl"
-                  >
-                    確定套用
+                  <span className="text-xs text-zinc-400">玩家人數: {players.length} 人</span>
+                  <button onClick={() => setShowDeckModal(false)} className="bg-indigo-600 text-white text-xs font-bold px-5 py-2 rounded-xl">
+                    確定
                   </button>
                 </div>
               </div>
