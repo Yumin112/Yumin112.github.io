@@ -11,8 +11,9 @@
   <!-- MQTT.js (免金鑰跨裝置中繼) -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- 引入獨立角色資料庫 -->
+  <!-- 引入獨立角色與屬性資料庫 -->
   <script src="./roles.js"></script>
+  <script src="./property.js"></script>
 
   <!-- React & Babel -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -100,6 +101,7 @@
 
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
+      const propertiesCatalog = window.OFFICIAL_PROPERTIES_CATALOG || [];
 
       // 基本房間狀態
       const [gameState, setGameState] = useState('home'); 
@@ -131,7 +133,7 @@
       // 彈窗暫存設定
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
-      const [deckViewMode, setDeckViewMode] = useState('detailed'); // 'detailed' | 'iconOnly'
+      const [deckViewMode, setDeckViewMode] = useState('detailed');
 
       // 互動狀態
       const [isColorOnly, setIsColorOnly] = useState(false);
@@ -139,12 +141,17 @@
       const [swapRequestData, setSwapRequestData] = useState(null); 
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
 
+      // 屬性感染系統相關狀態
+      const [showInfectModal, setShowInfectModal] = useState(false);
+      const [infectRequestData, setInfectRequestData] = useState(null); // { fromId, fromName, propertyId }
+      const [infectedByMeIds, setInfectedByMeIds] = useState([]); // 紀錄當局已被此玩家感染者名單
+
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
-      // 保持最新狀態映射，全員持久化保存個人進度快照
+      // 狀態參照同步與全員快照儲存
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -213,6 +220,8 @@
         setIsTimerRunning(false);
         setSwapRequestData(null);
         setSwapStatusMessage('');
+        setInfectRequestData(null);
+        setInfectedByMeIds([]);
         setIsVerifying(false);
         setConnStatus('未連線');
       }, []);
@@ -262,6 +271,23 @@
         });
       }, [broadcastLatest]);
 
+      // 房長執行屬性賦予核心
+      const executeAddPropertyOnHost = useCallback((targetPlayerId, propertyId) => {
+        setPlayers(prev => {
+          const next = prev.map(p => {
+            if (p.id === targetPlayerId) {
+              const currentProps = p.properties || [];
+              if (!currentProps.includes(propertyId)) {
+                return { ...p, properties: [...currentProps, propertyId] };
+              }
+            }
+            return p;
+          });
+          setTimeout(() => { broadcastLatest({ players: next }); }, 50);
+          return next;
+        });
+      }, [broadcastLatest]);
+
       // 雲端 MQTT 通訊通道
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
@@ -284,7 +310,7 @@
           setConnStatus('🟢 雲端就緒');
           client.subscribe(topic, { qos: 1 }, () => {
             const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+              id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, properties: [], hasBeenLeprechaun: false
             };
 
             if (asHost) {
@@ -319,7 +345,7 @@
 
             if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
               const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-                id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+                id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, properties: [], hasBeenLeprechaun: false
               };
               client.publish(topic, JSON.stringify({
                 type: 'REPORT_PRESENCE',
@@ -363,7 +389,8 @@
                         name: data.player.name,
                         team: data.player.team || p.team,
                         role: data.player.role || p.role,
-                        gameRoom: data.player.gameRoom || p.gameRoom
+                        gameRoom: data.player.gameRoom || p.gameRoom,
+                        properties: data.player.properties || p.properties || []
                       } : p);
                     } else {
                       next = [...prev, data.player];
@@ -384,6 +411,7 @@
                 });
                 break;
 
+              // 身分交換相關事件
               case 'SWAP_REQUEST':
                 if (data.targetId === uid) {
                   setSwapRequestData({
@@ -411,6 +439,30 @@
               case 'EXECUTE_SWAP':
                 if (latestStateRef.current.isHost) {
                   executeSwapOnHost(data.player1Id, data.player2Id);
+                }
+                break;
+
+              // 屬性感染/賦予相關事件
+              case 'INFECT_REQUEST':
+                if (data.targetId === uid) {
+                  setInfectRequestData({
+                    fromId: data.fromId,
+                    fromName: data.fromName,
+                    propertyId: data.propertyId
+                  });
+                }
+                break;
+
+              case 'INFECT_REJECTED':
+                if (data.fromId === uid) {
+                  setSwapStatusMessage(`對方表示剛剛並未與你分享，感染已取消。`);
+                  setTimeout(() => setSwapStatusMessage(''), 3000);
+                }
+                break;
+
+              case 'EXECUTE_ADD_PROPERTY':
+                if (latestStateRef.current.isHost) {
+                  executeAddPropertyOnHost(data.targetPlayerId, data.propertyId);
                 }
                 break;
 
@@ -447,9 +499,9 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [broadcastLatest, executeSwapOnHost, resetToHome]);
+      }, [broadcastLatest, executeSwapOnHost, executeAddPropertyOnHost, resetToHome]);
 
-      // 初始化與全體斷線/瀏覽器關閉後冷啟動還原
+      // 初始化與冷啟動還原
       useEffect(() => {
         let storedId = localStorage.getItem('trb_player_uid_v5');
         if (!storedId) {
@@ -514,6 +566,7 @@
               team: null,
               role: null,
               gameRoom: null,
+              properties: [],
               hasBeenLeprechaun: false
             }];
           }
@@ -557,7 +610,7 @@
       // 記憶化衍生狀態
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+          name: playerName, team: null, role: null, gameRoom: null, properties: [], hasBeenLeprechaun: false
         };
       }, [players, myPlayerId, playerName]);
 
@@ -578,6 +631,19 @@
         return Boolean(myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun'));
       }, [myInfo.role]);
 
+      // 判斷自己是否具有喪屍身分/屬性
+      const isZombie = useMemo(() => {
+        const isZombieRole = myInfo.role?.id === 'zombie';
+        const hasZombieProperty = myInfo.properties?.includes('zombie');
+        return isZombieRole || hasZombieProperty;
+      }, [myInfo.role, myInfo.properties]);
+
+      // 解析自己當前擁有的詳細屬性物件
+      const myPropertiesList = useMemo(() => {
+        const props = myInfo.properties || [];
+        return propertiesCatalog.filter(p => props.includes(p.id));
+      }, [myInfo.properties, propertiesCatalog]);
+
       useEffect(() => {
         if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
           setSwapStatusMessage('🎉 身分已成功交換！');
@@ -589,7 +655,7 @@
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false };
+        const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null, properties: [], hasBeenLeprechaun: false };
 
         localStorage.setItem('trb_saved_room_id', code);
         localStorage.setItem('trb_saved_player_name', trimmedName);
@@ -618,8 +684,9 @@
         const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
         const topic = `trb_game_sync_room_${code}`;
         const tempClient = mqtt.connect(brokerUrl, {
-          clientId: `trb_verify_${myPlayerId}_${Math.random().toString(16).substr(2, 6)}`,
-          clean: true
+          clientId: `trb_v_${myPlayerId}_${Math.random().toString(16).slice(2, 8)}`,
+          clean: true,
+          connectTimeout: 5000
         });
 
         let verified = false;
@@ -628,16 +695,18 @@
           if (!verified) {
             try { tempClient.end(true); } catch(e) {}
             setIsVerifying(false);
-            alert(`找不到房間「${code}」或房長不在線，無法加入！`);
+            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請改用 Safari 或 Chrome 瀏覽器）`);
           }
-        }, 3000);
+        }, 6000);
 
         tempClient.on('connect', () => {
-          tempClient.subscribe(topic, { qos: 1 }, () => {
-            tempClient.publish(topic, JSON.stringify({
-              type: 'CHECK_ROOM_REQ',
-              senderId: myPlayerId
-            }), { qos: 1 });
+          tempClient.subscribe(topic, { qos: 1 }, (err) => {
+            if (!err) {
+              tempClient.publish(topic, JSON.stringify({
+                type: 'CHECK_ROOM_REQ',
+                senderId: myPlayerId
+              }), { qos: 1 });
+            }
           });
         });
 
@@ -665,6 +734,7 @@
                 team: null,
                 role: null,
                 gameRoom: null,
+                properties: [],
                 hasBeenLeprechaun: false
               };
               setPlayers([selfPlayer]);
@@ -678,7 +748,7 @@
           clearTimeout(timeoutTimer);
           setIsVerifying(false);
           try { tempClient.end(true); } catch(e) {}
-          alert('連線伺服器失敗，請稍後再試！');
+          alert('伺服器連線失敗，請檢查網路或改用一般瀏覽器開啟！');
         });
       };
 
@@ -724,6 +794,7 @@
           ...p,
           team: null,
           role: null,
+          properties: [],
           hasBeenLeprechaun: false,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
@@ -741,7 +812,7 @@
         });
       };
 
-      // 發放卡片並啟動計時
+      // 發放卡片並啟動計時（開局若角色為 zombie，直接自動賦予 zombie 屬性）
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -752,10 +823,12 @@
 
         const assignedWithRoles = players.map((p, idx) => {
           const r = deck[idx];
+          const initialProps = r.id === 'zombie' ? ['zombie'] : [];
           return {
             ...p,
             team: r.team,
             role: r,
+            properties: initialProps,
             hasBeenLeprechaun: r.id === 'leprechaun'
           };
         });
@@ -801,6 +874,7 @@
         }
       };
 
+      // 身分交換發起
       const handleSendSwapRequest = (targetPlayer) => {
         setShowSwapTargetModal(false);
         if (!clientRef.current || targetPlayer.id === myPlayerId) return;
@@ -844,6 +918,55 @@
         setSwapRequestData(null);
       };
 
+      // 喪屍感染發起
+      const handleSendInfectRequest = (targetPlayer) => {
+        setShowInfectModal(false);
+        if (!clientRef.current || targetPlayer.id === myPlayerId) return;
+
+        // 本地暫時標註，等待對方確認
+        setInfectedByMeIds(prev => [...prev, targetPlayer.id]);
+        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送喪屍感染通知，等待對方確認中...`);
+
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+          type: 'INFECT_REQUEST',
+          senderId: myPlayerId,
+          fromId: myPlayerId,
+          fromName: myInfo.name,
+          propertyId: 'zombie',
+          targetId: targetPlayer.id
+        }));
+      };
+
+      // 被感染者確認接受
+      const handleAcceptInfect = () => {
+        if (!infectRequestData) return;
+        const targetId = myPlayerId;
+        const propId = infectRequestData.propertyId;
+        setInfectRequestData(null);
+
+        if (latestStateRef.current.isHost) {
+          executeAddPropertyOnHost(targetId, propId);
+        } else if (clientRef.current) {
+          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+            type: 'EXECUTE_ADD_PROPERTY',
+            senderId: myPlayerId,
+            targetPlayerId: targetId,
+            propertyId: propId
+          }));
+        }
+      };
+
+      // 被感染者拒絕（表示未分享過）
+      const handleRejectInfect = () => {
+        if (!infectRequestData || !clientRef.current) return;
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+          type: 'INFECT_REJECTED',
+          senderId: myPlayerId,
+          fromId: infectRequestData.fromId
+        }));
+        setInfectRequestData(null);
+      };
+
       // 點擊切換角色應用 (Toggle 啟用/停用，並支援 pairs 連動自動選取)
       const handleToggleRole = (roleId) => {
         if (!isHost) return;
@@ -852,13 +975,10 @@
           const nextCounts = { ...prev };
 
           if (isSelected) {
-            // 取消選取該角色
             nextCounts[roleId] = 0;
           } else {
-            // 選取該角色
             nextCounts[roleId] = 1;
 
-            // 檢查並連動 pairs 角色
             const currentRole = rolesCatalog.find(r => r.id === roleId);
             if (currentRole && currentRole.pairs) {
               let pairIds = [];
@@ -1238,7 +1358,7 @@
                     </span>
                   </div>
 
-                  {/* 交換狀態提示 */}
+                  {/* 交換/感染狀態提示 */}
                   {swapStatusMessage && (
                     <div className={`max-w-sm mx-auto border text-xs px-4 py-2.5 rounded-xl text-center font-bold animate-pulse ${
                       swapStatusMessage.includes('成功')
@@ -1281,6 +1401,7 @@
                         </div>
                       ) : (
                         <React.Fragment>
+                          {/* 陣營與圖示 */}
                           <div className="flex justify-between items-start pointer-events-none">
                             <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
                               {myTeamMeta.label}
@@ -1288,16 +1409,50 @@
                             <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
                           </div>
 
-                          <div className="text-center my-3 pointer-events-none">
+                          {/* 角色名稱與專屬技能說明 */}
+                          <div className="text-center my-2 pointer-events-none">
                             <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
-                            <p className="text-xs text-zinc-200 mt-2.5 px-3 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800 break-words">
+                            <p className="text-xs text-zinc-200 mt-2 px-3 leading-relaxed bg-zinc-950/60 py-2 rounded-xl border border-zinc-800 break-words">
                               {myInfo.role?.desc || '暫無專屬說明'}
                             </p>
                           </div>
 
+                          {/* 屬性展示區塊（若身上有喪屍等屬性，在此展示） */}
+                          {myPropertiesList.length > 0 && (
+                            <div className="my-2 space-y-1.5 pointer-events-none">
+                              {myPropertiesList.map(prop => (
+                                <div key={prop.id} className={`p-2 rounded-xl border flex items-center gap-2 ${prop.badge}`}>
+                                  <span className="text-xl shrink-0">{prop.icon}</span>
+                                  <div className="text-left">
+                                    <div className="text-xs font-black">{prop.name} (已獲得屬性)</div>
+                                    <div className="text-[10px] text-zinc-300 leading-tight mt-0.5">{prop.description}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 喪屍專屬功能：傳播感染按鈕 */}
+                          {isZombie && (
+                            <div className="my-1.5">
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowInfectModal(true);
+                                }}
+                                className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border border-emerald-400/50"
+                              >
+                                <span>☣️️ 感染其他玩家 (喪屍)</span>
+                              </button>
+                            </div>
+                          )}
+
                           {/* 燙手山芋 / 小妖精 交換按鈕 */}
                           {canSwapRole && (
-                            <div className="my-2">
+                            <div className="my-1.5">
                               <button
                                 type="button"
                                 onMouseDown={(e) => e.stopPropagation()}
@@ -1316,7 +1471,7 @@
                             </div>
                           )}
 
-                          <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none">
+                          <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none mt-1">
                             玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
                           </div>
                         </React.Fragment>
@@ -1366,7 +1521,96 @@
             </div>
           )}
 
-          {/* 彈窗 1：選擇交換對象 */}
+          {/* 彈窗：喪屍選擇感染對象 */}
+          {showInfectModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border border-emerald-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                  <h3 className="text-base font-bold text-emerald-400 flex items-center gap-1.5">
+                    <span>☣️ 選擇感染對象 (喪屍傳播)</span>
+                  </h3>
+                  <button onClick={() => setShowInfectModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  請選擇剛才與你進行過<strong>【卡片分享】</strong>或<strong>【顏色分享】</strong>的玩家。對方確認後將獲得喪屍屬性！
+                </p>
+
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {players.filter(p => p.id !== myPlayerId).map(p => {
+                    const alreadyZombie = (p.role?.id === 'zombie') || (p.properties?.includes('zombie'));
+                    const isMarkedByMe = infectedByMeIds.includes(p.id);
+
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={alreadyZombie}
+                        onClick={() => handleSendInfectRequest(p)}
+                        className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
+                          alreadyZombie
+                            ? 'bg-zinc-900/60 border-zinc-800/80 opacity-50 cursor-not-allowed'
+                            : 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700 hover:border-emerald-400 cursor-pointer active:scale-95'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-sm text-zinc-100">{p.name}</span>
+                          {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
+                        </div>
+
+                        <div>
+                          {alreadyZombie ? (
+                            <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
+                              {isMarkedByMe ? '☣️ 已被你感染' : '已是喪屍'}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
+                              {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：被感染者確認視窗 */}
+          {infectRequestData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-emerald-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🧟</div>
+                <h3 className="text-lg font-black text-emerald-400">你受到喪屍感染了！</h3>
+                <p className="text-sm text-zinc-200 leading-relaxed">
+                  由於你剛剛與 <strong className="text-amber-400 font-bold">{infectRequestData.fromName}</strong> 進行了
+                  <strong>【卡片分享】</strong>或<strong>【顏色分享】</strong>，因此你被感染了！
+                </p>
+                <p className="text-xs text-emerald-300/80 bg-emerald-950/60 p-2 rounded-lg border border-emerald-800/50">
+                  獲取屬性後，你的勝利目標將變更為與喪屍隊一同獲勝！
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleRejectInfect}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    不是我！
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAcceptInfect}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    確認成為喪屍
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗 1：選擇身分交換對象 */}
           {showSwapTargetModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1531,7 +1775,6 @@
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
-                {/* 彈窗頂部 */}
                 <div className="p-4 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -1543,7 +1786,6 @@
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* 全部取消選取 */}
                     {isHost && (
                       <button
                         type="button"
@@ -1554,7 +1796,6 @@
                       </button>
                     )}
 
-                    {/* 檢視模式切換 */}
                     <button
                       type="button"
                       onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
@@ -1576,7 +1817,6 @@
                       const isSelected = (tempRoleCounts[role.id] || 0) > 0;
                       const meta = getTeamMeta(role.team);
 
-                      // 僅圖示與名稱簡約模式
                       if (deckViewMode === 'iconOnly') {
                         return (
                           <div 
@@ -1606,7 +1846,6 @@
                         );
                       }
 
-                      // 詳細資料模式
                       return (
                         <div 
                           key={role.id} 
@@ -1652,7 +1891,6 @@
                   </div>
                 </div>
 
-                {/* 彈窗底部 */}
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
                   <span className="text-xs text-zinc-400">請確認卡牌總數大於或等於玩家人數</span>
                   <button
