@@ -143,7 +143,7 @@
 
       // 交換角色相關狀態
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
-      const [swapRequestData, setSwapRequestData] = useState(null); // { fromId, fromName, fromRoleName }
+      const [swapRequestData, setSwapRequestData] = useState(null); 
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
 
       const clientRef = useRef(null);
@@ -192,6 +192,52 @@
         }));
       };
 
+      // 執行身分交換核心函式 (由房長端呼叫)
+      const executeSwapOnHost = (id1, id2) => {
+        setPlayers(prev => {
+          const p1 = prev.find(p => p.id === id1);
+          const p2 = prev.find(p => p.id === id2);
+          if (!p1 || !p2) return prev;
+
+          const role1 = p1.role;
+          const team1 = p1.team;
+          const role2 = p2.role;
+          const team2 = p2.team;
+
+          const next = prev.map(p => {
+            if (p.id === id1) {
+              return {
+                ...p,
+                role: role2,
+                team: team2,
+                hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun')
+              };
+            }
+            if (p.id === id2) {
+              return {
+                ...p,
+                role: role1,
+                team: team1,
+                hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun')
+              };
+            }
+            return p;
+          });
+
+          // 廣播成功事件，強制讓雙方清空等待訊息
+          if (clientRef.current) {
+            clientRef.current.publish(`trb_game_sync_room_${latestStateRef.current.roomId}`, JSON.stringify({
+              type: 'SWAP_SUCCESS',
+              player1Id: id1,
+              player2Id: id2
+            }));
+          }
+
+          setTimeout(() => { broadcastLatest({ players: next }); }, 50);
+          return next;
+        });
+      };
+
       // 雲端 MQTT 連線通道
       const setupConnection = (code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
@@ -217,7 +263,7 @@
               type: 'PLAYER_PING_SYNC',
               senderId: uid,
               isHost: asHost,
-              player: { id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null }
+              player: { id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false }
             }));
           });
         });
@@ -253,7 +299,7 @@
               });
             }
 
-            // 收到身分交換請求
+            // 【修復 BUG 3】接收交換請求 (不論是不是房長，只要 targetId 是自己就彈窗)
             if (data.type === 'SWAP_REQUEST' && data.targetId === uid) {
               setSwapRequestData({
                 fromId: data.fromId,
@@ -262,37 +308,23 @@
               });
             }
 
-            // 收到身分交換拒絕通知
+            // 收到交換拒絕通知
             if (data.type === 'SWAP_REJECTED' && data.fromId === uid) {
-              setSwapStatusMessage(`對方拒絕了身分交換請求！`);
+              setSwapStatusMessage('對方拒絕了身分交換請求！');
               setTimeout(() => setSwapStatusMessage(''), 3000);
             }
 
-            // 房長負責執行身分交換並同步全場
+            // 【修復 BUG 1】收到交換成功廣播，發起方立刻清空等待提示
+            if (data.type === 'SWAP_SUCCESS') {
+              if (data.player1Id === uid || data.player2Id === uid) {
+                setSwapStatusMessage('🎉 身分已成功交換！');
+                setTimeout(() => setSwapStatusMessage(''), 2500);
+              }
+            }
+
+            // 【修復 BUG 3】房長收到執行交換指令
             if (data.type === 'EXECUTE_SWAP' && latestStateRef.current.isHost) {
-              setPlayers(prev => {
-                const p1 = prev.find(p => p.id === data.player1Id);
-                const p2 = prev.find(p => p.id === data.player2Id);
-                if (!p1 || !p2) return prev;
-
-                const role1 = p1.role;
-                const team1 = p1.team;
-                const role2 = p2.role;
-                const team2 = p2.team;
-
-                const next = prev.map(p => {
-                  if (p.id === data.player1Id) {
-                    return { ...p, role: role2, team: team2 };
-                  }
-                  if (p.id === data.player2Id) {
-                    return { ...p, role: role1, team: team1 };
-                  }
-                  return p;
-                });
-
-                setTimeout(() => { broadcastLatest({ players: next }); }, 50);
-                return next;
-              });
+              executeSwapOnHost(data.player1Id, data.player2Id);
             }
 
             // 全局同步
@@ -385,7 +417,7 @@
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null };
+        const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false };
 
         localStorage.setItem('trb_saved_room_id', code);
         localStorage.setItem('trb_saved_player_name', trimmedName);
@@ -508,6 +540,7 @@
           ...p,
           team: null,
           role: null,
+          hasBeenLeprechaun: false,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
 
@@ -524,7 +557,7 @@
         });
       };
 
-      // 步驟 2: 發放身分並計時
+      // 步驟 2: 發放身分並計時 (標記初始拿到小妖精的人)
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -539,7 +572,8 @@
           return {
             ...p,
             team: r.team,
-            role: r
+            role: r,
+            hasBeenLeprechaun: r.id === 'leprechaun' // 初始拿到小妖精者標記
           };
         });
 
@@ -601,21 +635,34 @@
         }
       };
 
-      const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null, gameRoom: null };
+      const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false };
       const roomAPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room A'));
       const roomBPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room B'));
       const myTeamMeta = getTeamMeta(myInfo.team);
 
-      // 判斷自己是否擁有交換身分技能 (燙手山芋 或 小妖精)
+      // 判斷自己是否擁有交換身分技能
       const canSwapRole = useMemo(() => {
         return myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun');
       }, [myInfo.role]);
 
-      // 發送交換身分請求
+      // 【修復 BUG 1】若已被成功換走身分，自動清除等待中的提示訊息
+      useEffect(() => {
+        if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
+          setSwapStatusMessage('🎉 身分已成功交換！');
+          setTimeout(() => setSwapStatusMessage(''), 2500);
+        }
+      }, [canSwapRole, swapStatusMessage]);
+
+      // 發送交換身分請求 (修復 BUG 3：房長與所有成員均適用)
       const handleSendSwapRequest = (targetPlayer) => {
         setShowSwapTargetModal(false);
         if (!clientRef.current) return;
+
         setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);
+
+        // 如果目標就是自己（房長向房長發起，理論上不存在，防呆處理）
+        if (targetPlayer.id === myPlayerId) return;
+
         clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
           type: 'SWAP_REQUEST',
           senderId: myPlayerId,
@@ -626,20 +673,26 @@
         }));
       };
 
-      // 被動收到交換請求：按下確認
+      // 【修復 BUG 3】接收者確認交換：如果是房長自己確認，直接本地執行；若是玩家則通知房長執行
       const handleAcceptSwap = () => {
-        if (!swapRequestData || !clientRef.current) return;
-        // 請求房長執行雙方角色互換
-        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-          type: 'EXECUTE_SWAP',
-          senderId: myPlayerId,
-          player1Id: swapRequestData.fromId,
-          player2Id: myPlayerId
-        }));
+        if (!swapRequestData) return;
+        const p1Id = swapRequestData.fromId;
+        const p2Id = myPlayerId;
         setSwapRequestData(null);
+
+        if (latestStateRef.current.isHost) {
+          executeSwapOnHost(p1Id, p2Id);
+        } else if (clientRef.current) {
+          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+            type: 'EXECUTE_SWAP',
+            senderId: myPlayerId,
+            player1Id: p1Id,
+            player2Id: p2Id
+          }));
+        }
       };
 
-      // 被動收到交換請求：按下拒絕
+      // 接收者拒絕交換
       const handleRejectSwap = () => {
         if (!swapRequestData || !clientRef.current) return;
         clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
@@ -958,7 +1011,11 @@
 
                   {/* 交換狀態提示訊息 */}
                   {swapStatusMessage && (
-                    <div className="max-w-sm mx-auto bg-amber-500/20 border border-amber-500/60 text-amber-300 text-xs px-4 py-2 rounded-xl text-center font-medium animate-pulse">
+                    <div className={`max-w-sm mx-auto border text-xs px-4 py-2.5 rounded-xl text-center font-bold animate-pulse ${
+                      swapStatusMessage.includes('成功')
+                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                        : 'bg-amber-500/20 border-amber-500 text-amber-300'
+                    }`}>
                       {swapStatusMessage}
                     </div>
                   )}
@@ -1081,7 +1138,7 @@
             </div>
           )}
 
-          {/* 彈窗 1：選擇交換身分的玩家 (持有 hot_potato / leprechaun 時開啟) */}
+          {/* 彈窗 1：選擇交換身分的玩家 (修復 BUG 2 & BUG 3) */}
           {showSwapTargetModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1092,33 +1149,57 @@
                   <button onClick={() => setShowSwapTargetModal(false)} className="text-zinc-400 hover:text-white">✕</button>
                 </div>
                 <p className="text-xs text-zinc-300">
-                  請點擊一名玩家，對方同意後將立即互換身分卡！
+                  {myInfo.role?.id === 'leprechaun'
+                    ? '🍀 小妖精規則：曾當過小妖精的玩家不可再次交換。'
+                    : '🥔 燙手山芋規則：可與同場任意玩家進行交換。'}
                 </p>
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                  {players.filter(p => p.id !== myPlayerId).map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSendSwapRequest(p)}
-                      className="w-full text-left p-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-400 transition flex items-center justify-between"
-                    >
-                      <span className="font-bold text-sm text-zinc-100">{p.name}</span>
-                      <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
-                        {p.gameRoom || '同室'}
-                      </span>
-                    </button>
-                  ))}
+                  {players.filter(p => p.id !== myPlayerId).map(p => {
+                    // 【修復 BUG 2】若自己是小妖精且對方曾當過小妖精，則禁用不可選
+                    const isLeprechaunDisabled = myInfo.role?.id === 'leprechaun' && p.hasBeenLeprechaun;
+
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={isLeprechaunDisabled}
+                        onClick={() => handleSendSwapRequest(p)}
+                        className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
+                          isLeprechaunDisabled
+                            ? 'bg-zinc-900/60 border-zinc-800/80 opacity-40 cursor-not-allowed'
+                            : 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700 hover:border-amber-400 cursor-pointer active:scale-95'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-sm text-zinc-100">{p.name}</span>
+                          {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
+                        </div>
+
+                        <div>
+                          {isLeprechaunDisabled ? (
+                            <span className="text-[10px] text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-900/60">
+                              曾當過小妖精
+                            </span>
+                          ) : (
+                            <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
+                              {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           )}
 
-          {/* 彈窗 2：被交換者的確認通知彈窗 (防呆機制) */}
+          {/* 彈窗 2：被交換者的確認通知彈窗 (修復 BUG 1 & BUG 3) */}
           {swapRequestData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
-              <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center animate-bounce-once">
-                <div className="text-4xl">🔄</div>
+              <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🔄</div>
                 <h3 className="text-lg font-black text-white">身分交換請求！</h3>
                 <p className="text-sm text-zinc-300 leading-relaxed">
                   玩家 <strong className="text-amber-400 font-bold">{swapRequestData.fromName}</strong> 
@@ -1153,7 +1234,7 @@
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
                 <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-                  <h3 className="text-base font-bold text-white">⚙️️ 調整回合數與每輪時間</h3>
+                  <h3 className="text-base font-bold text-white">⚙️ 調整回合數與每輪時間</h3>
                   <button onClick={() => setShowRoundConfigModal(false)} className="text-zinc-400 hover:text-white">✕</button>
                 </div>
 
