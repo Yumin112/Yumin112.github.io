@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="./roles.js"></script>
   <title>Two Rooms and a Boom!</title>
+  
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- PeerJS (WebRTC 免伺服器點對點超穩定直連) -->
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <!-- Firebase App & Database (超穩定雲端即時同步) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   
   <!-- React & Babel -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -36,6 +38,16 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo } = React;
 
+    // 初始化 Firebase (提供即時雲端中繼，支援手機 4G/5G/Wi-Fi)
+    const firebaseConfig = {
+      databaseURL: "https://two-rooms-boom-default-rtdb.firebaseio.com"
+    };
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // 依據 PDF 官方卡牌資料庫整理
     const OFFICIAL_ROLES_CATALOG = window.OFFICIAL_ROLES_CATALOG || [];
 
     function App() {
@@ -45,7 +57,7 @@
       const [playerName, setPlayerName] = useState('');
       const [myPlayerId, setMyPlayerId] = useState('');
       const [isHost, setIsHost] = useState(false);
-      const [connStatusText, setConnStatusText] = useState('未連線');
+      const [connStatusText, setConnStatusText] = useState('🟢 雲端就緒');
 
       // 房間與玩家
       const [players, setPlayers] = useState([]);
@@ -70,22 +82,49 @@
       const [isRevealed, setIsRevealed] = useState(false);
       const [isGodMode, setIsGodMode] = useState(false);
 
-      const peerRef = useRef(null);
-      const hostConnRef = useRef(null); // 玩家端存對房長的連線
-      const clientConnsRef = useRef([]); // 房長端存所有玩家的連線
       const timerIntervalRef = useRef(null);
 
-      // 初始化唯一的個人 ID
+      // 初始化個人獨立 ID
       useEffect(() => {
-        let storedId = sessionStorage.getItem('trb_peer_uid');
+        let storedId = sessionStorage.getItem('trb_uid_v2');
         if (!storedId) {
           storedId = 'u_' + Math.random().toString(36).substring(2, 9);
-          sessionStorage.setItem('trb_peer_uid', storedId);
+          sessionStorage.setItem('trb_uid_v2', storedId);
         }
         setMyPlayerId(storedId);
       }, []);
 
-      // 倒數計時器
+      // 監聽 Firebase 房間資料變更
+      useEffect(() => {
+        if (!roomId) return;
+        const roomRef = db.ref(`rooms/${roomId}`);
+
+        roomRef.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (!data) return;
+
+          if (data.players) {
+            const playerList = Object.values(data.players);
+            setPlayers(playerList);
+          }
+          if (data.roomStatus) {
+            setRoomStatus(data.roomStatus);
+            if (data.roomStatus === 'round_active' || data.roomStatus === 'round_paused' || data.roomStatus === 'ended') {
+              setGameState('game');
+            } else if (data.roomStatus === 'waiting') {
+              setGameState('lobby');
+            }
+          }
+          if (data.roundSettings) setRoundSettings(data.roundSettings);
+          if (data.roleCounts) setRoleCounts(data.roleCounts);
+          if (data.currentRoundIndex !== undefined) setCurrentRoundIndex(data.currentRoundIndex);
+          if (data.timeLeft !== undefined) setTimeLeft(data.timeLeft);
+        });
+
+        return () => roomRef.off();
+      }, [roomId]);
+
+      // 房長負責計時並同步
       useEffect(() => {
         if (isHost && isTimerRunning && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -96,7 +135,9 @@
                 return 0;
               }
               const nextSec = prev - 1;
-              if (nextSec % 3 === 0) broadcastTime(nextSec);
+              if (nextSec % 3 === 0) {
+                db.ref(`rooms/${roomId}/timeLeft`).set(nextSec);
+              }
               return nextSec;
             });
           }, 1000);
@@ -104,175 +145,14 @@
           clearInterval(timerIntervalRef.current);
         }
         return () => clearInterval(timerIntervalRef.current);
-      }, [isHost, isTimerRunning, timeLeft]);
+      }, [isHost, isTimerRunning, timeLeft, roomId]);
 
       const handleRoundTimeUp = () => {
         setIsTimerRunning(false);
         setRoomStatus('round_paused');
-        broadcastFullState('round_paused', currentRoundIndex, 0, players);
-      };
-
-      const broadcastTime = (sec) => {
-        clientConnsRef.current.forEach(c => {
-          if (c && c.open) c.send({ type: 'TIME_SYNC', timeLeft: sec });
-        });
-      };
-
-      const broadcastFullState = (status, rIdx, curTime, curPlayers = players) => {
-        const payload = {
-          type: 'FULL_SYNC',
-          players: curPlayers,
-          roomStatus: status,
-          roleCounts,
-          rolesCatalog,
-          roundSettings,
-          currentRoundIndex: rIdx,
-          timeLeft: curTime
-        };
-        clientConnsRef.current.forEach(c => {
-          if (c && c.open) c.send(payload);
-        });
-      };
-
-      // 1. 建立房間 (房長端)
-      const handleCreateRoom = () => {
-        if (!playerName.trim()) { alert('請輸入您的暱稱！'); return; }
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const peerId = `2r1b_room_${code}`;
-
-        setConnStatusText('正在建立房間中...');
-        const peer = new Peer(peerId);
-        peerRef.current = peer;
-
-        peer.on('open', () => {
-          setRoomId(code);
-          setIsHost(true);
-          const me = { id: myPlayerId, name: playerName.trim(), isHost: true, team: null, role: null, gameRoom: null };
-          setPlayers([me]);
-          setGameState('lobby');
-          setConnStatusText('🟢 房間建立成功，等待玩家加入');
-        });
-
-        peer.on('connection', (conn) => {
-          conn.on('open', () => {
-            clientConnsRef.current.push(conn);
-          });
-
-          conn.on('data', (data) => {
-            if (data.type === 'JOIN_REQUEST') {
-              setPlayers(prev => {
-                const next = prev.some(p => p.id === data.player.id)
-                  ? prev.map(p => p.id === data.player.id ? data.player : p)
-                  : [...prev, data.player];
-                
-                // 立即回傳完整房間資訊給新加入者
-                conn.send({
-                  type: 'FULL_SYNC',
-                  players: next,
-                  roomStatus,
-                  roleCounts,
-                  rolesCatalog,
-                  roundSettings,
-                  currentRoundIndex,
-                  timeLeft
-                });
-
-                // 同步給其餘在線成員
-                clientConnsRef.current.forEach(c => {
-                  if (c !== conn && c.open) {
-                    c.send({
-                      type: 'FULL_SYNC',
-                      players: next,
-                      roomStatus,
-                      roleCounts,
-                      rolesCatalog,
-                      roundSettings,
-                      currentRoundIndex,
-                      timeLeft
-                    });
-                  }
-                });
-
-                return next;
-              });
-            }
-          });
-
-          conn.on('close', () => {
-            clientConnsRef.current = clientConnsRef.current.filter(c => c !== conn);
-          });
-        });
-
-        peer.on('error', (err) => {
-          if (err.type === 'unavailable-id') {
-            alert('房號衝突，請再點一次重新建立！');
-          } else {
-            alert('連線初始化失敗: ' + err.message);
-          }
-          setConnStatusText('連線錯誤');
-        });
-      };
-
-      // 2. 加入房間 (玩家端)
-      const handleJoinRoom = () => {
-        if (!playerName.trim()) { alert('請輸入您的暱稱！'); return; }
-        if (joinRoomInput.trim().length !== 6) { alert('請輸入 6 碼數字房號！'); return; }
-
-        const code = joinRoomInput.trim();
-        const targetPeerId = `2r1b_room_${code}`;
-
-        setConnStatusText('正在連線至房長...');
-        const peer = new Peer();
-        peerRef.current = peer;
-
-        peer.on('open', () => {
-          const conn = peer.connect(targetPeerId, { reliable: true });
-          hostConnRef.current = conn;
-
-          conn.on('open', () => {
-            setRoomId(code);
-            setIsHost(false);
-            setGameState('lobby');
-            setConnStatusText('🟢 已成功連線至房長！');
-
-            // 發送加入請求
-            conn.send({
-              type: 'JOIN_REQUEST',
-              player: { id: myPlayerId, name: playerName.trim(), isHost: false, team: null, role: null, gameRoom: null }
-            });
-          });
-
-          conn.on('data', (data) => {
-            if (data.type === 'FULL_SYNC') {
-              setPlayers(data.players);
-              setRoomStatus(data.roomStatus);
-              if (data.roleCounts) setRoleCounts(data.roleCounts);
-              if (data.rolesCatalog) setRolesCatalog(data.rolesCatalog);
-              if (data.roundSettings) setRoundSettings(data.roundSettings);
-              setCurrentRoundIndex(data.currentRoundIndex);
-              setTimeLeft(data.timeLeft);
-
-              if (data.roomStatus === 'round_active' || data.roomStatus === 'round_paused' || data.roomStatus === 'ended') {
-                setGameState('game');
-              } else if (data.roomStatus === 'waiting') {
-                setGameState('lobby');
-              }
-            }
-
-            if (data.type === 'TIME_SYNC') {
-              setTimeLeft(data.timeLeft);
-            }
-          });
-
-          conn.on('close', () => {
-            alert('與房長的連線已中斷！');
-            setConnStatusText('連線已中斷');
-          });
-        });
-
-        peer.on('error', (err) => {
-          alert('找不到該房間！請確認房號是否正確，且房長已保持開啟頁面。');
-          setConnStatusText('找不到房間');
+        db.ref(`rooms/${roomId}`).update({
+          roomStatus: 'round_paused',
+          timeLeft: 0
         });
       };
 
@@ -281,7 +161,56 @@
         return Object.values(roleCounts).reduce((sum, c) => sum + (c || 0), 0);
       }, [roleCounts]);
 
-      // 開始遊戲：分隊、分房並發卡
+      // 1. 建立房間 (房長)
+      const handleCreateRoom = () => {
+        if (!playerName.trim()) { alert('請輸入暱稱！'); return; }
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const me = { id: myPlayerId, name: playerName.trim(), isHost: true, team: null, role: null, gameRoom: null };
+
+        const initialData = {
+          hostId: myPlayerId,
+          roomStatus: 'waiting',
+          roundSettings: [3, 2, 1],
+          currentRoundIndex: 0,
+          timeLeft: 180,
+          roleCounts,
+          players: {
+            [myPlayerId]: me
+          }
+        };
+
+        db.ref(`rooms/${code}`).set(initialData).then(() => {
+          setRoomId(code);
+          setIsHost(true);
+          setPlayers([me]);
+          setGameState('lobby');
+        });
+      };
+
+      // 2. 加入房間 (玩家)
+      const handleJoinRoom = () => {
+        if (!playerName.trim()) { alert('請輸入暱稱！'); return; }
+        if (joinRoomInput.trim().length !== 6) { alert('請輸入 6 碼數字房號！'); return; }
+
+        const code = joinRoomInput.trim();
+        db.ref(`rooms/${code}`).get().then((snapshot) => {
+          if (!snapshot.exists()) {
+            alert('找不到該房間！請確認房號是否正確。');
+            return;
+          }
+
+          const me = { id: myPlayerId, name: playerName.trim(), isHost: false, team: null, role: null, gameRoom: null };
+          db.ref(`rooms/${code}/players/${myPlayerId}`).set(me).then(() => {
+            setRoomId(code);
+            setIsHost(false);
+            setGameState('lobby');
+          });
+        }).catch(() => {
+          alert('連線失敗，請檢查網路！');
+        });
+      };
+
+      // 3. 開始遊戲：均分房間與發放身分
       const handleStartGame = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
@@ -303,9 +232,10 @@
         const shuffled = [...players].sort(() => Math.random() - 0.5);
         const half = Math.ceil(shuffled.length / 2);
 
-        const assigned = shuffled.map((p, idx) => {
+        const playersObj = {};
+        shuffled.forEach((p, idx) => {
           const r = deck[idx];
-          return {
+          playersObj[p.id] = {
             ...p,
             team: r.team,
             role: r,
@@ -314,14 +244,14 @@
         });
 
         const initialTime = roundSettings[0] * 60;
-        setPlayers(assigned);
-        setCurrentRoundIndex(0);
-        setTimeLeft(initialTime);
-        setRoomStatus('round_active');
         setIsTimerRunning(true);
-        setGameState('game');
 
-        broadcastFullState('round_active', 0, initialTime, assigned);
+        db.ref(`rooms/${roomId}`).update({
+          players: playersObj,
+          roomStatus: 'round_active',
+          currentRoundIndex: 0,
+          timeLeft: initialTime
+        });
       };
 
       // 進入下一輪或揭示
@@ -329,16 +259,19 @@
         if (currentRoundIndex + 1 < roundSettings.length) {
           const nextIdx = currentRoundIndex + 1;
           const nextTime = roundSettings[nextIdx] * 60;
-          setCurrentRoundIndex(nextIdx);
-          setTimeLeft(nextTime);
-          setRoomStatus('round_active');
           setIsTimerRunning(true);
-          broadcastFullState('round_active', nextIdx, nextTime, players);
+          db.ref(`rooms/${roomId}`).update({
+            roomStatus: 'round_active',
+            currentRoundIndex: nextIdx,
+            timeLeft: nextTime
+          });
         } else {
-          setRoomStatus('ended');
           setIsTimerRunning(false);
           setIsGodMode(true);
-          broadcastFullState('ended', currentRoundIndex, 0, players);
+          db.ref(`rooms/${roomId}`).update({
+            roomStatus: 'ended',
+            timeLeft: 0
+          });
         }
       };
 
@@ -557,16 +490,18 @@
                         isGodMode ? 'bg-amber-500 text-black border-amber-400 font-bold' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
                       }`}
                     >
-                      {isGodMode ? '👁️ 上帝視角 (開)' : '🔒 上帝視角 (關)'}
+                      {isGodMode ? '👁️️ 上帝視角 (開)' : '🔒 上帝視角 (關)'}
                     </button>
                   )}
 
                   {isHost && (
                     <button
                       onClick={() => {
-                        setRoomStatus('waiting');
-                        setGameState('lobby');
-                        broadcastFullState('waiting', 0, roundSettings[0] * 60, players);
+                        db.ref(`rooms/${roomId}`).update({
+                          roomStatus: 'waiting',
+                          currentRoundIndex: 0,
+                          timeLeft: roundSettings[0] * 60
+                        });
                       }}
                       className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
                     >
@@ -729,6 +664,7 @@
                             newSettings = newSettings.slice(0, cnt);
                           }
                           setRoundSettings(newSettings);
+                          if (isHost) db.ref(`rooms/${roomId}/roundSettings`).set(newSettings);
                         }}
                         className={`py-2 rounded-xl text-sm font-bold border transition ${
                           roundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
@@ -755,6 +691,7 @@
                             const updated = [...roundSettings];
                             updated[idx] = Math.max(1, parseInt(e.target.value) || 1);
                             setRoundSettings(updated);
+                            if (isHost) db.ref(`rooms/${roomId}/roundSettings`).set(updated);
                           }}
                           className="w-16 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-center text-sm font-bold text-amber-400"
                         />
@@ -820,7 +757,9 @@
                               disabled={!isHost}
                               onClick={() => {
                                 const next = Math.max(0, count - 1);
-                                setRoleCounts({ ...roleCounts, [role.id]: next });
+                                const updated = { ...roleCounts, [role.id]: next };
+                                setRoleCounts(updated);
+                                if (isHost) db.ref(`rooms/${roomId}/roleCounts`).set(updated);
                               }}
                               className="w-7 h-7 bg-zinc-700 rounded-lg flex items-center justify-center font-bold"
                             >-</button>
@@ -828,7 +767,9 @@
                             <button
                               disabled={!isHost}
                               onClick={() => {
-                                setRoleCounts({ ...roleCounts, [role.id]: count + 1 });
+                                const updated = { ...roleCounts, [role.id]: count + 1 };
+                                setRoleCounts(updated);
+                                if (isHost) db.ref(`rooms/${roomId}/roleCounts`).set(updated);
                               }}
                               className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center font-bold"
                             >+</button>
