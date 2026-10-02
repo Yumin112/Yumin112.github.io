@@ -11,7 +11,8 @@
   <!-- MQTT.js (免金鑰跨裝置中繼) -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- 引入獨立角色資料庫 -->
+  <!-- 引入獨立隊伍與角色資料庫 -->
+  <script src="./team.js"></script>
   <script src="./roles.js"></script>
 
   <!-- React & Babel -->
@@ -35,62 +36,15 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-    // 陣營色彩配置
-    const TEAM_CONFIG = {
-      red: {
-        label: '紅隊 (Red)',
-        cardBg: 'bg-gradient-to-br from-red-950 via-zinc-900 to-zinc-900 border-red-500',
-        badge: 'bg-red-500/20 text-red-400 border-red-500/30',
-        listBg: 'bg-red-950/20 border-red-900/40'
-      },
-      blue: {
-        label: '藍隊 (Blue)',
-        cardBg: 'bg-gradient-to-br from-blue-950 via-zinc-900 to-zinc-900 border-blue-500',
-        badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-        listBg: 'bg-blue-950/20 border-blue-900/40'
-      },
-      green: {
-        label: '綠隊 (Green)',
-        cardBg: 'bg-gradient-to-br from-emerald-950 via-zinc-900 to-zinc-900 border-emerald-500',
-        badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-        listBg: 'bg-emerald-950/20 border-emerald-900/40'
-      },
-      purple: {
-        label: '紫隊 (Purple)',
-        cardBg: 'bg-gradient-to-br from-purple-950 via-zinc-900 to-zinc-900 border-purple-500',
-        badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-        listBg: 'bg-purple-950/20 border-purple-900/40'
-      },
-      pink: {
-        label: '粉隊 (Pink)',
-        cardBg: 'bg-gradient-to-br from-pink-950 via-zinc-900 to-zinc-900 border-pink-500',
-        badge: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
-        listBg: 'bg-pink-950/20 border-pink-900/40'
-      },
-      yellow: {
-        label: '黃隊 (Yellow)',
-        cardBg: 'bg-gradient-to-br from-amber-950 via-zinc-900 to-zinc-900 border-yellow-500',
-        badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-        listBg: 'bg-yellow-950/20 border-yellow-900/40'
-      },
-      black: {
-        label: '黑隊 (Black)',
-        cardBg: 'bg-gradient-to-br from-black via-zinc-950 to-zinc-900 border-zinc-600',
-        badge: 'bg-zinc-800 text-zinc-100 border-zinc-500',
-        listBg: 'bg-black/40 border-zinc-800'
-      },
-      grey: {
-        label: '灰隊中立 (Grey)',
-        cardBg: 'bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-900 border-zinc-400',
-        badge: 'bg-zinc-700 text-zinc-300 border-zinc-500',
-        listBg: 'bg-zinc-800/40 border-zinc-700/50'
-      }
-    };
-
+    // 取得隊伍設定（優先讀取外部 team.js）
     const getTeamMeta = (teamKey) => {
       const key = (teamKey || '').toLowerCase();
-      if (key === 'gray') return TEAM_CONFIG.grey;
-      return TEAM_CONFIG[key] || {
+      const teamMap = (window.OFFICIAL_TEAM_CONFIG && window.OFFICIAL_TEAM_CONFIG[0]) || {};
+      
+      if (key === 'gray' && teamMap.grey) return teamMap.grey;
+      if (teamMap[key]) return teamMap[key];
+
+      return {
         label: `${teamKey || '未知'}隊`,
         cardBg: 'bg-gradient-to-br from-indigo-950 via-zinc-900 to-zinc-900 border-indigo-500',
         badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
@@ -114,7 +68,7 @@
       // 玩家與房間進度
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
-      const [buriedCard, setBuriedCard] = useState(null); // 埋葬卡物件
+      const [buriedCard, setBuriedCard] = useState(null);
 
       // 輪次配置與計時
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
@@ -223,7 +177,7 @@
         setConnStatus('未連線');
       }, []);
 
-      // 房長執行身分交換核心 (hot_potato / leprechaun)
+      // 房長執行交換核心 (hot_potato / leprechaun)
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
           const p1 = prev.find(p => p.id === id1);
@@ -390,7 +344,6 @@
               return;
             }
 
-            // 房長收到酒鬼執行埋葬交換請求
             if (data.type === 'EXECUTE_DRUNK_SWAP' && latestStateRef.current.isHost) {
               executeDrunkBuriedSwapOnHost(data.playerId);
               return;
@@ -644,7 +597,7 @@
         return Boolean(myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun'));
       }, [myInfo.role]);
 
-      // 酒鬼是否可以在本回合與埋葬卡交換 (身分為 drunk + 本局有埋葬卡 + 當前為最後一輪)
+      // 酒鬼是否可在最後一輪與埋葬卡交換
       const canDrunkSwapBuried = useMemo(() => {
         const isDrunk = myInfo.role && myInfo.role.id === 'drunk';
         const isLastRound = currentRoundIndex === roundSettings.length - 1;
@@ -819,7 +772,7 @@
         });
       };
 
-      // 發放卡片並啟動計時 (含埋葬卡判定：卡池比玩家多 1 張時產生)
+      // 發放卡片並啟動計時
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -838,10 +791,9 @@
           };
         });
 
-        // 檢查是否有埋葬卡（卡片總數比玩家多 1 張）
         let generatedBuried = null;
         if (deck.length === players.length + 1) {
-          generatedBuried = deck[players.length]; // 沒被分配的那張
+          generatedBuried = deck[players.length];
         }
 
         const initialTime = roundSettings[0] * 60;
