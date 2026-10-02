@@ -128,10 +128,9 @@
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 卡池數量配置
+      // 卡池數量配置（依照指示更新預設卡池）
       const [roleCounts, setRoleCounts] = useState({
-        'pres': 1, 'bomb': 1, 'doctor': 1, 'engineer': 1,
-        'blue_mem': 8, 'red_mem': 8
+        'pres': 1, 'bomb': 1, 'doctor': 1, 'engineer': 1
       });
       const [showDeckModal, setShowDeckModal] = useState(false);
 
@@ -141,6 +140,11 @@
 
       // 按住卡片僅顯示顏色 (Color Share 模式)
       const [isColorOnly, setIsColorOnly] = useState(false);
+
+      // 交換角色相關狀態
+      const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
+      const [swapRequestData, setSwapRequestData] = useState(null); // { fromId, fromName, fromRoleName }
+      const [swapStatusMessage, setSwapStatusMessage] = useState('');
 
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
@@ -245,6 +249,48 @@
                 if (latestStateRef.current.isHost) {
                   setTimeout(() => { broadcastLatest({ players: next }); }, 50);
                 }
+                return next;
+              });
+            }
+
+            // 收到身分交換請求
+            if (data.type === 'SWAP_REQUEST' && data.targetId === uid) {
+              setSwapRequestData({
+                fromId: data.fromId,
+                fromName: data.fromName,
+                fromRoleName: data.fromRoleName
+              });
+            }
+
+            // 收到身分交換拒絕通知
+            if (data.type === 'SWAP_REJECTED' && data.fromId === uid) {
+              setSwapStatusMessage(`對方拒絕了身分交換請求！`);
+              setTimeout(() => setSwapStatusMessage(''), 3000);
+            }
+
+            // 房長負責執行身分交換並同步全場
+            if (data.type === 'EXECUTE_SWAP' && latestStateRef.current.isHost) {
+              setPlayers(prev => {
+                const p1 = prev.find(p => p.id === data.player1Id);
+                const p2 = prev.find(p => p.id === data.player2Id);
+                if (!p1 || !p2) return prev;
+
+                const role1 = p1.role;
+                const team1 = p1.team;
+                const role2 = p2.role;
+                const team2 = p2.team;
+
+                const next = prev.map(p => {
+                  if (p.id === data.player1Id) {
+                    return { ...p, role: role2, team: team2 };
+                  }
+                  if (p.id === data.player2Id) {
+                    return { ...p, role: role1, team: team1 };
+                  }
+                  return p;
+                });
+
+                setTimeout(() => { broadcastLatest({ players: next }); }, 50);
                 return next;
               });
             }
@@ -544,7 +590,7 @@
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
       };
 
-      // 觸控邊界檢測（手指滑出卡片框框立即復原）
+      // 觸控邊界檢測
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -559,6 +605,50 @@
       const roomAPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room A'));
       const roomBPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room B'));
       const myTeamMeta = getTeamMeta(myInfo.team);
+
+      // 判斷自己是否擁有交換身分技能 (燙手山芋 或 小妖精)
+      const canSwapRole = useMemo(() => {
+        return myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun');
+      }, [myInfo.role]);
+
+      // 發送交換身分請求
+      const handleSendSwapRequest = (targetPlayer) => {
+        setShowSwapTargetModal(false);
+        if (!clientRef.current) return;
+        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+          type: 'SWAP_REQUEST',
+          senderId: myPlayerId,
+          fromId: myPlayerId,
+          fromName: myInfo.name,
+          fromRoleName: myInfo.role?.name,
+          targetId: targetPlayer.id
+        }));
+      };
+
+      // 被動收到交換請求：按下確認
+      const handleAcceptSwap = () => {
+        if (!swapRequestData || !clientRef.current) return;
+        // 請求房長執行雙方角色互換
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+          type: 'EXECUTE_SWAP',
+          senderId: myPlayerId,
+          player1Id: swapRequestData.fromId,
+          player2Id: myPlayerId
+        }));
+        setSwapRequestData(null);
+      };
+
+      // 被動收到交換請求：按下拒絕
+      const handleRejectSwap = () => {
+        if (!swapRequestData || !clientRef.current) return;
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+          type: 'SWAP_REJECTED',
+          senderId: myPlayerId,
+          fromId: swapRequestData.fromId
+        }));
+        setSwapRequestData(null);
+      };
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
@@ -866,7 +956,14 @@
                     </span>
                   </div>
 
-                  {/* 個人角色卡：在框框內按住時僅顯示顏色分享，移開卡片範圍立刻復原 */}
+                  {/* 交換狀態提示訊息 */}
+                  {swapStatusMessage && (
+                    <div className="max-w-sm mx-auto bg-amber-500/20 border border-amber-500/60 text-amber-300 text-xs px-4 py-2 rounded-xl text-center font-medium animate-pulse">
+                      {swapStatusMessage}
+                    </div>
+                  )}
+
+                  {/* 個人角色卡 */}
                   <div className="max-w-sm mx-auto">
                     <div className="text-center mb-2">
                       <span className="text-xs text-zinc-400">
@@ -920,6 +1017,22 @@
                         </React.Fragment>
                       )}
                     </div>
+
+                    {/* 燙手山芋與小妖精專屬：發起身分交換按鈕 */}
+                    {canSwapRole && (
+                      <div className="mt-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowSwapTargetModal(true)}
+                          className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950 font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm"
+                        >
+                          <span>🔄 發起身分交換</span>
+                          <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
+                            {myInfo.role?.name} 專屬
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* 本局使用角色池一覽 */}
@@ -968,12 +1081,79 @@
             </div>
           )}
 
+          {/* 彈窗 1：選擇交換身分的玩家 (持有 hot_potato / leprechaun 時開啟) */}
+          {showSwapTargetModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                  <h3 className="text-base font-bold text-amber-400 flex items-center gap-1.5">
+                    <span>🔄 選擇交換身分的對象</span>
+                  </h3>
+                  <button onClick={() => setShowSwapTargetModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+                <p className="text-xs text-zinc-300">
+                  請點擊一名玩家，對方同意後將立即互換身分卡！
+                </p>
+
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {players.filter(p => p.id !== myPlayerId).map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSendSwapRequest(p)}
+                      className="w-full text-left p-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-400 transition flex items-center justify-between"
+                    >
+                      <span className="font-bold text-sm text-zinc-100">{p.name}</span>
+                      <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
+                        {p.gameRoom || '同室'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗 2：被交換者的確認通知彈窗 (防呆機制) */}
+          {swapRequestData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center animate-bounce-once">
+                <div className="text-4xl">🔄</div>
+                <h3 className="text-lg font-black text-white">身分交換請求！</h3>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  玩家 <strong className="text-amber-400 font-bold">{swapRequestData.fromName}</strong> 
+                  （持有身分：<strong className="text-emerald-400">{swapRequestData.fromRoleName}</strong>）想要與你交換身分卡。
+                </p>
+                <p className="text-xs text-zinc-400">
+                  若同意，你的身分將立刻轉變為對方的身分！
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleRejectSwap}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    拒絕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAcceptSwap}
+                    className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    確認交換
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 回合設定彈窗 */}
           {showRoundConfigModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
                 <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-                  <h3 className="text-base font-bold text-white">⚙️ 調整回合數與每輪時間</h3>
+                  <h3 className="text-base font-bold text-white">⚙️️ 調整回合數與每輪時間</h3>
                   <button onClick={() => setShowRoundConfigModal(false)} className="text-zinc-400 hover:text-white">✕</button>
                 </div>
 
