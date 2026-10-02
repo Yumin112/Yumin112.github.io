@@ -141,7 +141,6 @@
         client.on('connect', () => {
           setConnStatus('🟢 雲端就緒');
           client.subscribe(topic, { qos: 1 }, () => {
-            // 自動廣播加入／重連請求
             client.publish(topic, JSON.stringify({
               type: 'PLAYER_PING_SYNC',
               senderId: uid,
@@ -162,7 +161,6 @@
                 const existing = prev.find(p => p.id === data.player.id);
                 let next;
                 if (existing) {
-                  // 重連回來：保留原有的房間、身分與陣營
                   next = prev.map(p => p.id === data.player.id ? { ...p, name: data.player.name } : p);
                 } else {
                   next = [...prev, data.player];
@@ -206,7 +204,7 @@
               }
             }
 
-            // 時間校正 (每 5 秒校正一次)
+            // 每 5 秒校準時間
             if (data.type === 'TIME_SYNC' && !latestStateRef.current.isHost) {
               setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
@@ -216,7 +214,7 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       };
 
-      // 檢查 localStorage 達成「斷線與重新整理自動恢復」
+      // 檢查 localStorage 自動重連
       useEffect(() => {
         let storedId = localStorage.getItem('trb_player_uid_v5');
         if (!storedId) {
@@ -233,12 +231,12 @@
           setRoomId(savedRoomId);
           setPlayerName(savedPlayerName);
           setIsHost(savedIsHost);
-          setGameState('lobby'); // 先切回大廳，連線成功後 FULL_SYNC 會自動推進到遊戲畫面
+          setGameState('lobby');
           setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);
         }
       }, []);
 
-      // 全員本地每秒獨立倒數，房長每 5 秒廣播校準一次
+      // 全員獨立倒數，房長每 5 秒廣播一次校準
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -249,7 +247,6 @@
                 return 0;
               }
               const nextSec = prev - 1;
-              // 房長每 5 秒發送一次對時校準
               if (latestStateRef.current.isHost && nextSec % 5 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
@@ -278,7 +275,6 @@
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null };
 
-        // 存入本機避免重整丟失
         localStorage.setItem('trb_saved_room_id', code);
         localStorage.setItem('trb_saved_player_name', trimmedName);
         localStorage.setItem('trb_saved_is_host', 'true');
@@ -301,7 +297,6 @@
           return;
         }
 
-        // 存入本機避免重整丟失
         localStorage.setItem('trb_saved_room_id', code);
         localStorage.setItem('trb_saved_player_name', trimmedName);
         localStorage.setItem('trb_saved_is_host', 'false');
@@ -313,11 +308,10 @@
         setupConnection(code, false, trimmedName, myPlayerId);
       };
 
-      // 3. 離開房間功能
+      // 3. 離開房間
       const handleLeaveRoom = () => {
         if (!window.confirm('確定要離開當前房間嗎？')) return;
 
-        // 廣播告知所有人自己離開
         if (clientRef.current && roomId) {
           clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
             type: 'PLAYER_LEFT',
@@ -326,12 +320,10 @@
           try { clientRef.current.end(true); } catch(e) {}
         }
 
-        // 清理本地儲存
         localStorage.removeItem('trb_saved_room_id');
         localStorage.removeItem('trb_saved_player_name');
         localStorage.removeItem('trb_saved_is_host');
 
-        // 重置所有狀態回首頁
         setRoomId('');
         setIsHost(false);
         setPlayers([]);
@@ -341,26 +333,21 @@
         setConnStatus('未連線');
       };
 
-      // 開啟輪次設定
+      // 輪次與角色設定
       const openRoundConfigModal = () => {
         setTempRoundSettings([...roundSettings]);
         setShowRoundConfigModal(true);
       };
-
-      // 保存輪次設定
       const saveRoundConfig = () => {
         setRoundSettings(tempRoundSettings);
         setShowRoundConfigModal(false);
         broadcastLatest({ roundSettings: tempRoundSettings });
       };
 
-      // 開啟角色池彈窗
       const openDeckModal = () => {
         setTempRoleCounts({ ...roleCounts });
         setShowDeckModal(true);
       };
-
-      // 保存角色池設定
       const saveDeckConfig = () => {
         setRoleCounts(tempRoleCounts);
         setShowDeckModal(false);
@@ -374,6 +361,16 @@
       const tempTotalCardsInDeck = useMemo(() => {
         return Object.values(tempRoleCounts).reduce((sum, c) => sum + (c || 0), 0);
       }, [tempRoleCounts]);
+
+      // 篩選出這場遊戲「有被選入（數量 > 0）」的角色清單
+      const activeRolesInDeck = useMemo(() => {
+        return rolesCatalog
+          .filter(role => (roleCounts[role.id] || 0) > 0)
+          .map(role => ({
+            ...role,
+            count: roleCounts[role.id]
+          }));
+      }, [rolesCatalog, roleCounts]);
 
       // 4. 開始遊戲
       const handleStartGame = () => {
@@ -423,7 +420,7 @@
         });
       };
 
-      // 5. 進入下一輪或揭示
+      // 5. 下一輪 / 結算
       const handleNextRoundConfirm = () => {
         if (currentRoundIndex + 1 < roundSettings.length) {
           const nextIdx = currentRoundIndex + 1;
@@ -457,8 +454,6 @@
       };
 
       const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null, gameRoom: null };
-      const roomAPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room A'));
-      const roomBPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room B'));
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
@@ -487,7 +482,6 @@
                   </span>
                 </div>
 
-                {/* 離開房間按鈕 */}
                 <button
                   onClick={handleLeaveRoom}
                   className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-200 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1"
@@ -498,7 +492,7 @@
             )}
           </header>
 
-          {/* 首頁：建立 / 加入 */}
+          {/* 首頁 */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
               <div className="space-y-4">
@@ -674,17 +668,6 @@
 
                   {isHost && (
                     <button
-                      onClick={() => setIsGodMode(!isGodMode)}
-                      className={`text-xs px-3 py-2 rounded-xl border transition ${
-                        isGodMode ? 'bg-amber-500 text-black border-amber-400 font-bold' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
-                      }`}
-                    >
-                      {isGodMode ? '👁️ 上帝視角 (開)' : '🔒 上帝視角 (關)'}
-                    </button>
-                  )}
-
-                  {isHost && (
-                    <button
                       onClick={() => {
                         setRoomStatus('waiting');
                         setGameState('lobby');
@@ -698,7 +681,7 @@
                 </div>
               </div>
 
-              {/* 初始實體房間分配 */}
+              {/* 初始實體房間分配提示 */}
               <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs text-indigo-300">你的初始房間分配：</span>
                 <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
@@ -768,60 +751,52 @@
                 </div>
               </div>
 
-              {/* 兩房間成員名單 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-zinc-900/80 border border-zinc-700/80 rounded-2xl p-4">
-                  <h3 className="font-bold text-indigo-300 mb-3 flex items-center justify-between">
-                    <span>🏠 房間 A (Room A)</span>
-                    <span className="text-xs bg-indigo-900/40 px-2 py-0.5 rounded-full">{roomAPlayers.length} 人</span>
-                  </h3>
-                  <div className="space-y-2">
-                    {roomAPlayers.map(p => (
-                      <div key={p.id} className="flex justify-between items-center bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-700/50">
-                        <span className="text-sm font-medium">{p.name} {p.id === myPlayerId && '(你)'}</span>
-                        <span className="text-xs font-mono">
-                          {p.id === myPlayerId || isGodMode ? (
-                            <span className={`font-semibold ${
-                              p.team === 'red' ? 'text-red-400' :
-                              p.team === 'blue' ? 'text-blue-400' :
-                              p.team === 'green' ? 'text-emerald-400' : 'text-zinc-300'
-                            }`}>
-                              {p.role?.icon} {p.role?.name}
-                            </span>
-                          ) : (
-                            <span className="text-zinc-500">🔒 機密身分</span>
-                          )}
-                        </span>
-                      </div>
-                    ))}
+              {/* 替換原本的房間玩家列表：改為顯示本局使用的角色池卡片資訊 */}
+              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🃏</span>
+                    <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
                   </div>
+                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
+                    總共 {totalCardsInDeck} 張卡片
+                  </span>
                 </div>
 
-                <div className="bg-zinc-900/80 border border-zinc-700/80 rounded-2xl p-4">
-                  <h3 className="font-bold text-amber-300 mb-3 flex items-center justify-between">
-                    <span>🚪 房間 B (Room B)</span>
-                    <span className="text-xs bg-amber-900/40 px-2 py-0.5 rounded-full">{roomBPlayers.length} 人</span>
-                  </h3>
-                  <div className="space-y-2">
-                    {roomBPlayers.map(p => (
-                      <div key={p.id} className="flex justify-between items-center bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-700/50">
-                        <span className="text-sm font-medium">{p.name} {p.id === myPlayerId && '(你)'}</span>
-                        <span className="text-xs font-mono">
-                          {p.id === myPlayerId || isGodMode ? (
-                            <span className={`font-semibold ${
-                              p.team === 'red' ? 'text-red-400' :
-                              p.team === 'blue' ? 'text-blue-400' :
-                              p.team === 'green' ? 'text-emerald-400' : 'text-zinc-300'
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeRolesInDeck.map(role => (
+                    <div
+                      key={role.id}
+                      className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
+                        role.team === 'red' ? 'bg-red-950/20 border-red-900/40' :
+                        role.team === 'blue' ? 'bg-blue-950/20 border-blue-900/40' :
+                        role.team === 'green' ? 'bg-emerald-950/20 border-emerald-900/40' :
+                        'bg-zinc-800/40 border-zinc-700/50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-2xl mt-0.5">{role.icon}</span>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-sm text-zinc-100">{role.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                              role.team === 'red' ? 'bg-red-500/20 text-red-400' :
+                              role.team === 'blue' ? 'bg-blue-500/20 text-blue-400' :
+                              role.team === 'green' ? 'bg-emerald-500/20 text-emerald-400' :
+                              'bg-zinc-700 text-zinc-300'
                             }`}>
-                              {p.role?.icon} {p.role?.name}
+                              {role.team === 'red' ? '紅隊' : role.team === 'blue' ? '藍隊' : role.team === 'green' ? '綠隊' : '灰隊'}
                             </span>
-                          ) : (
-                            <span className="text-zinc-500">🔒 機密身分</span>
-                          )}
-                        </span>
+                          </div>
+                          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{role.desc}</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+
+                      <span className="shrink-0 text-xs font-mono font-bold bg-zinc-800 px-2 py-1 rounded-lg text-amber-400 border border-zinc-700">
+                        x{role.count}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
