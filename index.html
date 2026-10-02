@@ -128,7 +128,7 @@
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 卡池數量配置（依照指示更新預設卡池）
+      // 卡池數量配置
       const [roleCounts, setRoleCounts] = useState({
         'pres': 1, 'bomb': 1, 'doctor': 1, 'engineer': 1
       });
@@ -192,7 +192,7 @@
         }));
       };
 
-      // 執行身分交換核心函式 (由房長端呼叫)
+      // 執行身分交換核心函式
       const executeSwapOnHost = (id1, id2) => {
         setPlayers(prev => {
           const p1 = prev.find(p => p.id === id1);
@@ -224,7 +224,6 @@
             return p;
           });
 
-          // 廣播成功事件，強制讓雙方清空等待訊息
           if (clientRef.current) {
             clientRef.current.publish(`trb_game_sync_room_${latestStateRef.current.roomId}`, JSON.stringify({
               type: 'SWAP_SUCCESS',
@@ -273,7 +272,6 @@
             const data = JSON.parse(msg.toString());
             if (data.senderId === uid) return;
 
-            // 房長收到新玩家加入或重連
             if (data.type === 'PLAYER_PING_SYNC' && latestStateRef.current.isHost) {
               setPlayers(prev => {
                 const existing = prev.find(p => p.id === data.player.id);
@@ -288,7 +286,6 @@
               });
             }
 
-            // 玩家離開
             if (data.type === 'PLAYER_LEFT') {
               setPlayers(prev => {
                 const next = prev.filter(p => p.id !== data.playerId);
@@ -299,7 +296,6 @@
               });
             }
 
-            // 【修復 BUG 3】接收交換請求 (不論是不是房長，只要 targetId 是自己就彈窗)
             if (data.type === 'SWAP_REQUEST' && data.targetId === uid) {
               setSwapRequestData({
                 fromId: data.fromId,
@@ -308,13 +304,11 @@
               });
             }
 
-            // 收到交換拒絕通知
             if (data.type === 'SWAP_REJECTED' && data.fromId === uid) {
               setSwapStatusMessage('對方拒絕了身分交換請求！');
               setTimeout(() => setSwapStatusMessage(''), 3000);
             }
 
-            // 【修復 BUG 1】收到交換成功廣播，發起方立刻清空等待提示
             if (data.type === 'SWAP_SUCCESS') {
               if (data.player1Id === uid || data.player2Id === uid) {
                 setSwapStatusMessage('🎉 身分已成功交換！');
@@ -322,12 +316,10 @@
               }
             }
 
-            // 【修復 BUG 3】房長收到執行交換指令
             if (data.type === 'EXECUTE_SWAP' && latestStateRef.current.isHost) {
               executeSwapOnHost(data.player1Id, data.player2Id);
             }
 
-            // 全局同步
             if (data.type === 'FULL_SYNC') {
               setPlayers(data.players);
               setRoomStatus(data.roomStatus);
@@ -348,7 +340,6 @@
               }
             }
 
-            // 每 5 秒校準時間
             if (data.type === 'TIME_SYNC' && !latestStateRef.current.isHost) {
               setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
@@ -557,7 +548,7 @@
         });
       };
 
-      // 步驟 2: 發放身分並計時 (標記初始拿到小妖精的人)
+      // 步驟 2: 發放身分並計時
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -573,7 +564,7 @@
             ...p,
             team: r.team,
             role: r,
-            hasBeenLeprechaun: r.id === 'leprechaun' // 初始拿到小妖精者標記
+            hasBeenLeprechaun: r.id === 'leprechaun'
           };
         });
 
@@ -645,7 +636,7 @@
         return myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun');
       }, [myInfo.role]);
 
-      // 【修復 BUG 1】若已被成功換走身分，自動清除等待中的提示訊息
+      // 若已被成功換走身分，自動清除等待中的提示訊息
       useEffect(() => {
         if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
           setSwapStatusMessage('🎉 身分已成功交換！');
@@ -653,14 +644,12 @@
         }
       }, [canSwapRole, swapStatusMessage]);
 
-      // 發送交換身分請求 (修復 BUG 3：房長與所有成員均適用)
+      // 發送交換身分請求
       const handleSendSwapRequest = (targetPlayer) => {
         setShowSwapTargetModal(false);
         if (!clientRef.current) return;
 
         setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);
-
-        // 如果目標就是自己（房長向房長發起，理論上不存在，防呆處理）
         if (targetPlayer.id === myPlayerId) return;
 
         clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
@@ -673,7 +662,7 @@
         }));
       };
 
-      // 【修復 BUG 3】接收者確認交換：如果是房長自己確認，直接本地執行；若是玩家則通知房長執行
+      // 接收者確認交換
       const handleAcceptSwap = () => {
         if (!swapRequestData) return;
         const p1Id = swapRequestData.fromId;
@@ -1020,7 +1009,7 @@
                     </div>
                   )}
 
-                  {/* 個人角色卡 */}
+                  {/* 個人角色卡：交換按鈕放置於框框內 */}
                   <div className="max-w-sm mx-auto">
                     <div className="text-center mb-2">
                       <span className="text-xs text-zinc-400">
@@ -1038,10 +1027,10 @@
                       onTouchEnd={() => setIsColorOnly(false)}
                       onTouchCancel={() => setIsColorOnly(false)}
                       onTouchMove={handleTouchMove}
-                      className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[320px] transition-all duration-150 ${myTeamMeta.cardBg}`}
+                      className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[340px] transition-all duration-150 ${myTeamMeta.cardBg}`}
                     >
                       {isColorOnly ? (
-                        /* 按住時：純顏色分享視圖 */
+                        /* 按住時：純顏色分享視圖 (按鈕自動隱藏) */
                         <div className="my-auto flex flex-col items-center justify-center text-center space-y-4 pointer-events-none">
                           <span className={`text-sm px-4 py-1.5 rounded-full font-black tracking-widest uppercase border ${myTeamMeta.badge}`}>
                             {myTeamMeta.label}
@@ -1052,7 +1041,7 @@
                           </p>
                         </div>
                       ) : (
-                        /* 平時：完整顯示角色與技能說明 */
+                        /* 平時：完整顯示角色與技能說明，以及置內的交換按鈕 */
                         <React.Fragment>
                           <div className="flex justify-between items-start pointer-events-none">
                             <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
@@ -1061,12 +1050,33 @@
                             <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
                           </div>
 
-                          <div className="text-center my-4 pointer-events-none">
+                          <div className="text-center my-3 pointer-events-none">
                             <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
-                            <p className="text-xs text-zinc-200 mt-3 px-3 leading-relaxed bg-zinc-950/60 py-3 rounded-xl border border-zinc-800 break-words">
+                            <p className="text-xs text-zinc-200 mt-2.5 px-3 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800 break-words">
                               {myInfo.role?.desc || '暫無專屬說明'}
                             </p>
                           </div>
+
+                          {/* 燙手山芋與小妖精專屬：置於卡框內，按住時自動連帶隱藏 */}
+                          {canSwapRole && (
+                            <div className="my-2">
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowSwapTargetModal(true);
+                                }}
+                                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950 font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border border-amber-300/40"
+                              >
+                                <span>🔄 發起身分交換</span>
+                                <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
+                                  {myInfo.role?.name} 專屬
+                                </span>
+                              </button>
+                            </div>
+                          )}
 
                           <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none">
                             玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
@@ -1074,22 +1084,6 @@
                         </React.Fragment>
                       )}
                     </div>
-
-                    {/* 燙手山芋與小妖精專屬：發起身分交換按鈕 */}
-                    {canSwapRole && (
-                      <div className="mt-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setShowSwapTargetModal(true)}
-                          className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950 font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm"
-                        >
-                          <span>🔄 發起身分交換</span>
-                          <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
-                            {myInfo.role?.name} 專屬
-                          </span>
-                        </button>
-                      </div>
-                    )}
                   </div>
 
                   {/* 本局使用角色池一覽 */}
@@ -1138,7 +1132,7 @@
             </div>
           )}
 
-          {/* 彈窗 1：選擇交換身分的玩家 (修復 BUG 2 & BUG 3) */}
+          {/* 彈窗 1：選擇交換身分的玩家 */}
           {showSwapTargetModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1156,7 +1150,6 @@
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                   {players.filter(p => p.id !== myPlayerId).map(p => {
-                    // 【修復 BUG 2】若自己是小妖精且對方曾當過小妖精，則禁用不可選
                     const isLeprechaunDisabled = myInfo.role?.id === 'leprechaun' && p.hasBeenLeprechaun;
 
                     return (
@@ -1195,7 +1188,7 @@
             </div>
           )}
 
-          {/* 彈窗 2：被交換者的確認通知彈窗 (修復 BUG 1 & BUG 3) */}
+          {/* 彈窗 2：被交換者的確認通知彈窗 */}
           {swapRequestData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
