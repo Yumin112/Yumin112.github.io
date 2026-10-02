@@ -208,7 +208,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'purple', icon: '😵', desc: '終局前宣告陣營，若猜中底層暗埋牌的陣營且該陣營獲勝，則你獲勝。' },
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'purple', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『清醒者』互換並繼承其條件。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '開局藏寶特殊角色；若玩家未能在終局前找到寶藏，則你獲勝。' },
-  { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '⬛', desc: '任何玩家一旦與你進行比對顏色，你立刻單獨獲勝。' },
+  { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '⬛', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獲勝。' },
   { id: 'yellow_assassin', name: '黃色刺客 (Yellow Assassin)', team: 'yellow', icon: '🗡', desc: '任何與你卡片或顏色分享者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
 
   // 綠隊 (Green Team)
