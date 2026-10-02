@@ -483,7 +483,6 @@
               if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
               if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
 
-              // 房長關閉分頁期間的離線秒數補償
               if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
                 const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
                 const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
@@ -569,10 +568,27 @@
       const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
       const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
 
+      // 角色池一覽（優化：將同名角色合併，並列出所有對應陣營）
       const activeRolesInDeck = useMemo(() => {
-        return rolesCatalog
-          .filter(role => (roleCounts[role.id] || 0) > 0)
-          .map(role => ({ ...role, count: roleCounts[role.id] }));
+        const groups = {};
+        rolesCatalog.forEach(role => {
+          const count = roleCounts[role.id] || 0;
+          if (count > 0) {
+            if (!groups[role.name]) {
+              groups[role.name] = {
+                name: role.name,
+                icon: role.icon,
+                desc: role.desc,
+                teams: [role.team]
+              };
+            } else {
+              if (!groups[role.name].teams.includes(role.team)) {
+                groups[role.name].teams.push(role.team);
+              }
+            }
+          }
+        });
+        return Object.values(groups);
       }, [rolesCatalog, roleCounts]);
 
       const canSwapRole = useMemo(() => {
@@ -605,7 +621,7 @@
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
-      // 加入房間驗證（加強版：6 秒超時，相容行動網路與外部瀏覽器）
+      // 加入房間驗證
       const handleJoinRoom = () => {
         const trimmedName = playerName.trim() || '特工';
         const code = joinRoomInput.trim();
@@ -630,7 +646,7 @@
           if (!verified) {
             try { tempClient.end(true); } catch(e) {}
             setIsVerifying(false);
-            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請改用 Safari 或 Chrome 瀏覽器）`);
+            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);
           }
         }, 6000);
 
@@ -1069,7 +1085,7 @@
                 </div>
               </div>
 
-              {/* 等候大廳：本局使用角色池一覽 */}
+              {/* 等候大廳：本局使用角色池一覽（優化：同名角色合併，並列隊伍標籤） */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1082,23 +1098,41 @@
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeRolesInDeck.map(role => {
-                    const meta = getTeamMeta(role.team);
+                  {activeRolesInDeck.map(group => {
+                    const hasBlue = group.teams.includes('blue');
+                    const hasRed = group.teams.includes('red');
+                    
+                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+                    if (hasBlue && hasRed) {
+                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
+                    } else if (hasBlue) {
+                      bgStyle = getTeamMeta('blue').listBg;
+                    } else if (hasRed) {
+                      bgStyle = getTeamMeta('red').listBg;
+                    } else if (group.teams.length > 0) {
+                      bgStyle = getTeamMeta(group.teams[0]).listBg;
+                    }
+
                     return (
                       <div
-                        key={role.id}
-                        className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${meta.listBg}`}
+                        key={group.name}
+                        className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}
                       >
                         <div className="flex items-start gap-2.5">
-                          <span className="text-2xl mt-0.5">{role.icon}</span>
+                          <span className="text-2xl mt-0.5">{group.icon}</span>
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-sm text-zinc-100">{role.name}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
-                                {meta.label}
-                              </span>
+                              <span className="font-bold text-sm text-zinc-100">{group.name}</span>
+                              {group.teams.map(t => {
+                                const meta = getTeamMeta(t);
+                                return (
+                                  <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
+                                    {meta.label}
+                                  </span>
+                                );
+                              })}
                             </div>
-                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{role.desc}</p>
+                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -1325,7 +1359,7 @@
                     </div>
                   </div>
 
-                  {/* 遊戲中角色池一覽 */}
+                  {/* 遊戲中角色池一覽（優化：同名角色合併，並列隊伍標籤） */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -1338,23 +1372,41 @@
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {activeRolesInDeck.map(role => {
-                        const meta = getTeamMeta(role.team);
+                      {activeRolesInDeck.map(group => {
+                        const hasBlue = group.teams.includes('blue');
+                        const hasRed = group.teams.includes('red');
+                        
+                        let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+                        if (hasBlue && hasRed) {
+                          bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
+                        } else if (hasBlue) {
+                          bgStyle = getTeamMeta('blue').listBg;
+                        } else if (hasRed) {
+                          bgStyle = getTeamMeta('red').listBg;
+                        } else if (group.teams.length > 0) {
+                          bgStyle = getTeamMeta(group.teams[0]).listBg;
+                        }
+
                         return (
                           <div
-                            key={role.id}
-                            className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${meta.listBg}`}
+                            key={group.name}
+                            className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}
                           >
                             <div className="flex items-start gap-2.5">
-                              <span className="text-2xl mt-0.5">{role.icon}</span>
+                              <span className="text-2xl mt-0.5">{group.icon}</span>
                               <div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-sm text-zinc-100">{role.name}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
-                                    {meta.label}
-                                  </span>
+                                  <span className="font-bold text-sm text-zinc-100">{group.name}</span>
+                                  {group.teams.map(t => {
+                                    const meta = getTeamMeta(t);
+                                    return (
+                                      <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
+                                        {meta.label}
+                                      </span>
+                                    );
+                                  })}
                                 </div>
-                                <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{role.desc}</p>
+                                <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
                               </div>
                             </div>
                           </div>
@@ -1561,7 +1613,7 @@
                       onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
                       className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
                     >
-                      {deckViewMode === 'detailed' ? '👁️️ 僅圖示' : '📄 詳細資料'}
+                      {deckViewMode === 'detailed' ? '👁️ 僅圖示' : '📄 詳細資料'}
                     </button>
 
                     <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center hover:text-white">
