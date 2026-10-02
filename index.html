@@ -192,6 +192,26 @@
         }));
       };
 
+      // 本地完全重置並返回首頁（解散或主動離開時調用）
+      const resetToHome = () => {
+        if (clientRef.current) {
+          try { clientRef.current.end(true); } catch(e) {}
+        }
+        localStorage.removeItem('trb_saved_room_id');
+        localStorage.removeItem('trb_saved_player_name');
+        localStorage.removeItem('trb_saved_is_host');
+
+        setRoomId('');
+        setIsHost(false);
+        setPlayers([]);
+        setGameState('home');
+        setRoomStatus('waiting');
+        setIsTimerRunning(false);
+        setSwapRequestData(null);
+        setSwapStatusMessage('');
+        setConnStatus('未連線');
+      };
+
       // 執行身分交換核心函式
       const executeSwapOnHost = (id1, id2) => {
         setPlayers(prev => {
@@ -272,6 +292,14 @@
             const data = JSON.parse(msg.toString());
             if (data.senderId === uid) return;
 
+            // 【功能 1】接收到房間解散通知
+            if (data.type === 'ROOM_DISBANDED') {
+              alert('房長已離開，房間已解散！');
+              resetToHome();
+              return;
+            }
+
+            // 房長收到新玩家加入或重連
             if (data.type === 'PLAYER_PING_SYNC' && latestStateRef.current.isHost) {
               setPlayers(prev => {
                 const existing = prev.find(p => p.id === data.player.id);
@@ -286,6 +314,7 @@
               });
             }
 
+            // 一般玩家主動離開通知
             if (data.type === 'PLAYER_LEFT') {
               setPlayers(prev => {
                 const next = prev.filter(p => p.id !== data.playerId);
@@ -296,6 +325,7 @@
               });
             }
 
+            // 接收交換請求
             if (data.type === 'SWAP_REQUEST' && data.targetId === uid) {
               setSwapRequestData({
                 fromId: data.fromId,
@@ -304,11 +334,13 @@
               });
             }
 
+            // 收到交換拒絕通知
             if (data.type === 'SWAP_REJECTED' && data.fromId === uid) {
               setSwapStatusMessage('對方拒絕了身分交換請求！');
               setTimeout(() => setSwapStatusMessage(''), 3000);
             }
 
+            // 收到交換成功通知
             if (data.type === 'SWAP_SUCCESS') {
               if (data.player1Id === uid || data.player2Id === uid) {
                 setSwapStatusMessage('🎉 身分已成功交換！');
@@ -316,10 +348,12 @@
               }
             }
 
+            // 房長收到執行交換指令
             if (data.type === 'EXECUTE_SWAP' && latestStateRef.current.isHost) {
               executeSwapOnHost(data.player1Id, data.player2Id);
             }
 
+            // 全局同步
             if (data.type === 'FULL_SYNC') {
               setPlayers(data.players);
               setRoomStatus(data.roomStatus);
@@ -340,6 +374,7 @@
               }
             }
 
+            // 每 5 秒校準時間
             if (data.type === 'TIME_SYNC' && !latestStateRef.current.isHost) {
               setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
@@ -443,29 +478,31 @@
         setupConnection(code, false, trimmedName, myPlayerId);
       };
 
-      // 3. 離開房間
+      // 3. 離開房間（【功能 1】房長離開自動解散房間）
       const handleLeaveRoom = () => {
-        if (!window.confirm('確定要離開當前房間嗎？')) return;
+        const confirmMsg = isHost 
+          ? '您是房長，離開後將會解散房間，確定要離開嗎？' 
+          : '確定要離開當前房間嗎？';
+          
+        if (!window.confirm(confirmMsg)) return;
 
         if (clientRef.current && roomId) {
-          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-            type: 'PLAYER_LEFT',
-            playerId: myPlayerId
-          }));
-          try { clientRef.current.end(true); } catch(e) {}
+          if (isHost) {
+            // 房長離開：發送解散通知
+            clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+              type: 'ROOM_DISBANDED',
+              senderId: myPlayerId
+            }));
+          } else {
+            // 一般成員離開：僅通知個人退出
+            clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+              type: 'PLAYER_LEFT',
+              playerId: myPlayerId
+            }));
+          }
         }
 
-        localStorage.removeItem('trb_saved_room_id');
-        localStorage.removeItem('trb_saved_player_name');
-        localStorage.removeItem('trb_saved_is_host');
-
-        setRoomId('');
-        setIsHost(false);
-        setPlayers([]);
-        setGameState('home');
-        setRoomStatus('waiting');
-        setIsTimerRunning(false);
-        setConnStatus('未連線');
+        resetToHome();
       };
 
       // 輪次與角色設定
@@ -694,7 +731,7 @@
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
-          {/* Header 導覽列 */}
+          {/* Header 導覽列：【功能 2】顯示目前玩家數量 */}
           <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
             <div className="flex items-center gap-2">
               <span className="text-3xl">💣</span>
@@ -704,7 +741,7 @@
                 </h1>
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
                   <span>{connStatus}</span>
-                  {roomId && <span>• 回合: {roundSettings.length} 輪</span>}
+                  {roomId && <span>• 玩家: {players.length} 人</span>}
                 </div>
               </div>
             </div>
