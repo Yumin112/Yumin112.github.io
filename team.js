@@ -1,3 +1,7 @@
+/**
+ * 遊戲角色/描述 (Roles & desc) 清單
+ */
+window.OFFICIAL_TEAM_CONFIG = [
 {
       red: {
         label: '紅隊 (Red)',
@@ -47,4 +51,5 @@
         badge: 'bg-zinc-700 text-zinc-300 border-zinc-500',
         listBg: 'bg-zinc-800/40 border-zinc-700/50'
       }
-    };
+    }
+];
