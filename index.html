@@ -144,6 +144,8 @@
 
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
+      const cardRef = useRef(null);
+
       const latestStateRef = useRef({
         players: [],
         roomStatus: 'waiting',
@@ -542,6 +544,17 @@
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
       };
 
+      // 觸控邊界檢測（手指滑出卡片框框立即復原）
+      const handleTouchMove = (e) => {
+        if (!isColorOnly || !cardRef.current) return;
+        const touch = e.touches[0];
+        if (!touch) return;
+        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!targetElement || !cardRef.current.contains(targetElement)) {
+          setIsColorOnly(false);
+        }
+      };
+
       const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null, gameRoom: null };
       const roomAPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room A'));
       const roomBPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room B'));
@@ -853,50 +866,55 @@
                     </span>
                   </div>
 
-                  {/* 個人角色卡：按住時僅展示陣營顏色 (Color Share) */}
+                  {/* 個人角色卡：在框框內按住時僅顯示顏色分享，移開卡片範圍立刻復原 */}
                   <div className="max-w-sm mx-auto">
                     <div className="text-center mb-2">
                       <span className="text-xs text-zinc-400">
-                        {isColorOnly ? '🤝 正在分享陣營顏色（技能已隱藏）' : '👇 按住卡片僅顯示顏色分享（放開恢復完整身分）'}
+                        {isColorOnly ? '🤝 正在顏色分享（移開框框或放開立即復原）' : '👇 在卡片框框按住分享顏色（滑出框外立刻恢復）'}
                       </span>
                     </div>
 
                     <div
+                      ref={cardRef}
+                      onContextMenu={(e) => e.preventDefault()}
                       onMouseDown={() => setIsColorOnly(true)}
                       onMouseUp={() => setIsColorOnly(false)}
+                      onMouseLeave={() => setIsColorOnly(false)}
                       onTouchStart={() => setIsColorOnly(true)}
                       onTouchEnd={() => setIsColorOnly(false)}
+                      onTouchCancel={() => setIsColorOnly(false)}
+                      onTouchMove={handleTouchMove}
                       className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[320px] transition-all duration-150 ${myTeamMeta.cardBg}`}
                     >
                       {isColorOnly ? (
                         /* 按住時：純顏色分享視圖 */
-                        <div className="my-auto flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="my-auto flex flex-col items-center justify-center text-center space-y-4 pointer-events-none">
                           <span className={`text-sm px-4 py-1.5 rounded-full font-black tracking-widest uppercase border ${myTeamMeta.badge}`}>
                             {myTeamMeta.label}
                           </span>
                           <div className="text-6xl animate-pulse">🎨</div>
                           <p className="text-xs text-zinc-300 font-semibold tracking-wider bg-zinc-950/60 px-4 py-2 rounded-xl border border-zinc-700/60">
-                            正在進行【顏色分享】<br/><span className="text-[10px] text-zinc-400">放開手即恢復完整身分</span>
+                            正在進行【顏色分享】<br/><span className="text-[10px] text-zinc-400">移出框框或放手立即恢復完整身分</span>
                           </p>
                         </div>
                       ) : (
                         /* 平時：完整顯示角色與技能說明 */
                         <React.Fragment>
-                          <div className="flex justify-between items-start">
+                          <div className="flex justify-between items-start pointer-events-none">
                             <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
                               {myTeamMeta.label}
                             </span>
                             <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
                           </div>
 
-                          <div className="text-center my-4">
+                          <div className="text-center my-4 pointer-events-none">
                             <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
                             <p className="text-xs text-zinc-200 mt-3 px-3 leading-relaxed bg-zinc-950/60 py-3 rounded-xl border border-zinc-800 break-words">
                               {myInfo.role?.desc || '暫無專屬說明'}
                             </p>
                           </div>
 
-                          <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60">
+                          <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none">
                             玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
                           </div>
                         </React.Fragment>
