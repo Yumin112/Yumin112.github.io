@@ -1036,7 +1036,7 @@
                 </div>
               </div>
 
-              {/* 在等候大廳線上玩家列表下方新增「本局使用角色池一覽」 */}
+              {/* 在等候大廳線上玩家列表下方新增「本局使用角色池一覽」 (已移除 x1 數量徽章) */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1068,9 +1068,6 @@
                             <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{role.desc}</p>
                           </div>
                         </div>
-                        <span className="shrink-0 text-xs font-mono font-bold bg-zinc-800 px-2 py-1 rounded-lg text-amber-400 border border-zinc-700">
-                          x{role.count}
-                        </span>
                       </div>
                     );
                   })}
@@ -1295,7 +1292,7 @@
                     </div>
                   </div>
 
-                  {/* 遊戲中角色池一覽 */}
+                  {/* 遊戲中角色池一覽 (已移除 x1 數量徽章) */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -1327,9 +1324,6 @@
                                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{role.desc}</p>
                               </div>
                             </div>
-                            <span className="shrink-0 text-xs font-mono font-bold bg-zinc-800 px-2 py-1 rounded-lg text-amber-400 border border-zinc-700">
-                              x{role.count}
-                            </span>
                           </div>
                         );
                       })}
