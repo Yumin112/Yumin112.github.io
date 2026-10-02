@@ -114,6 +114,7 @@
       // 玩家與房間進度
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
+      const [buriedCard, setBuriedCard] = useState(null); // 埋葬卡物件
 
       // 輪次配置與計時
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
@@ -138,6 +139,7 @@
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
       const [swapRequestData, setSwapRequestData] = useState(null); 
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
+      const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
 
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
@@ -157,7 +159,8 @@
           isHost,
           roomId,
           myPlayerId,
-          gameState
+          gameState,
+          buriedCard
         };
 
         if (roomId && myPlayerId) {
@@ -171,12 +174,13 @@
             currentRoundIndex,
             timeLeft,
             isTimerRunning,
+            buriedCard,
             myProfile,
             savedAt: Date.now()
           };
           localStorage.setItem('trb_saved_game_context', JSON.stringify(snapshot));
         }
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState]);
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState, buriedCard]);
 
       // 廣播全場狀態
       const broadcastLatest = useCallback((override = {}) => {
@@ -190,7 +194,8 @@
           roleCounts: s.roleCounts,
           roundSettings: s.roundSettings,
           currentRoundIndex: s.currentRoundIndex,
-          timeLeft: s.timeLeft
+          timeLeft: s.timeLeft,
+          buriedCard: s.buriedCard
         }), { qos: 1 });
       }, []);
 
@@ -208,6 +213,7 @@
         setRoomId('');
         setIsHost(false);
         setPlayers([]);
+        setBuriedCard(null);
         setGameState('home');
         setRoomStatus('waiting');
         setIsTimerRunning(false);
@@ -217,7 +223,7 @@
         setConnStatus('未連線');
       }, []);
 
-      // 房長執行交換核心
+      // 房長執行身分交換核心 (hot_potato / leprechaun)
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
           const p1 = prev.find(p => p.id === id1);
@@ -258,6 +264,41 @@
           }
 
           setTimeout(() => { broadcastLatest({ players: next }); }, 50);
+          return next;
+        });
+      }, [broadcastLatest]);
+
+      // 房長執行酒鬼與埋葬卡交換
+      const executeDrunkBuriedSwapOnHost = useCallback((drunkPlayerId) => {
+        const curBuried = latestStateRef.current.buriedCard;
+        if (!curBuried) return;
+
+        setPlayers(prev => {
+          const drunkPlayer = prev.find(p => p.id === drunkPlayerId);
+          if (!drunkPlayer) return prev;
+
+          const oldRole = drunkPlayer.role;
+          const newRole = curBuried;
+          const newBuried = oldRole;
+
+          setBuriedCard(newBuried);
+
+          const next = prev.map(p => {
+            if (p.id === drunkPlayerId) {
+              return {
+                ...p,
+                role: newRole,
+                team: newRole.team,
+                hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')
+              };
+            }
+            return p;
+          });
+
+          setTimeout(() => {
+            broadcastLatest({ players: next, buriedCard: newBuried });
+          }, 50);
+
           return next;
         });
       }, [broadcastLatest]);
@@ -349,6 +390,12 @@
               return;
             }
 
+            // 房長收到酒鬼執行埋葬交換請求
+            if (data.type === 'EXECUTE_DRUNK_SWAP' && latestStateRef.current.isHost) {
+              executeDrunkBuriedSwapOnHost(data.playerId);
+              return;
+            }
+
             if (data.senderId === uid) return;
 
             switch (data.type) {
@@ -421,6 +468,7 @@
                 if (data.roundSettings) setRoundSettings(data.roundSettings);
                 setCurrentRoundIndex(data.currentRoundIndex);
                 setTimeLeft(data.timeLeft);
+                if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
 
                 if (data.roomStatus === 'round_active') {
                   setGameState('game');
@@ -447,7 +495,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [broadcastLatest, executeSwapOnHost, resetToHome]);
+      }, [broadcastLatest, executeSwapOnHost, executeDrunkBuriedSwapOnHost, resetToHome]);
 
       // 初始化與全體斷線/瀏覽器關閉後冷啟動還原
       useEffect(() => {
@@ -482,6 +530,7 @@
               if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
               if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
               if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
+              if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
 
               if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
                 const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
@@ -568,7 +617,7 @@
       const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
       const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
 
-      // 角色池一覽（優化：將同名角色合併，並列出所有對應陣營）
+      // 角色池一覽 (同名角色合併)
       const activeRolesInDeck = useMemo(() => {
         const groups = {};
         rolesCatalog.forEach(role => {
@@ -595,6 +644,13 @@
         return Boolean(myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun'));
       }, [myInfo.role]);
 
+      // 酒鬼是否可以在本回合與埋葬卡交換 (身分為 drunk + 本局有埋葬卡 + 當前為最後一輪)
+      const canDrunkSwapBuried = useMemo(() => {
+        const isDrunk = myInfo.role && myInfo.role.id === 'drunk';
+        const isLastRound = currentRoundIndex === roundSettings.length - 1;
+        return Boolean(isDrunk && buriedCard && isLastRound);
+      }, [myInfo.role, buriedCard, currentRoundIndex, roundSettings.length]);
+
       useEffect(() => {
         if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
           setSwapStatusMessage('🎉 身分已成功交換！');
@@ -615,6 +671,7 @@
         setRoomId(code);
         setIsHost(true);
         setPlayers([me]);
+        setBuriedCard(null);
         setRoomStatus('waiting');
         setGameState('lobby');
 
@@ -757,11 +814,12 @@
           players: assigned,
           roomStatus: 'room_assigned',
           currentRoundIndex: 0,
-          timeLeft: roundSettings[0] * 60
+          timeLeft: roundSettings[0] * 60,
+          buriedCard: null
         });
       };
 
-      // 發放卡片並啟動計時
+      // 發放卡片並啟動計時 (含埋葬卡判定：卡池比玩家多 1 張時產生)
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -780,8 +838,15 @@
           };
         });
 
+        // 檢查是否有埋葬卡（卡片總數比玩家多 1 張）
+        let generatedBuried = null;
+        if (deck.length === players.length + 1) {
+          generatedBuried = deck[players.length]; // 沒被分配的那張
+        }
+
         const initialTime = roundSettings[0] * 60;
         setPlayers(assignedWithRoles);
+        setBuriedCard(generatedBuried);
         setCurrentRoundIndex(0);
         setTimeLeft(initialTime);
         setRoomStatus('round_active');
@@ -791,7 +856,8 @@
           players: assignedWithRoles,
           roomStatus: 'round_active',
           currentRoundIndex: 0,
-          timeLeft: initialTime
+          timeLeft: initialTime,
+          buriedCard: generatedBuried
         });
       };
 
@@ -864,6 +930,22 @@
         setSwapRequestData(null);
       };
 
+      // 酒鬼確認與埋葬卡交換
+      const handleConfirmDrunkSwap = () => {
+        setShowDrunkConfirmModal(false);
+        if (!buriedCard) return;
+
+        if (latestStateRef.current.isHost) {
+          executeDrunkBuriedSwapOnHost(myPlayerId);
+        } else if (clientRef.current) {
+          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+            type: 'EXECUTE_DRUNK_SWAP',
+            senderId: myPlayerId,
+            playerId: myPlayerId
+          }), { qos: 1 });
+        }
+      };
+
       // 點擊切換角色應用 (Toggle 啟用/停用，並支援 pairs 連動自動選取)
       const handleToggleRole = (roleId) => {
         if (!isHost) return;
@@ -924,6 +1006,7 @@
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
                   <span>{connStatus}</span>
                   {roomId && <span>• 玩家: {players.length} 人</span>}
+                  {roomId && buriedCard && <span className="text-amber-400 font-bold">• 埋葬卡: 1 張</span>}
                 </div>
               </div>
             </div>
@@ -1008,6 +1091,11 @@
                     <span className="text-sm bg-zinc-800 px-3 py-0.5 rounded-full text-zinc-300">
                       在線人數: <strong className="text-amber-400">{players.length}</strong> 人
                     </span>
+                    {totalCardsInDeck === players.length + 1 && (
+                      <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                        ⚰️ 將啟用埋葬卡
+                      </span>
+                    )}
                   </h2>
                   <p className="text-xs text-zinc-400 mt-1">
                     斷線、重新整理或關閉分頁重新開啟皆可自動連回。房號：<strong className="text-white font-mono text-sm">{roomId}</strong>
@@ -1085,7 +1173,7 @@
                 </div>
               </div>
 
-              {/* 等候大廳：本局使用角色池一覽（優化：同名角色合併，並列隊伍標籤） */}
+              {/* 等候大廳：本局使用角色池一覽 */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1255,7 +1343,7 @@
                             setRoomStatus('waiting');
                             setGameState('lobby');
                             localStorage.removeItem('trb_saved_game_context');
-                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60 });
+                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null });
                           }}
                           className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
                         >
@@ -1264,6 +1352,23 @@
                       )}
                     </div>
                   </div>
+
+                  {/* 遊戲結束時：若有埋葬卡，公布埋葬卡身分 */}
+                  {roomStatus === 'ended' && buriedCard && (
+                    <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2 animate-bounce-once">
+                      <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
+                        <span>⚰️ 本局埋葬卡揭曉</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-3xl">{buriedCard.icon}</span>
+                        <span className="text-lg font-black text-white">{buriedCard.name}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded font-bold border ${getTeamMeta(buriedCard.team).badge}`}>
+                          {getTeamMeta(buriedCard.team).label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-300 max-w-md mx-auto">{buriedCard.desc}</p>
+                    </div>
+                  )}
 
                   {/* 實體房間提示 */}
                   <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
@@ -1351,6 +1456,27 @@
                             </div>
                           )}
 
+                          {/* 酒鬼專屬技能：最後一輪與埋葬卡互換 */}
+                          {canDrunkSwapBuried && (
+                            <div className="my-2">
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowDrunkConfirmModal(true);
+                                }}
+                                className="w-full bg-gradient-to-r from-purple-500 to-amber-500 hover:from-purple-400 hover:to-amber-400 text-zinc-950 font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border border-purple-300/40"
+                              >
+                                <span>🍺 與埋葬卡互換身分</span>
+                                <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
+                                  最後一輪專屬
+                                </span>
+                              </button>
+                            </div>
+                          )}
+
                           <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none">
                             玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
                           </div>
@@ -1359,7 +1485,7 @@
                     </div>
                   </div>
 
-                  {/* 遊戲中角色池一覽（優化：同名角色合併，並列隊伍標籤） */}
+                  {/* 遊戲中角色池一覽 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -1416,6 +1542,37 @@
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 彈窗：酒鬼與埋葬卡互換身分確認 */}
+          {showDrunkConfirmModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🍺</div>
+                <h3 className="text-lg font-black text-white">酒醒時刻！換取埋葬卡？</h3>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  你目前持有 <strong className="text-purple-400">酒鬼</strong> 身分。點擊確認後，你將直接換取本局未知的<strong className="text-amber-400">【埋葬卡】</strong>身分，並將酒鬼牌作為新的埋葬卡！
+                </p>
+                <p className="text-xs text-zinc-400">此動作不可復原，是否確定交換？</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDrunkConfirmModal(false)}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDrunkSwap}
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-amber-500 hover:opacity-90 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    確認換取
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1592,11 +1749,15 @@
                       <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">
                         目前: {tempTotalCardsInDeck} 張 / 玩家: {players.length} 人
                       </span>
+                      {tempTotalCardsInDeck === players.length + 1 && (
+                        <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">
+                          ⚰️ 將多出 1 張埋葬卡
+                        </span>
+                      )}
                     </h3>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* 全部取消選取 */}
                     {isHost && (
                       <button
                         type="button"
@@ -1607,7 +1768,6 @@
                       </button>
                     )}
 
-                    {/* 檢視模式切換 */}
                     <button
                       type="button"
                       onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
@@ -1629,7 +1789,6 @@
                       const isSelected = (tempRoleCounts[role.id] || 0) > 0;
                       const meta = getTeamMeta(role.team);
 
-                      // 僅圖示與名稱簡約模式
                       if (deckViewMode === 'iconOnly') {
                         return (
                           <div 
@@ -1659,7 +1818,6 @@
                         );
                       }
 
-                      // 詳細資料模式
                       return (
                         <div 
                           key={role.id} 
@@ -1707,7 +1865,11 @@
 
                 {/* 彈窗底部 */}
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
-                  <span className="text-xs text-zinc-400">請確認卡牌總數大於或等於玩家人數</span>
+                  <span className="text-xs text-zinc-400">
+                    {tempTotalCardsInDeck === players.length + 1 
+                      ? '💡 角色數比人數多 1 張，本局將產生 1 張未分配的【埋葬卡】'
+                      : '請確認卡牌總數大於或等於玩家人數'}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
