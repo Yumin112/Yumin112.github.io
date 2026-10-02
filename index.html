@@ -27,10 +27,6 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       touch-action: manipulation;
     }
-    .perspective-1000 { perspective: 1000px; }
-    .transform-style-3d { transform-style: preserve-3d; }
-    .backface-hidden { backface-visibility: hidden; }
-    .rotate-y-180 { transform: rotateY(180deg); }
   </style>
 </head>
 <body class="p-2 sm:p-4">
@@ -142,9 +138,6 @@
       // 彈窗內部臨時狀態
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
-
-      // 身分防窺
-      const [isRevealed, setIsRevealed] = useState(false);
 
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
@@ -857,57 +850,30 @@
                     </span>
                   </div>
 
-                  {/* 手機防窺翻牌卡片 (動態支援全陣營色彩) */}
+                  {/* 直接常駐顯示個人角色卡 (已取消按住翻開防窺) */}
                   <div className="max-w-sm mx-auto">
-                    <div className="text-center mb-2">
-                      <span className="text-xs text-zinc-400">👇 按住卡片翻開（手放開立即隱藏防窺）</span>
-                    </div>
+                    <div className={`rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[320px] ${myTeamMeta.cardBg}`}>
+                      <div className="flex justify-between items-start">
+                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
+                          {myTeamMeta.label}
+                        </span>
+                        <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
+                      </div>
 
-                    <div
-                      onMouseDown={() => setIsRevealed(true)}
-                      onMouseUp={() => setIsRevealed(false)}
-                      onTouchStart={() => setIsRevealed(true)}
-                      onTouchEnd={() => setIsRevealed(false)}
-                      className="w-full h-80 cursor-pointer select-none perspective-1000"
-                    >
-                      <div className={`relative w-full h-full duration-300 transform-style-3d ${isRevealed ? 'rotate-y-180' : ''}`}>
-                        {/* 卡背 */}
-                        <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-6 shadow-2xl">
-                          <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-4xl mb-4">
-                            🔒
-                          </div>
-                          <h3 className="text-lg font-bold text-zinc-100">TWO ROOMS AND A BOOM</h3>
-                          <p className="text-xs text-zinc-400 mt-2">按住檢視機密身分</p>
-                          <div className="mt-4 text-[11px] text-zinc-500 bg-zinc-950/60 px-3 py-1 rounded-full">
-                            玩家: {myInfo.name}
-                          </div>
-                        </div>
+                      <div className="text-center my-4">
+                        <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
+                        <p className="text-xs text-zinc-200 mt-3 px-3 leading-relaxed bg-zinc-950/60 py-3 rounded-xl border border-zinc-800 break-words">
+                          {myInfo.role?.desc || '暫無專屬說明'}
+                        </p>
+                      </div>
 
-                        {/* 卡面 (自動偵測陣營色彩) */}
-                        <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 ${myTeamMeta.cardBg}`}>
-                          <div className="flex justify-between items-start">
-                            <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
-                              {myTeamMeta.label}
-                            </span>
-                            <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
-                          </div>
-
-                          <div className="text-center my-auto">
-                            <h2 className="text-xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
-                            <p className="text-xs text-zinc-300 mt-3 px-2 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800">
-                              {myInfo.role?.desc || '暫無專屬說明'}
-                            </p>
-                          </div>
-
-                          <div className="text-[11px] text-zinc-400 text-center">
-                            鬆手立刻蓋牌隱藏
-                          </div>
-                        </div>
+                      <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60">
+                        玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
                       </div>
                     </div>
                   </div>
 
-                  {/* 本局使用角色池一覽 (自動偵測色彩) */}
+                  {/* 本局使用角色池一覽 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -1024,7 +990,7 @@
             </div>
           )}
 
-          {/* 卡池設定彈窗 (自動偵測陣營色彩 + 完整換行) */}
+          {/* 卡池設定彈窗 */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
@@ -1052,7 +1018,6 @@
                           key={role.id} 
                           className="p-3.5 rounded-xl border flex flex-col justify-between gap-3 bg-zinc-800/80 border-zinc-700 hover:border-zinc-600 transition"
                         >
-                          {/* 標題、陣營標籤與加減按鈕 */}
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <span className="text-2xl shrink-0">{role.icon}</span>
@@ -1088,7 +1053,6 @@
                             </div>
                           </div>
 
-                          {/* 完整說明文字 */}
                           <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-800/80 break-words">
                             {role.desc}
                           </p>
