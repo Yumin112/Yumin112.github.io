@@ -50,9 +50,9 @@
       const [isHost, setIsHost] = useState(false);
       const [connStatus, setConnStatus] = useState('未連線');
 
-      // 房間狀態與玩家名單
+      // 房間狀態: 'waiting' (大廳) | 'room_assigned' (分房就位中) | 'round_active' (進行中) | 'round_paused' (換人質暫停) | 'ended' (結束揭曉)
       const [players, setPlayers] = useState([]);
-      const [roomStatus, setRoomStatus] = useState('waiting'); // 'waiting' | 'round_active' | 'round_paused' | 'ended'
+      const [roomStatus, setRoomStatus] = useState('waiting'); 
 
       // 回合計時與設定 (3~5 輪)
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
@@ -195,7 +195,7 @@
               if (data.roomStatus === 'round_active') {
                 setGameState('game');
                 setIsTimerRunning(true);
-              } else if (data.roomStatus === 'round_paused' || data.roomStatus === 'ended') {
+              } else if (data.roomStatus === 'round_paused' || data.roomStatus === 'ended' || data.roomStatus === 'room_assigned') {
                 setGameState('game');
                 setIsTimerRunning(false);
               } else if (data.roomStatus === 'waiting') {
@@ -362,7 +362,6 @@
         return Object.values(tempRoleCounts).reduce((sum, c) => sum + (c || 0), 0);
       }, [tempRoleCounts]);
 
-      // 篩選出這場遊戲「有被選入（數量 > 0）」的角色清單
       const activeRolesInDeck = useMemo(() => {
         return rolesCatalog
           .filter(role => (roleCounts[role.id] || 0) > 0)
@@ -372,8 +371,8 @@
           }));
       }, [rolesCatalog, roleCounts]);
 
-      // 4. 開始遊戲
-      const handleStartGame = () => {
+      // 【流程步驟 1】按下「開始遊戲 & 分房」：僅先隨機均分 房間 A 與 房間 B，不發身分卡
+      const handleStartAssignRooms = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
           return;
@@ -390,37 +389,67 @@
           return;
         }
 
-        deck.sort(() => Math.random() - 0.5);
+        // 隨機洗牌玩家，並對半均分至 房間 A 與 房間 B
         const shuffled = [...players].sort(() => Math.random() - 0.5);
         const half = Math.ceil(shuffled.length / 2);
 
-        const assigned = shuffled.map((p, idx) => {
-          const r = deck[idx];
-          return {
-            ...p,
-            team: r.team,
-            role: r,
-            gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
-          };
-        });
+        const assigned = shuffled.map((p, idx) => ({
+          ...p,
+          team: null,
+          role: null, // 先不給身分
+          gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
+        }));
 
-        const initialTime = roundSettings[0] * 60;
         setPlayers(assigned);
-        setCurrentRoundIndex(0);
-        setTimeLeft(initialTime);
-        setRoomStatus('round_active');
-        setIsTimerRunning(true);
+        setRoomStatus('room_assigned'); // 進入分房就位階段
+        setIsTimerRunning(false);
         setGameState('game');
 
         broadcastLatest({
           players: assigned,
+          roomStatus: 'room_assigned',
+          currentRoundIndex: 0,
+          timeLeft: roundSettings[0] * 60
+        });
+      };
+
+      // 【流程步驟 2】房長確認就位完畢：發放身分並正式啟動計時
+      const handleConfirmDealCardsAndStart = () => {
+        let deck = [];
+        rolesCatalog.forEach(role => {
+          const count = roleCounts[role.id] || 0;
+          for (let i = 0; i < count; i++) deck.push({ ...role });
+        });
+
+        // 洗牌卡片庫
+        deck.sort(() => Math.random() - 0.5);
+
+        // 為已經在房間 A / 房間 B 的玩家指派身分卡
+        const assignedWithRoles = players.map((p, idx) => {
+          const r = deck[idx];
+          return {
+            ...p,
+            team: r.team,
+            role: r
+          };
+        });
+
+        const initialTime = roundSettings[0] * 60;
+        setPlayers(assignedWithRoles);
+        setCurrentRoundIndex(0);
+        setTimeLeft(initialTime);
+        setRoomStatus('round_active');
+        setIsTimerRunning(true);
+
+        broadcastLatest({
+          players: assignedWithRoles,
           roomStatus: 'round_active',
           currentRoundIndex: 0,
           timeLeft: initialTime
         });
       };
 
-      // 5. 下一輪 / 結算
+      // 下一輪 / 結算
       const handleNextRoundConfirm = () => {
         if (currentRoundIndex + 1 < roundSettings.length) {
           const nextIdx = currentRoundIndex + 1;
@@ -454,6 +483,8 @@
       };
 
       const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null, gameRoom: null };
+      const roomAPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room A'));
+      const roomBPlayers = players.filter(p => p.gameRoom && p.gameRoom.includes('Room B'));
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
@@ -492,7 +523,7 @@
             )}
           </header>
 
-          {/* 首頁 */}
+          {/* 首頁：建立 / 加入 */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
               <div className="space-y-4">
@@ -577,7 +608,7 @@
 
                   {isHost ? (
                     <button
-                      onClick={handleStartGame}
+                      onClick={handleStartAssignRooms}
                       className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition"
                     >
                       🎲 開始遊戲 & 分房
@@ -600,7 +631,7 @@
                     </span>
                   ))}
                 </div>
-                <div>計時結束後需等候房長確認才進入下一輪。</div>
+                <div>第一階段先分房就位，確認後才發放身分與計時。</div>
               </div>
 
               {/* 線上玩家列表 */}
@@ -631,174 +662,261 @@
             </div>
           )}
 
-          {/* 遊戲進行中 */}
+          {/* 遊戲階段：包含「分房就位階段」與「正式進行/暫停/結束」 */}
           {gameState === 'game' && (
             <div className="space-y-6">
-              {/* 頂部回合計時看板 */}
-              <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
-                roomStatus === 'round_paused' ? 'bg-amber-950/40 border-amber-500 animate-pulse' :
-                roomStatus === 'ended' ? 'bg-red-950/40 border-red-500' : 'bg-zinc-900 border-zinc-800'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className="text-center md:text-left">
-                    <span className="text-xs uppercase tracking-wider text-zinc-400 font-bold">
-                      {roomStatus === 'ended' ? '遊戲結束' : `第 ${currentRoundIndex + 1} / ${roundSettings.length} 輪`}
-                    </span>
-                    <h2 className="text-3xl font-black font-mono tracking-tight text-white">
-                      {roomStatus === 'ended' ? '全體身分揭曉' : formatTime(timeLeft)}
-                    </h2>
-                  </div>
-
-                  {roomStatus === 'round_paused' && (
-                    <div className="bg-amber-500/20 border border-amber-500 text-amber-300 text-xs px-3 py-1.5 rounded-lg font-bold">
-                      ⚠️ 本輪時間到！請選出人質交換，等候房長確認。
+              
+              {/* 【狀態 A: 分房就位階段 (room_assigned)】 */}
+              {roomStatus === 'room_assigned' && (
+                <div className="space-y-5">
+                  <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-blue-900/40 border border-indigo-500/50 p-5 rounded-2xl text-center shadow-xl space-y-3">
+                    <div className="inline-block bg-indigo-500/20 text-indigo-300 text-xs px-3 py-1 rounded-full font-bold">
+                      📍 第一階段：分配房間與實體就位
                     </div>
-                  )}
-                </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white">請所有玩家移動至所屬的實體房間</h2>
+                    <p className="text-xs sm:text-sm text-zinc-300 max-w-xl mx-auto">
+                      全員就位前身分尚未發放。請確認自己所在的房間，等候全員移動完畢後由房長按下發放按鈕！
+                    </p>
 
-                <div className="flex items-center gap-2.5">
-                  {isHost && roomStatus === 'round_paused' && (
-                    <button
-                      onClick={handleNextRoundConfirm}
-                      className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl shadow-lg transition"
-                    >
-                      👉 房長確認：{currentRoundIndex + 1 < roundSettings.length ? `進入第 ${currentRoundIndex + 2} 輪` : '揭開身分結算'}
-                    </button>
-                  )}
-
-                  {isHost && (
-                    <button
-                      onClick={() => {
-                        setRoomStatus('waiting');
-                        setGameState('lobby');
-                        broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60 });
-                      }}
-                      className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
-                    >
-                      結束回大廳
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 初始實體房間分配提示 */}
-              <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
-                <span className="text-xs text-indigo-300">你的初始房間分配：</span>
-                <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
-                  📍 {myInfo.gameRoom || '未分配'}
-                </span>
-              </div>
-
-              {/* 手機防窺翻牌卡片 */}
-              <div className="max-w-sm mx-auto">
-                <div className="text-center mb-2">
-                  <span className="text-xs text-zinc-400">👇 按住卡片翻開（手放開立即隱藏防窺）</span>
-                </div>
-
-                <div
-                  onMouseDown={() => setIsRevealed(true)}
-                  onMouseUp={() => setIsRevealed(false)}
-                  onTouchStart={() => setIsRevealed(true)}
-                  onTouchEnd={() => setIsRevealed(false)}
-                  className="w-full h-80 cursor-pointer select-none perspective-1000"
-                >
-                  <div className={`relative w-full h-full duration-300 transform-style-3d ${isRevealed ? 'rotate-y-180' : ''}`}>
-                    {/* 卡背 */}
-                    <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-6 shadow-2xl">
-                      <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-4xl mb-4">
-                        🔒
-                      </div>
-                      <h3 className="text-lg font-bold text-zinc-100">TWO ROOMS AND A BOOM</h3>
-                      <p className="text-xs text-zinc-400 mt-2">按住檢視機密身分</p>
-                      <div className="mt-4 text-[11px] text-zinc-500 bg-zinc-950/60 px-3 py-1 rounded-full">
-                        玩家: {myInfo.name}
-                      </div>
+                    {/* 玩家個人所屬房間提示 */}
+                    <div className="inline-flex items-center gap-2 bg-indigo-950 border border-indigo-400 px-4 py-2 rounded-xl mt-2">
+                      <span className="text-xs text-indigo-200">你被分配到：</span>
+                      <strong className="text-base text-amber-300 font-black">{myInfo.gameRoom || '未分配'}</strong>
                     </div>
 
-                    {/* 卡面 */}
-                    <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 ${
-                      myInfo.team === 'red' ? 'bg-gradient-to-br from-red-950 via-zinc-900 to-zinc-900 border-red-500' :
-                      myInfo.team === 'blue' ? 'bg-gradient-to-br from-blue-950 via-zinc-900 to-zinc-900 border-blue-500' :
-                      myInfo.team === 'green' ? 'bg-gradient-to-br from-emerald-950 via-zinc-900 to-zinc-900 border-emerald-500' :
-                      'bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-900 border-zinc-400'
-                    }`}>
-                      <div className="flex justify-between items-start">
-                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider ${
-                          myInfo.team === 'red' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                          myInfo.team === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                          myInfo.team === 'green' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                          'bg-zinc-500/20 text-zinc-300 border border-zinc-500/30'
-                        }`}>
-                          {myInfo.team === 'red' ? 'RED TEAM (紅隊)' :
-                           myInfo.team === 'blue' ? 'BLUE TEAM (藍隊)' :
-                           myInfo.team === 'green' ? 'GREEN TEAM (綠隊)' : 'GREY TEAM (灰隊中立)'}
-                        </span>
-                        <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
+                    {/* 房長發牌按鈕 */}
+                    {isHost ? (
+                      <div className="pt-2">
+                        <button
+                          onClick={handleConfirmDealCardsAndStart}
+                          className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-zinc-950 font-black px-8 py-3.5 rounded-2xl text-base shadow-2xl transition active:scale-95"
+                        >
+                          🚀 全員就位完畢：發放身分並開始計時
+                        </button>
                       </div>
-
-                      <div className="text-center my-auto">
-                        <h2 className="text-xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
-                        <p className="text-xs text-zinc-300 mt-3 px-2 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800">
-                          {myInfo.role?.desc || '暫無專屬說明'}
-                        </p>
+                    ) : (
+                      <div className="text-xs text-amber-400/90 font-medium animate-pulse pt-1">
+                        ⏳ 請先前往所屬房間，等待房長確認全員就位...
                       </div>
-
-                      <div className="text-[11px] text-zinc-400 text-center">
-                        鬆手立刻蓋牌隱藏
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </div>
-              </div>
 
-              {/* 替換原本的房間玩家列表：改為顯示本局使用的角色池卡片資訊 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
-                <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🃏</span>
-                    <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
-                  </div>
-                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
-                    總共 {totalCardsInDeck} 張卡片
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeRolesInDeck.map(role => (
-                    <div
-                      key={role.id}
-                      className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
-                        role.team === 'red' ? 'bg-red-950/20 border-red-900/40' :
-                        role.team === 'blue' ? 'bg-blue-950/20 border-blue-900/40' :
-                        role.team === 'green' ? 'bg-emerald-950/20 border-emerald-900/40' :
-                        'bg-zinc-800/40 border-zinc-700/50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-2xl mt-0.5">{role.icon}</span>
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-sm text-zinc-100">{role.name}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                              role.team === 'red' ? 'bg-red-500/20 text-red-400' :
-                              role.team === 'blue' ? 'bg-blue-500/20 text-blue-400' :
-                              role.team === 'green' ? 'bg-emerald-500/20 text-emerald-400' :
-                              'bg-zinc-700 text-zinc-300'
-                            }`}>
-                              {role.team === 'red' ? '紅隊' : role.team === 'blue' ? '藍隊' : role.team === 'green' ? '綠隊' : '灰隊'}
-                            </span>
+                  {/* 實體房間分配名單 (就位期間方便大家對照) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-zinc-900/80 border border-indigo-500/30 rounded-2xl p-4">
+                      <h3 className="font-bold text-indigo-300 mb-3 flex items-center justify-between">
+                        <span>🏠 房間 A 名單 (Room A)</span>
+                        <span className="text-xs bg-indigo-900/60 px-2.5 py-0.5 rounded-full">{roomAPlayers.length} 人</span>
+                      </h3>
+                      <div className="space-y-2">
+                        {roomAPlayers.map(p => (
+                          <div key={p.id} className="flex justify-between items-center bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-700/50">
+                            <span className="text-sm font-medium">{p.name} {p.id === myPlayerId && <strong className="text-indigo-400">(你)</strong>}</span>
+                            <span className="text-xs text-zinc-400">已就位等待</span>
                           </div>
-                          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{role.desc}</p>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-900/80 border border-amber-500/30 rounded-2xl p-4">
+                      <h3 className="font-bold text-amber-300 mb-3 flex items-center justify-between">
+                        <span>🚪 房間 B 名單 (Room B)</span>
+                        <span className="text-xs bg-amber-900/60 px-2.5 py-0.5 rounded-full">{roomBPlayers.length} 人</span>
+                      </h3>
+                      <div className="space-y-2">
+                        {roomBPlayers.map(p => (
+                          <div key={p.id} className="flex justify-between items-center bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-700/50">
+                            <span className="text-sm font-medium">{p.name} {p.id === myPlayerId && <strong className="text-amber-400">(你)</strong>}</span>
+                            <span className="text-xs text-zinc-400">已就位等待</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 【狀態 B: 正式進行 / 換人質暫停 / 遊戲結束】 */}
+              {roomStatus !== 'room_assigned' && (
+                <div className="space-y-6">
+                  {/* 頂部回合計時看板 */}
+                  <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
+                    roomStatus === 'round_paused' ? 'bg-amber-950/40 border-amber-500 animate-pulse' :
+                    roomStatus === 'ended' ? 'bg-red-950/40 border-red-500' : 'bg-zinc-900 border-zinc-800'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="text-center md:text-left">
+                        <span className="text-xs uppercase tracking-wider text-zinc-400 font-bold">
+                          {roomStatus === 'ended' ? '遊戲結束' : `第 ${currentRoundIndex + 1} / ${roundSettings.length} 輪`}
+                        </span>
+                        <h2 className="text-3xl font-black font-mono tracking-tight text-white">
+                          {roomStatus === 'ended' ? '全體身分揭曉' : formatTime(timeLeft)}
+                        </h2>
+                      </div>
+
+                      {roomStatus === 'round_paused' && (
+                        <div className="bg-amber-500/20 border border-amber-500 text-amber-300 text-xs px-3 py-1.5 rounded-lg font-bold">
+                          ⚠️ 本輪時間到！請選出人質交換，等候房長確認。
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      {isHost && roomStatus === 'round_paused' && (
+                        <button
+                          onClick={handleNextRoundConfirm}
+                          className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl shadow-lg transition"
+                        >
+                          👉 房長確認：{currentRoundIndex + 1 < roundSettings.length ? `進入第 ${currentRoundIndex + 2} 輪` : '揭開身分結算'}
+                        </button>
+                      )}
+
+                      {isHost && (
+                        <button
+                          onClick={() => setIsGodMode(!isGodMode)}
+                          className={`text-xs px-3 py-2 rounded-xl border transition ${
+                            isGodMode ? 'bg-amber-500 text-black border-amber-400 font-bold' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                          }`}
+                        >
+                          {isGodMode ? '👁️ 上帝視角 (開)' : '🔒 上帝視角 (關)'}
+                        </button>
+                      )}
+
+                      {isHost && (
+                        <button
+                          onClick={() => {
+                            setRoomStatus('waiting');
+                            setGameState('lobby');
+                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60 });
+                          }}
+                          className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
+                        >
+                          結束回大廳
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 玩家個人所屬房間提示 */}
+                  <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
+                    <span className="text-xs text-indigo-300">你的初始房間分配：</span>
+                    <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
+                      📍 {myInfo.gameRoom || '未分配'}
+                    </span>
+                  </div>
+
+                  {/* 手機防窺翻牌卡片 */}
+                  <div className="max-w-sm mx-auto">
+                    <div className="text-center mb-2">
+                      <span className="text-xs text-zinc-400">👇 按住卡片翻開（手放開立即隱藏防窺）</span>
+                    </div>
+
+                    <div
+                      onMouseDown={() => setIsRevealed(true)}
+                      onMouseUp={() => setIsRevealed(false)}
+                      onTouchStart={() => setIsRevealed(true)}
+                      onTouchEnd={() => setIsRevealed(false)}
+                      className="w-full h-80 cursor-pointer select-none perspective-1000"
+                    >
+                      <div className={`relative w-full h-full duration-300 transform-style-3d ${isRevealed ? 'rotate-y-180' : ''}`}>
+                        {/* 卡背 */}
+                        <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-6 shadow-2xl">
+                          <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-4xl mb-4">
+                            🔒
+                          </div>
+                          <h3 className="text-lg font-bold text-zinc-100">TWO ROOMS AND A BOOM</h3>
+                          <p className="text-xs text-zinc-400 mt-2">按住檢視機密身分</p>
+                          <div className="mt-4 text-[11px] text-zinc-500 bg-zinc-950/60 px-3 py-1 rounded-full">
+                            玩家: {myInfo.name}
+                          </div>
+                        </div>
+
+                        {/* 卡面 */}
+                        <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 ${
+                          myInfo.team === 'red' ? 'bg-gradient-to-br from-red-950 via-zinc-900 to-zinc-900 border-red-500' :
+                          myInfo.team === 'blue' ? 'bg-gradient-to-br from-blue-950 via-zinc-900 to-zinc-900 border-blue-500' :
+                          myInfo.team === 'green' ? 'bg-gradient-to-br from-emerald-950 via-zinc-900 to-zinc-900 border-emerald-500' :
+                          'bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-900 border-zinc-400'
+                        }`}>
+                          <div className="flex justify-between items-start">
+                            <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider ${
+                              myInfo.team === 'red' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              myInfo.team === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              myInfo.team === 'green' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                              'bg-zinc-500/20 text-zinc-300 border border-zinc-500/30'
+                            }`}>
+                              {myInfo.team === 'red' ? 'RED TEAM (紅隊)' :
+                               myInfo.team === 'blue' ? 'BLUE TEAM (藍隊)' :
+                               myInfo.team === 'green' ? 'GREEN TEAM (綠隊)' : 'GREY TEAM (灰隊中立)'}
+                            </span>
+                            <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
+                          </div>
+
+                          <div className="text-center my-auto">
+                            <h2 className="text-xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
+                            <p className="text-xs text-zinc-300 mt-3 px-2 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800">
+                              {myInfo.role?.desc || '暫無專屬說明'}
+                            </p>
+                          </div>
+
+                          <div className="text-[11px] text-zinc-400 text-center">
+                            鬆手立刻蓋牌隱藏
+                          </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
 
-                      <span className="shrink-0 text-xs font-mono font-bold bg-zinc-800 px-2 py-1 rounded-lg text-amber-400 border border-zinc-700">
-                        x{role.count}
+                  {/* 本局使用角色池一覽 */}
+                  <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+                    <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🃏</span>
+                        <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
+                      </div>
+                      <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
+                        總共 {totalCardsInDeck} 張卡片
                       </span>
                     </div>
-                  ))}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {activeRolesInDeck.map(role => (
+                        <div
+                          key={role.id}
+                          className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
+                            role.team === 'red' ? 'bg-red-950/20 border-red-900/40' :
+                            role.team === 'blue' ? 'bg-blue-950/20 border-blue-900/40' :
+                            role.team === 'green' ? 'bg-emerald-950/20 border-emerald-900/40' :
+                            'bg-zinc-800/40 border-zinc-700/50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-2xl mt-0.5">{role.icon}</span>
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-sm text-zinc-100">{role.name}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                  role.team === 'red' ? 'bg-red-500/20 text-red-400' :
+                                  role.team === 'blue' ? 'bg-blue-500/20 text-blue-400' :
+                                  role.team === 'green' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  'bg-zinc-700 text-zinc-300'
+                                }`}>
+                                  {role.team === 'red' ? '紅隊' : role.team === 'blue' ? '藍隊' : role.team === 'green' ? '綠隊' : '灰隊'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{role.desc}</p>
+                            </div>
+                          </div>
+
+                          <span className="shrink-0 text-xs font-mono font-bold bg-zinc-800 px-2 py-1 rounded-lg text-amber-400 border border-zinc-700">
+                            x{role.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
