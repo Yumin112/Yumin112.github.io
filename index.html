@@ -121,7 +121,7 @@
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting'); 
 
-      // 回合計時與設定 (3~5 輪)
+      // 回合計時與設定 (移除 4 輪，預設為 3 輪 [3, 2, 1])
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
@@ -192,7 +192,7 @@
         }));
       };
 
-      // 本地完全重置並返回首頁（解散或主動離開時調用）
+      // 本地完全重置並返回首頁
       const resetToHome = () => {
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch(e) {}
@@ -292,14 +292,12 @@
             const data = JSON.parse(msg.toString());
             if (data.senderId === uid) return;
 
-            // 【功能 1】接收到房間解散通知
             if (data.type === 'ROOM_DISBANDED') {
               alert('房長已離開，房間已解散！');
               resetToHome();
               return;
             }
 
-            // 房長收到新玩家加入或重連
             if (data.type === 'PLAYER_PING_SYNC' && latestStateRef.current.isHost) {
               setPlayers(prev => {
                 const existing = prev.find(p => p.id === data.player.id);
@@ -314,7 +312,6 @@
               });
             }
 
-            // 一般玩家主動離開通知
             if (data.type === 'PLAYER_LEFT') {
               setPlayers(prev => {
                 const next = prev.filter(p => p.id !== data.playerId);
@@ -325,7 +322,6 @@
               });
             }
 
-            // 接收交換請求
             if (data.type === 'SWAP_REQUEST' && data.targetId === uid) {
               setSwapRequestData({
                 fromId: data.fromId,
@@ -334,13 +330,11 @@
               });
             }
 
-            // 收到交換拒絕通知
             if (data.type === 'SWAP_REJECTED' && data.fromId === uid) {
               setSwapStatusMessage('對方拒絕了身分交換請求！');
               setTimeout(() => setSwapStatusMessage(''), 3000);
             }
 
-            // 收到交換成功通知
             if (data.type === 'SWAP_SUCCESS') {
               if (data.player1Id === uid || data.player2Id === uid) {
                 setSwapStatusMessage('🎉 身分已成功交換！');
@@ -348,12 +342,10 @@
               }
             }
 
-            // 房長收到執行交換指令
             if (data.type === 'EXECUTE_SWAP' && latestStateRef.current.isHost) {
               executeSwapOnHost(data.player1Id, data.player2Id);
             }
 
-            // 全局同步
             if (data.type === 'FULL_SYNC') {
               setPlayers(data.players);
               setRoomStatus(data.roomStatus);
@@ -374,7 +366,6 @@
               }
             }
 
-            // 每 5 秒校準時間
             if (data.type === 'TIME_SYNC' && !latestStateRef.current.isHost) {
               setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
@@ -478,7 +469,7 @@
         setupConnection(code, false, trimmedName, myPlayerId);
       };
 
-      // 3. 離開房間（【功能 1】房長離開自動解散房間）
+      // 3. 離開房間
       const handleLeaveRoom = () => {
         const confirmMsg = isHost 
           ? '您是房長，離開後將會解散房間，確定要離開嗎？' 
@@ -488,13 +479,11 @@
 
         if (clientRef.current && roomId) {
           if (isHost) {
-            // 房長離開：發送解散通知
             clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
               type: 'ROOM_DISBANDED',
               senderId: myPlayerId
             }));
           } else {
-            // 一般成員離開：僅通知個人退出
             clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
               type: 'PLAYER_LEFT',
               playerId: myPlayerId
@@ -673,7 +662,6 @@
         return myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun');
       }, [myInfo.role]);
 
-      // 若已被成功換走身分，自動清除等待中的提示訊息
       useEffect(() => {
         if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
           setSwapStatusMessage('🎉 身分已成功交換！');
@@ -731,7 +719,7 @@
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
-          {/* Header 導覽列：【功能 2】顯示目前玩家數量 */}
+          {/* Header 導覽列 */}
           <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
             <div className="flex items-center gap-2">
               <span className="text-3xl">💣</span>
@@ -1046,7 +1034,7 @@
                     </div>
                   )}
 
-                  {/* 個人角色卡：交換按鈕放置於框框內 */}
+                  {/* 個人角色卡 */}
                   <div className="max-w-sm mx-auto">
                     <div className="text-center mb-2">
                       <span className="text-xs text-zinc-400">
@@ -1067,7 +1055,7 @@
                       className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[340px] transition-all duration-150 ${myTeamMeta.cardBg}`}
                     >
                       {isColorOnly ? (
-                        /* 按住時：純顏色分享視圖 (按鈕自動隱藏) */
+                        /* 按住時：純顏色分享視圖 */
                         <div className="my-auto flex flex-col items-center justify-center text-center space-y-4 pointer-events-none">
                           <span className={`text-sm px-4 py-1.5 rounded-full font-black tracking-widest uppercase border ${myTeamMeta.badge}`}>
                             {myTeamMeta.label}
@@ -1078,7 +1066,7 @@
                           </p>
                         </div>
                       ) : (
-                        /* 平時：完整顯示角色與技能說明，以及置內的交換按鈕 */
+                        /* 平時：完整顯示角色與技能說明 */
                         <React.Fragment>
                           <div className="flex justify-between items-start pointer-events-none">
                             <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
@@ -1094,7 +1082,7 @@
                             </p>
                           </div>
 
-                          {/* 燙手山芋與小妖精專屬：置於卡框內，按住時自動連帶隱藏 */}
+                          {/* 燙手山芋與小妖精專屬：置於卡框內 */}
                           {canSwapRole && (
                             <div className="my-2">
                               <button
@@ -1259,7 +1247,7 @@
             </div>
           )}
 
-          {/* 回合設定彈窗 */}
+          {/* 回合設定彈窗 (客製化選項已移除 4 輪，僅保留 3 輪與 5 輪) */}
           {showRoundConfigModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1269,9 +1257,9 @@
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 mb-2">選擇總輪數 (3 ~ 5 輪):</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[3, 4, 5].map(cnt => (
+                  <label className="block text-xs font-bold text-zinc-400 mb-2">選擇總輪數 (3 輪 / 5 輪):</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[3, 5].map(cnt => (
                       <button
                         key={cnt}
                         type="button"
@@ -1284,8 +1272,8 @@
                           }
                           setTempRoundSettings(newSettings);
                         }}
-                        className={`py-2 rounded-xl text-sm font-bold border transition ${
-                          tempRoundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                        className={`py-2.5 rounded-xl text-sm font-bold border transition ${
+                          tempRoundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
                         }`}
                       >
                         {cnt} 輪
