@@ -13,26 +13,6 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🛡️', desc: '保護總統安全，不要讓『總統』與『炸彈客』在同一個房間！' },
   { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🎯', desc: '協助炸彈客，讓『炸彈客』與『總統』在同一個房間引爆！' },
 
-  // 即死判定
-  { id: 'dr_boom', name: '爆炸先生 (Dr. Boom)', team: 'red', icon: '💥', desc: '紅隊角色。若你與『總統』進行了卡片分享，房內全體包含自己死亡，遊戲直接結束。' },
-  { id: 'tues_knight', name: '星期二騎士 (Tuesday Knight)', team: 'blue', icon: '🛡️', desc: '藍隊角色。若你與『炸彈客』進行了卡片分享，房內除了總統外全體死亡，遊戲直接結束。' },
-
-  // 奇幻替代核心（國王與巨龍）
-  { id: 'king', name: '國王 (King)', team: 'blue', icon: '👑', desc: '奇幻主要角色。遊戲結束時若未獲得「烤焦」狀態，則藍隊獲勝。' },
-  { id: 'dragon', name: '巨龍 (Dragon)', team: 'red', icon: '🐉', desc: '奇幻主要角色。遊戲結束時同房間全員烤焦；國王烤焦則紅隊獲勝。' },
-  { id: 'fat_princess', name: '胖公主 (Fat Princess)', team: 'blue', icon: '👸', desc: '國王替補角色。若國王被埋牌或烤焦，接替國王職責與煉金術士換牌。' },
-  { id: 'dragon_egg', name: '龍蛋 (Dragon Egg)', team: 'red', icon: '🥚', desc: '巨龍替補角色。若巨龍被埋牌或烤焦，接替巨龍職責與工程學徒換牌。' },
-  { id: 'alchemist', name: '煉金術士 (Alchemist)', team: 'blue', icon: '🧪', desc: '國王必須在終局前與你完成換牌查驗，否則藍隊失敗。' },
-  { id: 'eggineer', name: '工程學徒 (Eggineer)', team: 'red', icon: '⚙️', desc: '巨龍必須在終局前與你完成換牌查驗，否則紅隊失敗。' },
-  { id: 'apprentice', name: '學徒 (Apprentice)', team: 'blue', icon: '📜', desc: '煉金術士替補角色。若煉金術士被埋牌或死亡，接替與國王換牌查驗。' },
-  { id: 'fanatic', name: '狂熱者 (Fanatic)', team: 'red', icon: '🕯️', desc: '工程學徒替補角色。若工程學徒被埋牌或死亡，接替與巨龍換牌查驗。' },
-
-  // 科技替代核心（無人機與鐵拳）
-  { id: 'blue_drone', name: '藍色無人機 (Blue Drone)', team: 'blue', icon: '🛸', desc: '主要角色。遊戲結束時若與「紅色鐵拳」身處同一個房間，則藍隊獲勝。' },
-  { id: 'red_fist', name: '紅色鐵拳 (Red Fist)', team: 'red', icon: '✊', desc: '主要角色。遊戲結束時若與「藍色無人機」身處不同房間，則紅隊獲勝。' },
-  { id: 'blue_firecracker', name: '藍色爆竹 (Blue Firecracker)', team: 'blue', icon: '🧨', desc: '無人機替補角色。若無人機被埋牌或死亡，接替其所有職責。' },
-  { id: 'red_foot', name: '紅色鐵足 (Red Foot)', team: 'red', icon: '🦶', desc: '紅色鐵拳替補角色。若紅色鐵拳被埋牌或死亡，接替其所有職責。' },
-
   // 特殊陣營角色（分拆紅 / 藍）
   { id: 'spy_b', name: '藍隊間諜 (Blue Spy)', team: 'blue', icon: '🕵️‍♂️', desc: '屬於藍隊但卡片底色為紅色；擾亂他人顏色查驗，請對藍隊忠誠！' },
   { id: 'spy_r', name: '紅隊間諜 (Red Spy)', team: 'red', icon: '🕵️‍♀️', desc: '屬於紅隊但卡片底色為藍色；擾亂他人顏色查驗，請對紅隊忠誠！' },
@@ -151,6 +131,10 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'exhibitionist_b', name: '露體狂 (Exhibitionist - 藍)', team: 'blue', icon: '🥼', desc: '自帶「裸露」屬性，全場只能進行公開展示，禁止私下亮牌或換牌。' },
   { id: 'exhibitionist_r', name: '露體狂 (Exhibitionist - 紅)', team: 'red', icon: '🥼', desc: '自帶「裸露」屬性，全場只能進行公開展示，禁止私下亮牌或換牌。' },
 
+  // 即死判定
+  { id: 'dr_boom', name: '爆炸先生 (Dr. Boom)', team: 'red', icon: '💥', desc: '紅隊角色。若你與『總統』進行了卡片分享，房內全體包含自己死亡，遊戲直接結束。' },
+  { id: 'tues_knight', name: '星期二騎士 (Tuesday Knight)', team: 'blue', icon: '🛡️', desc: '藍隊角色。若你與『炸彈客』進行了卡片分享，房內除了總統外全體死亡，遊戲直接結束。' },
+  
   // 專屬紅 / 藍陣營角色
   { id: 'cupid', name: '愛神丘比特 (Cupid)', team: 'red', icon: '💘', desc: '整場一次，指定兩位玩家相愛，兩人結算時必須在同一房間才能獲勝。' },
   { id: 'eris', name: '紛爭女神厄里斯 (Eris)', team: 'blue', icon: '⚡', desc: '整場一次，指定兩位玩家憎恨，兩人結算時必須在不同房間才能獲勝。' },
