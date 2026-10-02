@@ -143,7 +143,7 @@
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
-      // 保持最新狀態映射，並在房長端持續儲存遊戲進度快照
+      // 同步最新狀態參照，全員持久化保存個人進度快照
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -159,7 +159,8 @@
           gameState
         };
 
-        if (isHost && roomId) {
+        if (roomId && myPlayerId) {
+          const myProfile = players.find(p => p.id === myPlayerId);
           const snapshot = {
             players,
             roomStatus,
@@ -168,13 +169,15 @@
             roleCounts,
             currentRoundIndex,
             timeLeft,
-            isTimerRunning
+            isTimerRunning,
+            myProfile,
+            savedAt: Date.now()
           };
           localStorage.setItem('trb_saved_game_context', JSON.stringify(snapshot));
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState]);
 
-      // 廣播最新全場狀態
+      // 廣播全場狀態
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -258,7 +261,7 @@
         });
       }, [broadcastLatest]);
 
-      // 雲端 MQTT 連線通道
+      // 雲端 MQTT 通訊通道
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
@@ -279,24 +282,27 @@
         client.on('connect', () => {
           setConnStatus('🟢 雲端就緒');
           client.subscribe(topic, { qos: 1 }, () => {
+            const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
+              id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+            };
+
             if (asHost) {
-              // 房長重連：廣播點名訊號，喚醒所有線上玩家回報，保持所有人連線與角色
+              // 房長重連：廣播點名訊號喚醒所有人，並同步自身最新狀態
               client.publish(topic, JSON.stringify({
                 type: 'HOST_RECONNECTED',
                 senderId: uid
               }), { qos: 1 });
 
-              // 房長以恢復的進度向全場進行一次全域廣播
               setTimeout(() => {
                 broadcastLatest();
               }, 400);
             } else {
-              // 一般玩家上線或重連
+              // 一般玩家重連：攜帶自身本地快取的完整身分與分房資料向房長報到
               client.publish(topic, JSON.stringify({
                 type: 'PLAYER_PING_SYNC',
                 senderId: uid,
                 isHost: false,
-                player: { id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false }
+                player: currentProfile
               }), { qos: 1 });
             }
           });
@@ -315,7 +321,7 @@
 
             // 一般玩家收到房長重連訊號，自動向房長上報當前身分與分房
             if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
-              const myCurrent = latestStateRef.current.players.find(p => p.id === uid) || {
+              const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
                 id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
               };
               client.publish(topic, JSON.stringify({
@@ -355,9 +361,19 @@
                 if (latestStateRef.current.isHost) {
                   setPlayers(prev => {
                     const existing = prev.find(p => p.id === data.player.id);
-                    const next = existing
-                      ? prev.map(p => p.id === data.player.id ? { ...p, name: data.player.name } : p)
-                      : [...prev, data.player];
+                    let next;
+                    if (existing) {
+                      // 保留既有身分資料，避免被空資料覆蓋
+                      next = prev.map(p => p.id === data.player.id ? {
+                        ...p,
+                        name: data.player.name,
+                        team: data.player.team || p.team,
+                        role: data.player.role || p.role,
+                        gameRoom: data.player.gameRoom || p.gameRoom
+                      } : p);
+                    } else {
+                      next = [...prev, data.player];
+                    }
                     setTimeout(() => { broadcastLatest({ players: next }); }, 80);
                     return next;
                   });
@@ -412,7 +428,6 @@
                 setCurrentRoundIndex(data.currentRoundIndex);
                 setTimeLeft(data.timeLeft);
 
-                // 同步遊戲場景與計時狀態
                 if (data.roomStatus === 'round_active') {
                   setGameState('game');
                   setIsTimerRunning(true);
@@ -440,7 +455,7 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       }, [broadcastLatest, executeSwapOnHost, resetToHome]);
 
-      // 初始化與完整遊戲進度快照恢復
+      // 初始化與全體斷線/瀏覽器關閉後冷啟動還原
       useEffect(() => {
         let storedId = localStorage.getItem('trb_player_uid_v5');
         if (!storedId) {
@@ -459,27 +474,45 @@
           setIsHost(savedIsHost);
 
           let initialList = [];
+          let restoredGameState = 'lobby';
+          let restoredRoomStatus = 'waiting';
 
-          // 房長端完整快照恢復（保證輪次、秒數、卡池、進行狀態全部無損重聚）
-          if (savedIsHost) {
-            try {
-              const savedContext = JSON.parse(localStorage.getItem('trb_saved_game_context') || '{}');
-              if (savedContext.roomStatus) {
-                setRoomStatus(savedContext.roomStatus);
-                setGameState(savedContext.gameState || 'lobby');
-                if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
-                if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
-                if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
-                if (savedContext.timeLeft !== undefined) setTimeLeft(savedContext.timeLeft);
-                if (savedContext.isTimerRunning) setIsTimerRunning(true);
-                if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
-                  initialList = savedContext.players;
+          try {
+            const savedContext = JSON.parse(localStorage.getItem('trb_saved_game_context') || '{}');
+            if (savedContext.roomStatus) {
+              restoredRoomStatus = savedContext.roomStatus;
+              restoredGameState = savedContext.gameState || 'lobby';
+              setRoomStatus(restoredRoomStatus);
+              setGameState(restoredGameState);
+
+              if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
+              if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
+              if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
+
+              // 房長關閉分頁期間的離線秒數補償
+              if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
+                const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
+                const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
+                setTimeLeft(remaining);
+                if (remaining > 0) {
+                  setIsTimerRunning(true);
+                } else {
+                  setIsTimerRunning(false);
+                  setRoomStatus('round_paused');
                 }
+              } else if (savedContext.timeLeft !== undefined) {
+                setTimeLeft(savedContext.timeLeft);
+                if (savedContext.isTimerRunning) setIsTimerRunning(true);
               }
-            } catch (e) {}
-          } else {
-            setGameState('lobby');
-          }
+
+              // 還原名單或自身身分資料
+              if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
+                initialList = savedContext.players;
+              } else if (savedContext.myProfile) {
+                initialList = [savedContext.myProfile];
+              }
+            }
+          } catch (e) {}
 
           if (initialList.length === 0) {
             initialList = [{
@@ -679,7 +712,7 @@
         }
       };
 
-      // 步驟 1: 分房
+      // 分配房間
       const handleStartAssignRooms = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
@@ -716,7 +749,7 @@
         });
       };
 
-      // 步驟 2: 發放卡片並啟動計時
+      // 發放卡片並啟動計時
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -924,7 +957,7 @@
                     </span>
                   </h2>
                   <p className="text-xs text-zinc-400 mt-1">
-                    斷線或重新整理頁面皆可自動連回。房號：<strong className="text-white font-mono text-sm">{roomId}</strong>
+                    斷線、重新整理或關閉分頁重新開啟皆可自動連回。房號：<strong className="text-white font-mono text-sm">{roomId}</strong>
                   </p>
                 </div>
 
@@ -1112,6 +1145,7 @@
                           onClick={() => {
                             setRoomStatus('waiting');
                             setGameState('lobby');
+                            localStorage.removeItem('trb_saved_game_context');
                             broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60 });
                           }}
                           className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
