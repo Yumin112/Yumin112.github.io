@@ -173,7 +173,7 @@ window.OFFICIAL_PROPERTIES_CATALOG = [
   {
     id: 'zombie',
     name: '喪屍 (Zombie)',
-    icon: '☣️',
+    icon: '🧟',
     description: '陣營轉變為喪屍隊。勝利目標變更為：遊戲結束時所有未死亡的玩家皆屬於喪屍隊。'
   }
 ];
