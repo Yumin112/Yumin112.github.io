@@ -1,3 +1,6 @@
+/**
+ * 遊戲角色/描述 (Roles & desc) 清單
+ */
 window.OFFICIAL_ROLES_CATALOG = [
   // 核心身分
   { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '避開『炸彈客』直到遊戲結束。', pairs: 'bomb' },
