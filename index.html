@@ -155,7 +155,7 @@
 
             // 同步時間
             if (data.type === 'TIME_SYNC' && !asHost) {
-              setTimeLeft(data.timeLeft);
+              setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
           } catch(e) {}
         });
