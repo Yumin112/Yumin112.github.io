@@ -207,7 +207,7 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       };
 
-      // 全員本地每秒獨立倒數，房長每 2 秒發送校準封包
+      // 全員本地每秒獨立倒數，房長每5秒發送校準封包
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -218,7 +218,7 @@
                 return 0;
               }
               const nextSec = prev - 1;
-              if (latestStateRef.current.isHost && nextSec % 2 === 0 && clientRef.current) {
+              if (latestStateRef.current.isHost && nextSec % 5 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
                   senderId: myPlayerId,
