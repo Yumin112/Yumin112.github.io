@@ -1,0 +1,53 @@
+    const OFFICIAL_ROLES_CATALOG = [
+// 核心身分
+      { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '避開『炸彈客』直到遊戲結束。' },
+      { id: 'bomb', name: '炸彈客 (Bomber)', team: 'red', icon: '💣', desc: '跟『總統』在同一個房間，遊戲結束時引爆炸彈，同房間的人獲得『死亡』屬性。' },
+      { id: 'pres_d', name: '總統女兒 (President\'s Daughter)', team: 'blue', icon: '👧', desc: '你是『總統』備選人，若總統被埋葬你必須肩負起總統責任。' },
+      { id: 'martyr', name: '烈士 (Martyr)', team: 'red', icon: '🔥', desc: '你是『炸彈客』備選人，若炸彈客被埋葬你必須肩負起炸彈客責任。' },
+      { id: 'doctor', name: '醫生 (Doctor)', team: 'blue', icon: '🩺', desc: '遊戲結束前，你必須與『總統』進行過『卡片分享』，否則藍隊失敗。' },
+      { id: 'engineer', name: '工程師 (Engineer)', team: 'red', icon: '⚙️', desc: '遊戲結束前，你必須與『炸彈客』進行過『卡片分享』，否則紅隊失敗。' },
+      { id: 'nurse', name: '護士 (Nurse)', team: 'blue', icon: '💉', desc: '你是『醫生』備選人，若醫生被埋葬你必須承擔醫生職責。' },
+      { id: 'tinkerer', name: '工匠 (Tinkerer)', team: 'red', icon: '🔨', desc: '你是『工程師』備選人，若工程師被埋葬你必須承擔工程師職責。' },
+      
+      // 普通成員
+      { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🛡️', desc: '保護總統安全，不要讓『總統』與『炸彈客』在同一個房間！' },
+      { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🎯', desc: '協助炸彈客，讓『炸彈客』與『總統』在同一個房間引爆！' },
+
+      // 特殊陣營角色
+      { id: 'dr_boom', name: '爆炸先生 (Dr. Boom)', team: 'blue', icon: '💥', desc: '若你與『總統』進行了卡片分享，房內全體包含自己死亡，遊戲直接結束。' },
+      { id: 'tues_knight', name: '星期二騎士 (Tuesday Knight)', team: 'red', icon: '🛡️', desc: '若你與『炸彈客』進行了卡片分享，房內除了總統外全體死亡，遊戲直接結束。' },
+      { id: 'spy_b', name: '藍隊間諜 (Blue Spy)', team: 'red', icon: '🕵️‍♂️', desc: '卡片顯示紅色，但你的真實陣營為藍隊，請對藍隊忠誠！' },
+      { id: 'spy_r', name: '紅隊間諜 (Red Spy)', team: 'blue', icon: '🕵️‍♀️', desc: '卡片顯示藍色，但你的真實陣營為紅隊，請對紅隊忠誠！' },
+      { id: 'angel', name: '天使 (Angel)', team: 'blue', icon: '😇', desc: '獲得誠實屬性：只能說實話，但不需要說出口的可以隱瞞。' },
+      { id: 'demon', name: '惡魔 (Demon)', team: 'red', icon: '😈', desc: '獲得撒謊屬性：只能說謊話，不需要說出口的可以不撒謊。' },
+      { id: 'mime_b', name: '默劇演員 (Mime - 藍)', team: 'blue', icon: '🤐', desc: '全場必須盡力保持不發出任何聲音。' },
+      { id: 'mime_r', name: '默劇演員 (Mime - 紅)', team: 'red', icon: '🤐', desc: '全場必須盡力保持不發出任何聲音。' },
+      { id: 'coy_b', name: '靦腆少年 (Coy Boy - 藍)', team: 'blue', icon: '😳', desc: '只能進行『顏色分享』，無法進行卡片完整分享。' },
+      { id: 'coy_r', name: '靦腆少年 (Coy Boy - 紅)', team: 'red', icon: '😳', desc: '只能進行『顏色分享』，無法進行卡片完整分享。' },
+      { id: 'shy_b', name: '害羞小子 (Shy Guy - 藍)', team: 'blue', icon: '🙈', desc: '不能進行任何揭露行動。' },
+      { id: 'shy_r', name: '害羞小子 (Shy Guy - 紅)', team: 'red', icon: '🙈', desc: '不能進行任何揭露行動。' },
+      { id: 'security', name: '保安 (Security)', team: 'blue', icon: '👮', desc: '整場一次，公開揭露後指定一名同房玩家本輪不能作為人質離開房間。' },
+      { id: 'bouncer', name: '保鏢 (Bouncer)', team: 'red', icon: '🚪', desc: '房內人數多於對面時，可私下揭露要求一人立刻「滾出去」更換房間。' },
+      { id: 'clown', name: '小丑 (Clown)', team: 'blue', icon: '🤡', desc: '全場必須盡力保持微笑。' },
+      { id: 'agent', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '可找一名玩家私下揭露，強制對方與你進行卡片分享，無法拒絕。' },
+      { id: 'cupid', name: '愛神丘比特 (Cupid)', team: 'blue', icon: '💘', desc: '整場一次，指定兩位玩家相愛，兩人結算時必須在同一房間才能獲勝。' },
+      { id: 'eris', name: '厄里斯 (Eris)', team: 'red', icon: '⚡', desc: '整場一次，指定兩位玩家憎恨，兩人結算時必須在不同房間才能獲勝。' },
+      { id: 'mayor', name: '市長 (Mayor)', team: 'blue', icon: '🎩', desc: '房內偶數人數且有人篡奪領隊時，可公開揭露，你的投票算作兩票。' },
+      { id: 'ambassador', name: '大使 (Ambassador)', team: 'blue', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。' },
+
+      // 灰隊中立 (Grey Team)
+      { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '遊戲結束前公開自己並預測哪一隊獲勝（紅/藍/無），猜對獲勝。' },
+      { id: 'survivor', name: '倖存者 (Survivor)', team: 'grey', icon: '🧗', desc: '遊戲結束時，自己和『炸彈客』不在同一個房間時獲勝。' },
+      { id: 'victim', name: '受害者 (Victim)', team: 'grey', icon: '🎯', desc: '遊戲結束時，自己和『炸彈客』在同一個房間時獲勝。' },
+      { id: 'intern', name: '見習者 (Intern)', team: 'grey', icon: '🎒', desc: '遊戲結束時，自己和『總統』在同一個房間時獲勝。' },
+      { id: 'rival', name: '競爭者 (Rival)', team: 'grey', icon: '👔', desc: '遊戲結束時，自己和『總統』不在同一個房間時獲勝。' },
+      { id: 'sniper', name: '狙擊手 (Sniper)', team: 'grey', icon: '🔭', desc: '結算前公開身分並開槍，若擊中『目標』則獲勝。' },
+      { id: 'target', name: '目標 (Target)', team: 'grey', icon: '🎯', desc: '結算時若狙擊手沒有打中你則獲勝。' },
+      { id: 'decoy', name: '誘餌 (Decoy)', team: 'grey', icon: '🦆', desc: '結算時若狙擊手開槍打中你，則你獲勝！' },
+      { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '任何人與你分享卡片或顏色，必須立即與你交換身分卡繼續遊戲！' },
+      { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '愚蠢屬性不能拒絕分享，結算時若跟總統或炸彈客分享過則你單獨獲勝，全體失敗！' },
+      { id: 'traveler', name: '旅行家 (Traveler)', team: 'grey', icon: '🧳', desc: '遊戲中被當作人質交換達到指定次數（3輪需交換2次，5輪需交換3次）則獲勝。' },
+      
+      // 綠隊 (Green Team)
+      { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你卡片或顏色分享者皆感染成殭屍！全體存活玩家皆變成殭屍即獲勝。' }
+    ];
