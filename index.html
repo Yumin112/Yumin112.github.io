@@ -50,7 +50,7 @@
       const [isHost, setIsHost] = useState(false);
       const [connStatus, setConnStatus] = useState('未連線');
 
-      // 房間狀態與玩家
+      // 房間狀態與玩家名單
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting'); // 'waiting' | 'round_active' | 'round_paused' | 'ended'
 
@@ -68,7 +68,7 @@
       });
       const [showDeckModal, setShowDeckModal] = useState(false);
 
-      // 彈窗內部臨時狀態（防止修改過程中被網路廣播打斷覆蓋）
+      // 彈窗內部臨時狀態
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
 
@@ -76,21 +76,20 @@
       const [isRevealed, setIsRevealed] = useState(false);
       const [isGodMode, setIsGodMode] = useState(false);
 
-      // Refs：保證非同步與廣播時永遠取到最新狀態，避開 React 閉包陷阱
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
       const latestStateRef = useRef({
         players: [],
         roomStatus: 'waiting',
         roundSettings: [3, 2, 1],
-        roleCounts: { 'pres': 1, 'bomb': 1, 'doctor': 1, 'engineer': 1, 'blue_mem': 8, 'red_mem': 8 },
+        roleCounts: {},
         currentRoundIndex: 0,
         timeLeft: 180,
         isHost: false,
-        roomId: ''
+        roomId: '',
+        myPlayerId: ''
       });
 
-      // 同步最新狀態進 Ref
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -100,27 +99,18 @@
           currentRoundIndex,
           timeLeft,
           isHost,
-          roomId
+          roomId,
+          myPlayerId
         };
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isHost, roomId]);
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isHost, roomId, myPlayerId]);
 
-      // 初始化個人 ID
-      useEffect(() => {
-        let storedId = sessionStorage.getItem('trb_player_uid_v4');
-        if (!storedId) {
-          storedId = 'u_' + Math.random().toString(36).substring(2, 9);
-          sessionStorage.setItem('trb_player_uid_v4', storedId);
-        }
-        setMyPlayerId(storedId);
-      }, []);
-
-      // 廣播最新全場狀態
+      // 廣播全場狀態
       const broadcastLatest = (override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
         clientRef.current.publish(`trb_game_sync_room_${s.roomId}`, JSON.stringify({
           type: 'FULL_SYNC',
-          senderId: myPlayerId,
+          senderId: s.myPlayerId,
           players: s.players,
           roomStatus: s.roomStatus,
           roleCounts: s.roleCounts,
@@ -130,14 +120,18 @@
         }));
       };
 
-      // 建立 MQTT 雲端通道
-      const setupConnection = (code, asHost, name) => {
+      // 雲端 MQTT 連線通道
+      const setupConnection = (code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
         const topic = `trb_game_sync_room_${code}`;
 
+        if (clientRef.current) {
+          try { clientRef.current.end(true); } catch(e) {}
+        }
+
         const client = mqtt.connect(brokerUrl, {
-          clientId: `trb_${myPlayerId}_${Math.random().toString(16).substr(2, 6)}`,
+          clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,
           clean: true,
           reconnectPeriod: 2000
         });
@@ -147,36 +141,51 @@
         client.on('connect', () => {
           setConnStatus('🟢 雲端就緒');
           client.subscribe(topic, { qos: 1 }, () => {
-            if (!asHost) {
-              client.publish(topic, JSON.stringify({
-                type: 'JOIN_REQ',
-                senderId: myPlayerId,
-                player: { id: myPlayerId, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null }
-              }));
-            }
+            // 自動廣播加入／重連請求
+            client.publish(topic, JSON.stringify({
+              type: 'PLAYER_PING_SYNC',
+              senderId: uid,
+              isHost: asHost,
+              player: { id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null }
+            }));
           });
         });
 
         client.on('message', (t, msg) => {
           try {
             const data = JSON.parse(msg.toString());
-            // 忽略自己發送的廣播，避免本地剛改完又被舊廣播回彈覆蓋
-            if (data.senderId === myPlayerId) return;
+            if (data.senderId === uid) return;
 
-            // 房長收到新玩家加入
-            if (data.type === 'JOIN_REQ' && latestStateRef.current.isHost) {
+            // 房長收到新玩家加入或重連
+            if (data.type === 'PLAYER_PING_SYNC' && latestStateRef.current.isHost) {
               setPlayers(prev => {
-                const exists = prev.some(p => p.id === data.player.id);
-                const next = exists ? prev.map(p => p.id === data.player.id ? data.player : p) : [...prev, data.player];
-                // 使用最新 Ref 資料回覆新加入者，絕不覆蓋當前設定
+                const existing = prev.find(p => p.id === data.player.id);
+                let next;
+                if (existing) {
+                  // 重連回來：保留原有的房間、身分與陣營
+                  next = prev.map(p => p.id === data.player.id ? { ...p, name: data.player.name } : p);
+                } else {
+                  next = [...prev, data.player];
+                }
                 setTimeout(() => {
                   broadcastLatest({ players: next });
-                }, 50);
+                }, 80);
                 return next;
               });
             }
 
-            // 同步全場狀態
+            // 玩家主動離開通知
+            if (data.type === 'PLAYER_LEFT') {
+              setPlayers(prev => {
+                const next = prev.filter(p => p.id !== data.playerId);
+                if (latestStateRef.current.isHost) {
+                  setTimeout(() => { broadcastLatest({ players: next }); }, 50);
+                }
+                return next;
+              });
+            }
+
+            // 全局同步
             if (data.type === 'FULL_SYNC') {
               setPlayers(data.players);
               setRoomStatus(data.roomStatus);
@@ -197,7 +206,7 @@
               }
             }
 
-            // 時間校準 (差距 > 1 秒才平滑修正)
+            // 時間校正 (每 5 秒校正一次)
             if (data.type === 'TIME_SYNC' && !latestStateRef.current.isHost) {
               setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
@@ -207,7 +216,29 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       };
 
-      // 全員本地每秒獨立倒數，房長每5秒發送校準封包
+      // 檢查 localStorage 達成「斷線與重新整理自動恢復」
+      useEffect(() => {
+        let storedId = localStorage.getItem('trb_player_uid_v5');
+        if (!storedId) {
+          storedId = 'u_' + Math.random().toString(36).substring(2, 9);
+          localStorage.setItem('trb_player_uid_v5', storedId);
+        }
+        setMyPlayerId(storedId);
+
+        const savedRoomId = localStorage.getItem('trb_saved_room_id');
+        const savedPlayerName = localStorage.getItem('trb_saved_player_name');
+        const savedIsHost = localStorage.getItem('trb_saved_is_host') === 'true';
+
+        if (savedRoomId && savedPlayerName) {
+          setRoomId(savedRoomId);
+          setPlayerName(savedPlayerName);
+          setIsHost(savedIsHost);
+          setGameState('lobby'); // 先切回大廳，連線成功後 FULL_SYNC 會自動推進到遊戲畫面
+          setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);
+        }
+      }, []);
+
+      // 全員本地每秒獨立倒數，房長每 5 秒廣播校準一次
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -218,6 +249,7 @@
                 return 0;
               }
               const nextSec = prev - 1;
+              // 房長每 5 秒發送一次對時校準
               if (latestStateRef.current.isHost && nextSec % 5 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
@@ -232,7 +264,7 @@
           clearInterval(timerIntervalRef.current);
         }
         return () => clearInterval(timerIntervalRef.current);
-      }, [isTimerRunning, roomStatus, timeLeft, roomId]);
+      }, [isTimerRunning, roomStatus, timeLeft, roomId, isHost, myPlayerId]);
 
       const handleRoundTimeUp = () => {
         setIsTimerRunning(false);
@@ -246,13 +278,18 @@
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null };
 
+        // 存入本機避免重整丟失
+        localStorage.setItem('trb_saved_room_id', code);
+        localStorage.setItem('trb_saved_player_name', trimmedName);
+        localStorage.setItem('trb_saved_is_host', 'true');
+
         setRoomId(code);
         setIsHost(true);
         setPlayers([me]);
         setRoomStatus('waiting');
         setGameState('lobby');
 
-        setupConnection(code, true, trimmedName);
+        setupConnection(code, true, trimmedName, myPlayerId);
       };
 
       // 2. 加入房間
@@ -264,20 +301,53 @@
           return;
         }
 
+        // 存入本機避免重整丟失
+        localStorage.setItem('trb_saved_room_id', code);
+        localStorage.setItem('trb_saved_player_name', trimmedName);
+        localStorage.setItem('trb_saved_is_host', 'false');
+
         setRoomId(code);
         setIsHost(false);
         setGameState('lobby');
 
-        setupConnection(code, false, trimmedName);
+        setupConnection(code, false, trimmedName, myPlayerId);
       };
 
-      // 開啟輪次設定彈窗
+      // 3. 離開房間功能
+      const handleLeaveRoom = () => {
+        if (!window.confirm('確定要離開當前房間嗎？')) return;
+
+        // 廣播告知所有人自己離開
+        if (clientRef.current && roomId) {
+          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+            type: 'PLAYER_LEFT',
+            playerId: myPlayerId
+          }));
+          try { clientRef.current.end(true); } catch(e) {}
+        }
+
+        // 清理本地儲存
+        localStorage.removeItem('trb_saved_room_id');
+        localStorage.removeItem('trb_saved_player_name');
+        localStorage.removeItem('trb_saved_is_host');
+
+        // 重置所有狀態回首頁
+        setRoomId('');
+        setIsHost(false);
+        setPlayers([]);
+        setGameState('home');
+        setRoomStatus('waiting');
+        setIsTimerRunning(false);
+        setConnStatus('未連線');
+      };
+
+      // 開啟輪次設定
       const openRoundConfigModal = () => {
         setTempRoundSettings([...roundSettings]);
         setShowRoundConfigModal(true);
       };
 
-      // 保存輪次設定（按下確認才生效並廣播）
+      // 保存輪次設定
       const saveRoundConfig = () => {
         setRoundSettings(tempRoundSettings);
         setShowRoundConfigModal(false);
@@ -290,7 +360,7 @@
         setShowDeckModal(true);
       };
 
-      // 保存角色池設定（按下確認才生效並廣播）
+      // 保存角色池設定
       const saveDeckConfig = () => {
         setRoleCounts(tempRoleCounts);
         setShowDeckModal(false);
@@ -305,7 +375,7 @@
         return Object.values(tempRoleCounts).reduce((sum, c) => sum + (c || 0), 0);
       }, [tempRoleCounts]);
 
-      // 3. 開始遊戲
+      // 4. 開始遊戲
       const handleStartGame = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
@@ -353,7 +423,7 @@
         });
       };
 
-      // 4. 房長確認進入下一輪
+      // 5. 進入下一輪或揭示
       const handleNextRoundConfirm = () => {
         if (currentRoundIndex + 1 < roundSettings.length) {
           const nextIdx = currentRoundIndex + 1;
@@ -408,12 +478,22 @@
             </div>
 
             {roomId && (
-              <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                <span className="text-xs text-zinc-400">房號:</span>
-                <span className="text-base font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
-                <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
-                  {isHost ? '房長' : '玩家'}
-                </span>
+              <div className="flex items-center gap-2">
+                <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                  <span className="text-xs text-zinc-400">房號:</span>
+                  <span className="text-base font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
+                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
+                    {isHost ? '房長' : '玩家'}
+                  </span>
+                </div>
+
+                {/* 離開房間按鈕 */}
+                <button
+                  onClick={handleLeaveRoom}
+                  className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-200 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1"
+                >
+                  🚪 離開
+                </button>
               </div>
             )}
           </header>
@@ -479,10 +559,12 @@
                       在線人數: <strong className="text-amber-400">{players.length}</strong> 人
                     </span>
                   </h2>
-                  <p className="text-xs text-zinc-400 mt-1">請告知朋友在手機輸入房號 <strong className="text-white font-mono text-sm">{roomId}</strong> 加入房間。</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    斷線或重新整理頁面皆可自動連回。房號：<strong className="text-white font-mono text-sm">{roomId}</strong>
+                  </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {isHost && (
                     <button
                       onClick={openRoundConfigModal}
@@ -580,7 +662,7 @@
                   )}
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   {isHost && roomStatus === 'round_paused' && (
                     <button
                       onClick={handleNextRoundConfirm}
@@ -745,7 +827,7 @@
             </div>
           )}
 
-          {/* 回合設定彈窗 Modal (本地編輯，確認才保存廣播) */}
+          {/* 回合設定彈窗 */}
           {showRoundConfigModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
@@ -816,7 +898,7 @@
             </div>
           )}
 
-          {/* 卡池設定彈窗 Modal (本地編輯，確認才保存廣播) */}
+          {/* 卡池設定彈窗 */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
