@@ -35,7 +35,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-    // 陣營色彩映射配置
+    // 陣營色彩配置
     const TEAM_CONFIG = {
       red: {
         label: '紅隊 (Red)',
@@ -101,7 +101,7 @@
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      // 基本設定
+      // 房間與連線基本狀態
       const [gameState, setGameState] = useState('home'); 
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
@@ -109,29 +109,30 @@
       const [myPlayerId, setMyPlayerId] = useState('');
       const [isHost, setIsHost] = useState(false);
       const [connStatus, setConnStatus] = useState('未連線');
+      const [isVerifying, setIsVerifying] = useState(false);
 
-      // 玩家與房間狀態
+      // 玩家與遊戲狀態
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
 
-      // 輪次設定 (移除 4 輪，保留 3 與 5 輪)
+      // 輪次配置
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 卡池預設數量
+      // 卡池配置
       const [roleCounts, setRoleCounts] = useState({
         pres: 1, bomb: 1, doctor: 1, engineer: 1
       });
       const [showDeckModal, setShowDeckModal] = useState(false);
 
-      // 彈窗內部暫存狀態
+      // 彈窗暫存設定
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
 
-      // 遊戲機制狀態
+      // 互動狀態
       const [isColorOnly, setIsColorOnly] = useState(false);
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
       const [swapRequestData, setSwapRequestData] = useState(null); 
@@ -142,6 +143,7 @@
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
+      // 保存最新狀態參照，避免閉包陳舊引用
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -154,9 +156,13 @@
           roomId,
           myPlayerId
         };
+        // 房長端同步名單到本機快取，重整時可秒級拉回
+        if (isHost && players.length > 0) {
+          localStorage.setItem('trb_saved_players_cache', JSON.stringify(players));
+        }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isHost, roomId, myPlayerId]);
 
-      // 廣播最新全場狀態
+      // 廣播全場狀態
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -181,6 +187,7 @@
         localStorage.removeItem('trb_saved_room_id');
         localStorage.removeItem('trb_saved_player_name');
         localStorage.removeItem('trb_saved_is_host');
+        localStorage.removeItem('trb_saved_players_cache');
 
         setRoomId('');
         setIsHost(false);
@@ -190,10 +197,11 @@
         setIsTimerRunning(false);
         setSwapRequestData(null);
         setSwapStatusMessage('');
+        setIsVerifying(false);
         setConnStatus('未連線');
       }, []);
 
-      // 房長執行身分互換
+      // 房長執行交換核心
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
           const p1 = prev.find(p => p.id === id1);
@@ -238,7 +246,7 @@
         });
       }, [broadcastLatest]);
 
-      // 建立 MQTT 連線
+      // 雲端 MQTT 通訊通道
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
@@ -259,19 +267,20 @@
         client.on('connect', () => {
           setConnStatus('🟢 雲端就緒');
           client.subscribe(topic, { qos: 1 }, () => {
-            // 連線後廣播加入或重連資訊
-            client.publish(topic, JSON.stringify({
-              type: 'PLAYER_PING_SYNC',
-              senderId: uid,
-              isHost: asHost,
-              player: { id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false }
-            }), { qos: 1 });
-
-            // 若自己是房長，連線後主動廣播當前狀態以喚醒全房
             if (asHost) {
-              setTimeout(() => {
-                broadcastLatest();
-              }, 300);
+              // 房長重連：廣播點名訊號讓所有人重新向房長回報，防止名單丟失
+              client.publish(topic, JSON.stringify({
+                type: 'HOST_RECONNECTED',
+                senderId: uid
+              }), { qos: 1 });
+            } else {
+              // 一般玩家上線或重連
+              client.publish(topic, JSON.stringify({
+                type: 'PLAYER_PING_SYNC',
+                senderId: uid,
+                isHost: false,
+                player: { id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false }
+              }), { qos: 1 });
             }
           });
         });
@@ -280,10 +289,45 @@
           try {
             const data = JSON.parse(msg.toString());
 
-            // 收到房間解散廣播，不論發布者是誰一律踢回首頁
+            // 房間解散通知
             if (data.type === 'ROOM_DISBANDED') {
               alert('房長已離開，房間已解散！');
               resetToHome();
+              return;
+            }
+
+            // 【核心修復】：一般玩家收到房長重連訊號，主動將自己的完整資料上報給房長
+            if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
+              const myCurrent = latestStateRef.current.players.find(p => p.id === uid) || {
+                id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+              };
+              client.publish(topic, JSON.stringify({
+                type: 'REPORT_PRESENCE',
+                senderId: uid,
+                player: myCurrent
+              }), { qos: 1 });
+              return;
+            }
+
+            // 【核心修復】：房長收到玩家報到，彙整名單並同步
+            if (data.type === 'REPORT_PRESENCE' && latestStateRef.current.isHost) {
+              setPlayers(prev => {
+                const exists = prev.some(p => p.id === data.player.id);
+                const next = exists 
+                  ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
+                  : [...prev, data.player];
+                setTimeout(() => { broadcastLatest({ players: next }); }, 100);
+                return next;
+              });
+              return;
+            }
+
+            // 新玩家驗證房間房長在線請求
+            if (data.type === 'CHECK_ROOM_REQ' && latestStateRef.current.isHost) {
+              client.publish(topic, JSON.stringify({
+                type: 'ROOM_VERIFIED',
+                senderId: uid
+              }), { qos: 1 });
               return;
             }
 
@@ -291,7 +335,6 @@
 
             switch (data.type) {
               case 'PLAYER_PING_SYNC':
-                // 房長收到其他玩家加入/重連，更新名單並回傳全場狀態
                 if (latestStateRef.current.isHost) {
                   setPlayers(prev => {
                     const existing = prev.find(p => p.id === data.player.id);
@@ -379,7 +422,7 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       }, [broadcastLatest, executeSwapOnHost, resetToHome]);
 
-      // 初始化與重新整理自動恢復
+      // 初始化與重整恢復流程
       useEffect(() => {
         let storedId = localStorage.getItem('trb_player_uid_v5');
         if (!storedId) {
@@ -398,23 +441,35 @@
           setIsHost(savedIsHost);
           setGameState('lobby');
 
-          // 【修復 2】：重新整理時先在本地名單填入自己，防止畫面顯示 0 人
-          const selfPlayer = {
-            id: storedId,
-            name: savedPlayerName,
-            isHost: savedIsHost,
-            team: null,
-            role: null,
-            gameRoom: null,
-            hasBeenLeprechaun: false
-          };
-          setPlayers([selfPlayer]);
+          // 【修復核心】：房長重整優先讀取本機快取名單，避免重整瞬間名單被清空
+          let initialList = [];
+          if (savedIsHost) {
+            try {
+              const cached = JSON.parse(localStorage.getItem('trb_saved_players_cache') || '[]');
+              if (Array.isArray(cached) && cached.length > 0) {
+                initialList = cached;
+              }
+            } catch (e) {}
+          }
+
+          if (initialList.length === 0) {
+            initialList = [{
+              id: storedId,
+              name: savedPlayerName,
+              isHost: savedIsHost,
+              team: null,
+              role: null,
+              gameRoom: null,
+              hasBeenLeprechaun: false
+            }];
+          }
+          setPlayers(initialList);
 
           setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);
         }
       }, [setupConnection]);
 
-      // 計時器邏輯
+      // 計時器排程
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -445,7 +500,7 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest]);
 
-      // 記憶化衍生資料
+      // 記憶化衍生狀態
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
@@ -476,7 +531,7 @@
         }
       }, [canSwapRole, swapStatusMessage]);
 
-      // 建立房間
+      // 建立新房間
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -485,6 +540,7 @@
         localStorage.setItem('trb_saved_room_id', code);
         localStorage.setItem('trb_saved_player_name', trimmedName);
         localStorage.setItem('trb_saved_is_host', 'true');
+        localStorage.setItem('trb_saved_players_cache', JSON.stringify([me]));
 
         setRoomId(code);
         setIsHost(true);
@@ -495,7 +551,7 @@
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
-      // 加入房間
+      // 加入房間驗證
       const handleJoinRoom = () => {
         const trimmedName = playerName.trim() || '特工';
         const code = joinRoomInput.trim();
@@ -504,18 +560,76 @@
           return;
         }
 
-        localStorage.setItem('trb_saved_room_id', code);
-        localStorage.setItem('trb_saved_player_name', trimmedName);
-        localStorage.setItem('trb_saved_is_host', 'false');
+        setIsVerifying(true);
 
-        setRoomId(code);
-        setIsHost(false);
-        setGameState('lobby');
+        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+        const topic = `trb_game_sync_room_${code}`;
+        const tempClient = mqtt.connect(brokerUrl, {
+          clientId: `trb_verify_${myPlayerId}_${Math.random().toString(16).substr(2, 6)}`,
+          clean: true
+        });
 
-        setupConnection(code, false, trimmedName, myPlayerId);
+        let verified = false;
+
+        const timeoutTimer = setTimeout(() => {
+          if (!verified) {
+            try { tempClient.end(true); } catch(e) {}
+            setIsVerifying(false);
+            alert(`找不到房間「${code}」或房長不在線，無法加入！`);
+          }
+        }, 3000);
+
+        tempClient.on('connect', () => {
+          tempClient.subscribe(topic, { qos: 1 }, () => {
+            tempClient.publish(topic, JSON.stringify({
+              type: 'CHECK_ROOM_REQ',
+              senderId: myPlayerId
+            }), { qos: 1 });
+          });
+        });
+
+        tempClient.on('message', (t, msg) => {
+          try {
+            const data = JSON.parse(msg.toString());
+            if (data.type === 'ROOM_VERIFIED') {
+              verified = true;
+              clearTimeout(timeoutTimer);
+              try { tempClient.end(true); } catch(e) {}
+              setIsVerifying(false);
+
+              localStorage.setItem('trb_saved_room_id', code);
+              localStorage.setItem('trb_saved_player_name', trimmedName);
+              localStorage.setItem('trb_saved_is_host', 'false');
+
+              setRoomId(code);
+              setIsHost(false);
+              setGameState('lobby');
+
+              const selfPlayer = {
+                id: myPlayerId,
+                name: trimmedName,
+                isHost: false,
+                team: null,
+                role: null,
+                gameRoom: null,
+                hasBeenLeprechaun: false
+              };
+              setPlayers([selfPlayer]);
+
+              setupConnection(code, false, trimmedName, myPlayerId);
+            }
+          } catch(e) {}
+        });
+
+        tempClient.on('error', () => {
+          clearTimeout(timeoutTimer);
+          setIsVerifying(false);
+          try { tempClient.end(true); } catch(e) {}
+          alert('連線伺服器失敗，請稍後再試！');
+        });
       };
 
-      // 【修復 1】：退出房間（確保 MQTT 廣播確實傳送完畢才切斷連線）
+      // 離開房間
       const handleLeaveRoom = () => {
         const confirmMsg = isHost ? '您是房長，離開後將會解散房間，確定要離開嗎？' : '確定要離開當前房間嗎？';
         if (!window.confirm(confirmMsg)) return;
@@ -531,16 +645,13 @@
             resetToHome();
           });
 
-          // 逾時保險
-          setTimeout(() => {
-            resetToHome();
-          }, 400);
+          setTimeout(() => { resetToHome(); }, 400);
         } else {
           resetToHome();
         }
       };
 
-      // 步驟 1: 分房
+      // 分配房間
       const handleStartAssignRooms = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
@@ -577,7 +688,7 @@
         });
       };
 
-      // 步驟 2: 發放卡片並啟動計時
+      // 發放卡片並啟動計時
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -762,10 +873,11 @@
                   />
                   <button
                     type="button"
+                    disabled={isVerifying}
                     onClick={handleJoinRoom}
-                    className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl text-white font-medium transition active:scale-95"
+                    className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl text-white font-medium transition active:scale-95 disabled:opacity-50 min-w-[80px]"
                   >
-                    加入
+                    {isVerifying ? '驗證中...' : '加入'}
                   </button>
                 </div>
               </div>
@@ -820,7 +932,7 @@
                 </div>
               </div>
 
-              {/* 回合資訊 */}
+              {/* 回合資訊預覽 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-wrap gap-4 text-xs text-zinc-400 justify-between items-center">
                 <div className="flex items-center gap-2">
                   <span className="text-amber-400 font-bold">⏱️ 回合時間規劃:</span>
@@ -1207,7 +1319,7 @@
             </div>
           )}
 
-          {/* 彈窗 3：回合設定 */}
+          {/* 回合設定彈窗 */}
           {showRoundConfigModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1282,7 +1394,7 @@
             </div>
           )}
 
-          {/* 彈窗 4：卡池設定 */}
+          {/* 卡池配置彈窗 */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
