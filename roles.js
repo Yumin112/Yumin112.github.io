@@ -33,7 +33,8 @@ window.OFFICIAL_ROLES_CATALOG = [
       { id: 'cupid', name: '愛神丘比特 (Cupid)', team: 'blue', icon: '💘', desc: '整場一次，指定兩位玩家相愛，兩人結算時必須在同一房間才能獲勝。' },
       { id: 'eris', name: '厄里斯 (Eris)', team: 'red', icon: '⚡', desc: '整場一次，指定兩位玩家憎恨，兩人結算時必須在不同房間才能獲勝。' },
       { id: 'mayor', name: '市長 (Mayor)', team: 'blue', icon: '🎩', desc: '房內偶數人數且有人篡奪領隊時，可公開揭露，你的投票算作兩票。' },
-      { id: 'ambassador', name: '大使 (Ambassador)', team: 'blue', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。' },
+      { id: 'ambassador', name: '大使 (Ambassador - 藍)', team: 'blue', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。' },
+      { id: 'ambassador', name: '大使 (Ambassador - 紅)', team: 'red', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。' },
 
       // 灰隊中立 (Grey Team)
       { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '遊戲結束前公開自己並預測哪一隊獲勝（紅/藍/無），猜對獲勝。' },
