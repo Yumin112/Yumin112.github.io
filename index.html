@@ -165,16 +165,17 @@
 
       // 房長計時器
       useEffect(() => {
-        if (isHost && isTimerRunning && timeLeft > 0) {
+        if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
             setTimeLeft(prev => {
               if (prev <= 1) {
                 clearInterval(timerIntervalRef.current);
-                handleRoundTimeUp();
+                if (isHost) handleRoundTimeUp();
                 return 0;
               }
               const nextSec = prev - 1;
-              if (nextSec % 3 === 0 && clientRef.current) {
+              // 房長在背後每 2 秒發送一次時間戳記，供其他手機校時
+              if (isHost && nextSec % 2 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
                   timeLeft: nextSec
@@ -187,7 +188,7 @@
           clearInterval(timerIntervalRef.current);
         }
         return () => clearInterval(timerIntervalRef.current);
-      }, [isHost, isTimerRunning, timeLeft, roomId]);
+      }, [isHost, isTimerRunning, roomStatus, timeLeft, roomId]);
 
       const handleRoundTimeUp = () => {
         setIsTimerRunning(false);
