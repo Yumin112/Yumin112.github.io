@@ -122,7 +122,7 @@
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 卡池配置（預設四張）
+      // 卡池配置
       const [roleCounts, setRoleCounts] = useState({
         pres: 1, bomb: 1, doctor: 1, engineer: 1
       });
@@ -143,7 +143,7 @@
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
-      // 保持最新狀態映射，持續儲存全體快照
+      // 同步最新狀態參照，全員持久化保存個人進度快照
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -177,7 +177,7 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState]);
 
-      // 廣播全場最新狀態
+      // 廣播全場狀態
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -193,7 +193,7 @@
         }), { qos: 1 });
       }, []);
 
-      // 重置並返回首頁
+      // 本地重置狀態並返回首頁
       const resetToHome = useCallback(() => {
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch(e) {}
@@ -216,7 +216,7 @@
         setConnStatus('未連線');
       }, []);
 
-      // 房長執行身分互換
+      // 房長執行交換核心
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
           const p1 = prev.find(p => p.id === id1);
@@ -1035,6 +1035,47 @@
                   ))}
                 </div>
               </div>
+
+              {/* 在等候大廳線上玩家列表下方新增「本局使用角色池一覽」 */}
+              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🃏</span>
+                    <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
+                  </div>
+                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
+                    總共 {totalCardsInDeck} 張卡片
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeRolesInDeck.map(role => {
+                    const meta = getTeamMeta(role.team);
+                    return (
+                      <div
+                        key={role.id}
+                        className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${meta.listBg}`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-2xl mt-0.5">{role.icon}</span>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-sm text-zinc-100">{role.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
+                                {meta.label}
+                              </span>
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{role.desc}</p>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-xs font-mono font-bold bg-zinc-800 px-2 py-1 rounded-lg text-amber-400 border border-zinc-700">
+                          x{role.count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1254,7 +1295,7 @@
                     </div>
                   </div>
 
-                  {/* 角色池一覽 */}
+                  {/* 遊戲中角色池一覽 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -1460,7 +1501,7 @@
             </div>
           )}
 
-          {/* 卡池配置彈窗（優化：點擊整張卡片開關啟用/停用） */}
+          {/* 卡池配置彈窗 */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
@@ -1504,7 +1545,6 @@
                               </span>
                             </div>
 
-                            {/* 點擊切換狀態標籤 */}
                             <div className="shrink-0">
                               <span className={`text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
                                 isSelected 
