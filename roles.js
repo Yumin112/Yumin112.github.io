@@ -1,7 +1,7 @@
 window.OFFICIAL_ROLES_CATALOG = [
   // 核心身分
-  { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '避開『炸彈客』直到遊戲結束。' },
-  { id: 'bomb', name: '炸彈客 (Bomber)', team: 'red', icon: '💣', desc: '跟『總統』在同一個房間，遊戲結束時引爆炸彈，同房間的人獲得『死亡』屬性。' },
+  { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '避開『炸彈客』直到遊戲結束。', pairs: 'bomb' },
+  { id: 'bomb', name: '炸彈客 (Bomber)', team: 'red', icon: '💣', desc: '跟『總統』在同一個房間，遊戲結束時引爆炸彈，同房間的人獲得『死亡』屬性。', pairs: 'pres' },
   { id: 'pres_d', name: '總統女兒 (President\'s Daughter)', team: 'blue', icon: '👧', desc: '你是『總統』備選人，若總統被埋葬你必須肩負起總統責任。' },
   { id: 'martyr', name: '烈士 (Martyr)', team: 'red', icon: '🔥', desc: '你是『炸彈客』備選人，若炸彈客被埋葬你必須肩負起炸彈客責任。' },
   { id: 'doctor', name: '醫生 (Doctor)', team: 'blue', icon: '🩺', desc: '遊戲結束前，你必須與『總統』進行過『卡片分享』，否則藍隊失敗。' },
