@@ -131,6 +131,7 @@
       // 彈窗暫存設定
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
+      const [deckViewMode, setDeckViewMode] = useState('detailed'); // 'detailed' | 'iconOnly'
 
       // 互動狀態
       const [isColorOnly, setIsColorOnly] = useState(false);
@@ -143,7 +144,7 @@
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
-      // 同步最新狀態參照，全員持久化保存個人進度快照
+      // 保持最新狀態映射，全員持久化保存個人進度快照
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -482,7 +483,6 @@
               if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
               if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
 
-              // 房長關閉分頁期間的離線秒數補償
               if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
                 const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
                 const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
@@ -856,6 +856,16 @@
         });
       };
 
+      // 全部取消選取
+      const handleDeselectAllRoles = () => {
+        if (!isHost) return;
+        const cleared = {};
+        rolesCatalog.forEach(role => {
+          cleared[role.id] = 0;
+        });
+        setTempRoleCounts(cleared);
+      };
+
       const formatTime = (secs) => {
         const m = Math.floor(secs / 60);
         const s = secs % 60;
@@ -965,32 +975,33 @@
                   </p>
                 </div>
 
+                {/* 【優化 1】：僅房長具備回合設定、卡池設定與開始遊戲按鈕 */}
                 <div className="flex flex-wrap items-center gap-2.5">
-                  {isHost && (
-                    <button
-                      onClick={() => { setTempRoundSettings([...roundSettings]); setShowRoundConfigModal(true); }}
-                      className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition active:scale-95"
-                    >
-                      ⚙️ 回合設定 ({roundSettings.length}輪)
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => { setTempRoleCounts({ ...roleCounts }); setShowDeckModal(true); }}
-                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition active:scale-95"
-                  >
-                    🃏 角色池配置 ({totalCardsInDeck}張)
-                  </button>
-
                   {isHost ? (
-                    <button
-                      onClick={handleStartAssignRooms}
-                      className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition active:scale-95"
-                    >
-                      🎲 開始遊戲 & 分房
-                    </button>
+                    <React.Fragment>
+                      <button
+                        onClick={() => { setTempRoundSettings([...roundSettings]); setShowRoundConfigModal(true); }}
+                        className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition active:scale-95"
+                      >
+                        ⚙️ 回合設定 ({roundSettings.length}輪)
+                      </button>
+
+                      <button
+                        onClick={() => { setTempRoleCounts({ ...roleCounts }); setShowDeckModal(true); }}
+                        className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition active:scale-95"
+                      >
+                        🃏 角色池配置 ({totalCardsInDeck}張)
+                      </button>
+
+                      <button
+                        onClick={handleStartAssignRooms}
+                        className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition active:scale-95"
+                      >
+                        🎲 開始遊戲 & 分房
+                      </button>
+                    </React.Fragment>
                   ) : (
-                    <span className="text-xs text-amber-400 bg-amber-400/10 px-3 py-2 rounded-xl border border-amber-400/20 animate-pulse">
+                    <span className="text-xs text-amber-400 bg-amber-400/10 px-4 py-2 rounded-xl border border-amber-400/20 animate-pulse font-medium">
                       ⏳ 等待房長開始遊戲...
                     </span>
                   )}
@@ -1036,7 +1047,7 @@
                 </div>
               </div>
 
-              {/* 在等候大廳線上玩家列表下方新增「本局使用角色池一覽」 (已移除 x1 數量徽章) */}
+              {/* 等候大廳專屬：本局使用角色池一覽 */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1292,7 +1303,7 @@
                     </div>
                   </div>
 
-                  {/* 遊戲中角色池一覽 (已移除 x1 數量徽章) */}
+                  {/* 遊戲中角色池一覽 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -1495,12 +1506,13 @@
             </div>
           )}
 
-          {/* 卡池配置彈窗 */}
+          {/* 卡池配置彈窗（含全選清空與檢視切換模式） */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
-                <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-                  <div>
+                {/* 彈窗頂部 */}
+                <div className="p-4 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                       <span>🃏 角色池配置</span>
                       <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">
@@ -1508,16 +1520,72 @@
                       </span>
                     </h3>
                   </div>
-                  <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center">
-                    ✕
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {/* 【優化 2-1】：全部取消選取 */}
+                    {isHost && (
+                      <button
+                        type="button"
+                        onClick={handleDeselectAllRoles}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1.5 rounded-lg transition active:scale-95"
+                      >
+                        清空選取
+                      </button>
+                    )}
+
+                    {/* 【優化 2-2】：檢視模式切換（僅圖示 / 詳細資料） */}
+                    <button
+                      type="button"
+                      onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
+                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
+                    >
+                      {deckViewMode === 'detailed' ? '👁️ 僅圖示' : '📄 詳細資料'}
+                    </button>
+
+                    <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center hover:text-white">
+                      ✕
+                    </button>
+                  </div>
                 </div>
 
+                {/* 卡池列表 */}
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className={`grid gap-2.5 ${deckViewMode === 'iconOnly' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                     {rolesCatalog.map(role => {
                       const isSelected = (tempRoleCounts[role.id] || 0) > 0;
                       const meta = getTeamMeta(role.team);
+
+                      // 僅圖示與名稱簡約模式
+                      if (deckViewMode === 'iconOnly') {
+                        return (
+                          <div 
+                            key={role.id} 
+                            onClick={() => handleToggleRole(role.id)}
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition cursor-pointer select-none ${
+                              isSelected 
+                                ? `${meta.listBg} border-indigo-400 ring-2 ring-indigo-500/40 shadow-md` 
+                                : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 opacity-60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="text-xl shrink-0">{role.icon}</span>
+                              <div className="truncate">
+                                <div className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
+                                  {role.name}
+                                </div>
+                                <span className={`text-[9px] px-1 py-0.2 rounded font-semibold border inline-block mt-0.5 ${meta.badge}`}>
+                                  {meta.label.split(' ')[0]}
+                                </span>
+                              </div>
+                            </div>
+                            <span className={`text-xs shrink-0 font-bold ${isSelected ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                              {isSelected ? '✔' : '＋'}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      // 詳細資料模式（預設）
                       return (
                         <div 
                           key={role.id} 
@@ -1563,6 +1631,7 @@
                   </div>
                 </div>
 
+                {/* 彈窗底部 */}
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
                   <span className="text-xs text-zinc-400">請確認卡牌總數大於或等於玩家人數</span>
                   <button
