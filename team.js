@@ -46,7 +46,7 @@ window.OFFICIAL_TEAM_CONFIG = [
       listBg: 'bg-black/40 border-zinc-800'
     },
     grey: {
-      label: '灰隊中立 (Grey)',
+      label: '灰隊 (Grey)',
       cardBg: 'bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-900 border-zinc-400',
       badge: 'bg-zinc-700 text-zinc-300 border-zinc-500',
       listBg: 'bg-zinc-800/40 border-zinc-700/50'
