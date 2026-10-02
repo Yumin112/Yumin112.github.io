@@ -8,7 +8,7 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- MQTT.js (免金鑰、超穩定跨手機中繼) -->
+  <!-- MQTT.js -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
   <!-- 引入獨立角色資料庫 -->
@@ -40,7 +40,6 @@
     const { useState, useEffect, useRef, useMemo } = React;
 
     function App() {
-      // 讀取外部 roles.js
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
       const [gameState, setGameState] = useState('home'); // 'home' | 'lobby' | 'game'
@@ -55,7 +54,7 @@
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting'); // 'waiting' | 'round_active' | 'round_paused' | 'ended'
 
-      // 回合計時 (自訂 3~5 輪)
+      // 回合計時與設定 (3~5 輪)
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
@@ -69,27 +68,71 @@
       });
       const [showDeckModal, setShowDeckModal] = useState(false);
 
+      // 彈窗內部臨時狀態（防止修改過程中被網路廣播打斷覆蓋）
+      const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
+      const [tempRoleCounts, setTempRoleCounts] = useState({});
+
       // 身分防窺與上帝視角
       const [isRevealed, setIsRevealed] = useState(false);
       const [isGodMode, setIsGodMode] = useState(false);
 
+      // Refs：保證非同步與廣播時永遠取到最新狀態，避開 React 閉包陷阱
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
+      const latestStateRef = useRef({
+        players: [],
+        roomStatus: 'waiting',
+        roundSettings: [3, 2, 1],
+        roleCounts: { 'pres': 1, 'bomb': 1, 'doctor': 1, 'engineer': 1, 'blue_mem': 8, 'red_mem': 8 },
+        currentRoundIndex: 0,
+        timeLeft: 180,
+        isHost: false,
+        roomId: ''
+      });
 
-      // 初始化唯一的個人 ID
+      // 同步最新狀態進 Ref
       useEffect(() => {
-        let storedId = sessionStorage.getItem('trb_player_uid_v3');
+        latestStateRef.current = {
+          players,
+          roomStatus,
+          roundSettings,
+          roleCounts,
+          currentRoundIndex,
+          timeLeft,
+          isHost,
+          roomId
+        };
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isHost, roomId]);
+
+      // 初始化個人 ID
+      useEffect(() => {
+        let storedId = sessionStorage.getItem('trb_player_uid_v4');
         if (!storedId) {
           storedId = 'u_' + Math.random().toString(36).substring(2, 9);
-          sessionStorage.setItem('trb_player_uid_v3', storedId);
+          sessionStorage.setItem('trb_player_uid_v4', storedId);
         }
         setMyPlayerId(storedId);
       }, []);
 
+      // 廣播最新全場狀態
+      const broadcastLatest = (override = {}) => {
+        if (!clientRef.current) return;
+        const s = { ...latestStateRef.current, ...override };
+        clientRef.current.publish(`trb_game_sync_room_${s.roomId}`, JSON.stringify({
+          type: 'FULL_SYNC',
+          senderId: myPlayerId,
+          players: s.players,
+          roomStatus: s.roomStatus,
+          roleCounts: s.roleCounts,
+          roundSettings: s.roundSettings,
+          currentRoundIndex: s.currentRoundIndex,
+          timeLeft: s.timeLeft
+        }));
+      };
+
       // 建立 MQTT 雲端通道
       const setupConnection = (code, asHost, name) => {
         setConnStatus('連線伺服器中...');
-        // 使用 HiveMQ 免費公開 WebSocket 節點 (全球通用，埠號 8884 SSL)
         const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
         const topic = `trb_game_sync_room_${code}`;
 
@@ -105,9 +148,9 @@
           setConnStatus('🟢 雲端就緒');
           client.subscribe(topic, { qos: 1 }, () => {
             if (!asHost) {
-              // 玩家廣播自己進房
               client.publish(topic, JSON.stringify({
                 type: 'JOIN_REQ',
+                senderId: myPlayerId,
                 player: { id: myPlayerId, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null }
               }));
             }
@@ -117,22 +160,18 @@
         client.on('message', (t, msg) => {
           try {
             const data = JSON.parse(msg.toString());
+            // 忽略自己發送的廣播，避免本地剛改完又被舊廣播回彈覆蓋
+            if (data.senderId === myPlayerId) return;
 
             // 房長收到新玩家加入
-            if (data.type === 'JOIN_REQ' && asHost) {
+            if (data.type === 'JOIN_REQ' && latestStateRef.current.isHost) {
               setPlayers(prev => {
                 const exists = prev.some(p => p.id === data.player.id);
                 const next = exists ? prev.map(p => p.id === data.player.id ? data.player : p) : [...prev, data.player];
-                // 立即廣播全體現況
-                client.publish(topic, JSON.stringify({
-                  type: 'FULL_SYNC',
-                  players: next,
-                  roomStatus,
-                  roleCounts,
-                  roundSettings,
-                  currentRoundIndex,
-                  timeLeft
-                }));
+                // 使用最新 Ref 資料回覆新加入者，絕不覆蓋當前設定
+                setTimeout(() => {
+                  broadcastLatest({ players: next });
+                }, 50);
                 return next;
               });
             }
@@ -146,15 +185,20 @@
               setCurrentRoundIndex(data.currentRoundIndex);
               setTimeLeft(data.timeLeft);
 
-              if (data.roomStatus === 'round_active' || data.roomStatus === 'round_paused' || data.roomStatus === 'ended') {
+              if (data.roomStatus === 'round_active') {
                 setGameState('game');
+                setIsTimerRunning(true);
+              } else if (data.roomStatus === 'round_paused' || data.roomStatus === 'ended') {
+                setGameState('game');
+                setIsTimerRunning(false);
               } else if (data.roomStatus === 'waiting') {
                 setGameState('lobby');
+                setIsTimerRunning(false);
               }
             }
 
-            // 同步時間
-            if (data.type === 'TIME_SYNC' && !asHost) {
+            // 時間校準 (差距 > 1 秒才平滑修正)
+            if (data.type === 'TIME_SYNC' && !latestStateRef.current.isHost) {
               setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
             }
           } catch(e) {}
@@ -163,21 +207,21 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       };
 
-      // 房長計時器
+      // 全員本地每秒獨立倒數，房長每 2 秒發送校準封包
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
             setTimeLeft(prev => {
               if (prev <= 1) {
                 clearInterval(timerIntervalRef.current);
-                if (isHost) handleRoundTimeUp();
+                if (latestStateRef.current.isHost) handleRoundTimeUp();
                 return 0;
               }
               const nextSec = prev - 1;
-              // 房長在背後每 2 秒發送一次時間戳記，供其他手機校時
-              if (isHost && nextSec % 2 === 0 && clientRef.current) {
+              if (latestStateRef.current.isHost && nextSec % 2 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
+                  senderId: myPlayerId,
                   timeLeft: nextSec
                 }));
               }
@@ -188,45 +232,30 @@
           clearInterval(timerIntervalRef.current);
         }
         return () => clearInterval(timerIntervalRef.current);
-      }, [isHost, isTimerRunning, roomStatus, timeLeft, roomId]);
+      }, [isTimerRunning, roomStatus, timeLeft, roomId]);
 
       const handleRoundTimeUp = () => {
         setIsTimerRunning(false);
         setRoomStatus('round_paused');
-        broadcastState('round_paused', currentRoundIndex, 0, players);
+        broadcastLatest({ roomStatus: 'round_paused', timeLeft: 0 });
       };
 
-      const broadcastState = (status, rIdx, curTime, curPlayers = players) => {
-        if (!clientRef.current) return;
-        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-          type: 'FULL_SYNC',
-          players: curPlayers,
-          roomStatus: status,
-          roleCounts,
-          roundSettings,
-          currentRoundIndex: rIdx,
-          timeLeft: curTime
-        }));
-      };
-
-      // 1. 點擊建立新房間（立刻響應並進入大廳）
+      // 1. 建立房間
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null };
 
-        // 立即切換 UI，絕不卡死
         setRoomId(code);
         setIsHost(true);
         setPlayers([me]);
         setRoomStatus('waiting');
         setGameState('lobby');
 
-        // 在背後建立雲端頻道
         setupConnection(code, true, trimmedName);
       };
 
-      // 2. 玩家加入房間
+      // 2. 加入房間
       const handleJoinRoom = () => {
         const trimmedName = playerName.trim() || '特工';
         const code = joinRoomInput.trim();
@@ -242,9 +271,39 @@
         setupConnection(code, false, trimmedName);
       };
 
+      // 開啟輪次設定彈窗
+      const openRoundConfigModal = () => {
+        setTempRoundSettings([...roundSettings]);
+        setShowRoundConfigModal(true);
+      };
+
+      // 保存輪次設定（按下確認才生效並廣播）
+      const saveRoundConfig = () => {
+        setRoundSettings(tempRoundSettings);
+        setShowRoundConfigModal(false);
+        broadcastLatest({ roundSettings: tempRoundSettings });
+      };
+
+      // 開啟角色池彈窗
+      const openDeckModal = () => {
+        setTempRoleCounts({ ...roleCounts });
+        setShowDeckModal(true);
+      };
+
+      // 保存角色池設定（按下確認才生效並廣播）
+      const saveDeckConfig = () => {
+        setRoleCounts(tempRoleCounts);
+        setShowDeckModal(false);
+        broadcastLatest({ roleCounts: tempRoleCounts });
+      };
+
       const totalCardsInDeck = useMemo(() => {
         return Object.values(roleCounts).reduce((sum, c) => sum + (c || 0), 0);
       }, [roleCounts]);
+
+      const tempTotalCardsInDeck = useMemo(() => {
+        return Object.values(tempRoleCounts).reduce((sum, c) => sum + (c || 0), 0);
+      }, [tempRoleCounts]);
 
       // 3. 開始遊戲
       const handleStartGame = () => {
@@ -286,7 +345,12 @@
         setIsTimerRunning(true);
         setGameState('game');
 
-        broadcastState('round_active', 0, initialTime, assigned);
+        broadcastLatest({
+          players: assigned,
+          roomStatus: 'round_active',
+          currentRoundIndex: 0,
+          timeLeft: initialTime
+        });
       };
 
       // 4. 房長確認進入下一輪
@@ -298,12 +362,21 @@
           setTimeLeft(nextTime);
           setRoomStatus('round_active');
           setIsTimerRunning(true);
-          broadcastState('round_active', nextIdx, nextTime, players);
+
+          broadcastLatest({
+            roomStatus: 'round_active',
+            currentRoundIndex: nextIdx,
+            timeLeft: nextTime
+          });
         } else {
           setRoomStatus('ended');
           setIsTimerRunning(false);
           setIsGodMode(true);
-          broadcastState('ended', currentRoundIndex, 0, players);
+
+          broadcastLatest({
+            roomStatus: 'ended',
+            timeLeft: 0
+          });
         }
       };
 
@@ -412,7 +485,7 @@
                 <div className="flex flex-wrap items-center gap-3">
                   {isHost && (
                     <button
-                      onClick={() => setShowRoundConfigModal(true)}
+                      onClick={openRoundConfigModal}
                       className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition"
                     >
                       ⚙️ 回合設定 ({roundSettings.length}輪)
@@ -420,7 +493,7 @@
                   )}
 
                   <button
-                    onClick={() => setShowDeckModal(true)}
+                    onClick={openDeckModal}
                     className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition"
                   >
                     🃏 角色池配置 ({totalCardsInDeck}張)
@@ -533,7 +606,7 @@
                       onClick={() => {
                         setRoomStatus('waiting');
                         setGameState('lobby');
-                        broadcastState('waiting', 0, roundSettings[0] * 60, players);
+                        broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60 });
                       }}
                       className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
                     >
@@ -672,7 +745,7 @@
             </div>
           )}
 
-          {/* 回合設定彈窗 */}
+          {/* 回合設定彈窗 Modal (本地編輯，確認才保存廣播) */}
           {showRoundConfigModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
@@ -689,17 +762,16 @@
                         key={cnt}
                         type="button"
                         onClick={() => {
-                          let newSettings = [...roundSettings];
+                          let newSettings = [...tempRoundSettings];
                           if (cnt > newSettings.length) {
                             while (newSettings.length < cnt) newSettings.push(1);
                           } else {
                             newSettings = newSettings.slice(0, cnt);
                           }
-                          setRoundSettings(newSettings);
-                          if (isHost) broadcastState(roomStatus, currentRoundIndex, timeLeft, players);
+                          setTempRoundSettings(newSettings);
                         }}
                         className={`py-2 rounded-xl text-sm font-bold border transition ${
-                          roundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                          tempRoundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
                         }`}
                       >
                         {cnt} 輪
@@ -710,7 +782,7 @@
 
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-zinc-400">設定各輪分鐘數 (分):</label>
-                  {roundSettings.map((min, idx) => (
+                  {tempRoundSettings.map((min, idx) => (
                     <div key={idx} className="flex justify-between items-center bg-zinc-800/80 px-3 py-2 rounded-xl border border-zinc-700">
                       <span className="text-xs text-zinc-300 font-semibold">第 {idx + 1} 輪:</span>
                       <div className="flex items-center gap-2">
@@ -720,10 +792,10 @@
                           max="15"
                           value={min}
                           onChange={(e) => {
-                            const updated = [...roundSettings];
-                            updated[idx] = Math.max(1, parseInt(e.target.value) || 1);
-                            setRoundSettings(updated);
-                            if (isHost) broadcastState(roomStatus, currentRoundIndex, timeLeft, players);
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            const updated = [...tempRoundSettings];
+                            updated[idx] = val;
+                            setTempRoundSettings(updated);
                           }}
                           className="w-16 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-center text-sm font-bold text-amber-400"
                         />
@@ -734,8 +806,9 @@
                 </div>
 
                 <button
-                  onClick={() => setShowRoundConfigModal(false)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition text-sm"
+                  type="button"
+                  onClick={saveRoundConfig}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg active:scale-95"
                 >
                   確認保存設定
                 </button>
@@ -743,7 +816,7 @@
             </div>
           )}
 
-          {/* 卡池設定彈窗 */}
+          {/* 卡池設定彈窗 Modal (本地編輯，確認才保存廣播) */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
@@ -752,7 +825,7 @@
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                       <span>🃏 角色池配置</span>
                       <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">
-                        目前: {totalCardsInDeck} 張 / 玩家: {players.length} 人
+                        目前: {tempTotalCardsInDeck} 張 / 玩家: {players.length} 人
                       </span>
                     </h3>
                   </div>
@@ -764,7 +837,7 @@
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {rolesCatalog.map(role => {
-                      const count = roleCounts[role.id] || 0;
+                      const count = tempRoleCounts[role.id] || 0;
                       return (
                         <div key={role.id} className="p-3 rounded-xl border flex items-center justify-between gap-3 bg-zinc-800/80 border-zinc-700">
                           <div className="flex items-center gap-2 truncate">
@@ -787,23 +860,21 @@
                           <div className="flex items-center gap-2">
                             <button
                               disabled={!isHost}
+                              type="button"
                               onClick={() => {
                                 const next = Math.max(0, count - 1);
-                                const updated = { ...roleCounts, [role.id]: next };
-                                setRoleCounts(updated);
-                                if (isHost) broadcastState(roomStatus, currentRoundIndex, timeLeft, players);
+                                setTempRoleCounts({ ...tempRoleCounts, [role.id]: next });
                               }}
-                              className="w-7 h-7 bg-zinc-700 rounded-lg flex items-center justify-center font-bold"
+                              className="w-7 h-7 bg-zinc-700 rounded-lg flex items-center justify-center font-bold active:scale-95 disabled:opacity-40"
                             >-</button>
                             <span className="w-5 text-center font-mono font-bold text-sm">{count}</span>
                             <button
                               disabled={!isHost}
+                              type="button"
                               onClick={() => {
-                                const updated = { ...roleCounts, [role.id]: count + 1 };
-                                setRoleCounts(updated);
-                                if (isHost) broadcastState(roomStatus, currentRoundIndex, timeLeft, players);
+                                setTempRoleCounts({ ...tempRoleCounts, [role.id]: count + 1 });
                               }}
-                              className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center font-bold"
+                              className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center font-bold active:scale-95 disabled:opacity-40"
                             >+</button>
                           </div>
                         </div>
@@ -814,8 +885,12 @@
 
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
                   <span className="text-xs text-zinc-400">請確認卡牌總數大於或等於玩家人數</span>
-                  <button onClick={() => setShowDeckModal(false)} className="bg-indigo-600 text-white text-xs font-bold px-5 py-2 rounded-xl">
-                    確定
+                  <button
+                    type="button"
+                    onClick={saveDeckConfig}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-lg active:scale-95"
+                  >
+                    確定保存設定
                   </button>
                 </div>
               </div>
