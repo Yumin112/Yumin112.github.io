@@ -1,1061 +1,678 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>陣營風雲：20人隨機分隊與身分抽卡器</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>陣營風雲：身分對決 - 自訂卡池版</title>
   
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   
-  <!-- React 18 & ReactDOM -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  
-  <!-- Babel Standalone (瀏覽器即時編譯 JSX) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
-  
-  <!-- Lucide Icons (Vanilla) -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Google Fonts: Inter & Noto Sans TC -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
     body {
-      font-family: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
+      background: radial-gradient(circle at 50% 10%, #1e1b4b 0%, #09090b 100%);
+      min-height: 100vh;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      touch-action: manipulation;
     }
-    
-    @keyframes pulse-glow {
-      0%, 100% { opacity: 0.6; transform: scale(1); }
-      50% { opacity: 0.9; transform: scale(1.03); }
-    }
-    .animate-pulse-glow {
-      animation: pulse-glow 3s infinite ease-in-out;
-    }
-
-    /* 隱藏滾動條但保持滑動 */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
+    .perspective-1000 { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-amber-500 selection:text-black">
+<body class="p-2 sm:p-4">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+    const { useState, useEffect, useMemo } = React;
 
-    // 音效合成器 (使用 Web Audio API，無需外載任何音訊檔)
-    const playAudio = (type = 'click') => {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+    // 預設卡池庫
+    const DEFAULT_ROLES_CATALOG = [
+      { id: 'r1', name: '隊長 / 指揮官', team: 'red', icon: '👑', desc: '負責統籌戰術，擁有每輪一次的戰術指揮權。' },
+      { id: 'r2', name: '機密特工', team: 'red', icon: '🕵️', desc: '擅長隱蔽行動，負責執行核心機密任務。' },
+      { id: 'r3', name: '破壞狂', team: 'red', icon: '💣', desc: '可暗中擾亂敵方判斷與進度。' },
+      { id: 'r4', name: '狙擊手', team: 'red', icon: '🎯', desc: '關鍵時刻可指定鎖定一名可疑目標。' },
+      { id: 'r5', name: '駭客', team: 'red', icon: '💻', desc: '可截聽通訊資訊。' },
+      
+      { id: 'b1', name: '艦長 / 先鋒官', team: 'blue', icon: '⚔️', desc: '引領陣營防線，具有關鍵投票權力。' },
+      { id: 'b2', name: '防衛官', team: 'blue', icon: '🛡️', desc: '守護同伴，可免疫一次排查或質疑。' },
+      { id: 'b3', name: '審訊官', team: 'blue', icon: '🔍', desc: '可私下檢視一名玩家是否屬於特定陣營。' },
+      { id: 'b4', name: '醫療兵', team: 'blue', icon: '💉', desc: '支援被針對的隊友，恢復其行動資格。' },
+      { id: 'b5', name: '間諜通訊員', team: 'blue', icon: '📡', desc: '負責掌握場內情報流動。' },
+      
+      { id: 'n1', name: '雙面間諜', team: 'neutral', icon: '🎭', desc: '中立身分！任何一隊獲勝且自己存活即獲勝。' },
+      { id: 'n2', name: '小丑 / 攪局者', team: 'neutral', icon: '🃏', desc: '中立身分！如果第一輪被全場投票出局則單獨獲勝。' }
+    ];
 
-        const now = ctx.currentTime;
-        if (type === 'click') {
-          osc.frequency.setValueAtTime(600, now);
-          osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
-          gain.gain.setValueAtTime(0.12, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-          osc.start(now);
-          osc.stop(now + 0.05);
-        } else if (type === 'reveal') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(260, now);
-          osc.frequency.exponentialRampToValueAtTime(520, now + 0.2);
-          gain.gain.setValueAtTime(0.15, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-          osc.start(now);
-          osc.stop(now + 0.25);
-        } else if (type === 'deal') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(520, now);
-          osc.frequency.exponentialRampToValueAtTime(260, now + 0.15);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-          osc.start(now);
-          osc.stop(now + 0.15);
-        } else if (type === 'bell') {
-          osc.frequency.setValueAtTime(880, now);
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-          osc.start(now);
-          osc.stop(now + 0.6);
-        }
-      } catch (e) {
-        // 音訊被瀏覽器安全性政策阻擋時安全靜音
-      }
-    };
-
-    // 內建三種經典陣營主題角色庫
-    const PRESET_DECKS = {
-      cyber_agents: {
-        id: 'cyber_agents',
-        name: '特工諜影 (科技對決)',
-        desc: '紅隊指揮部 vs 藍隊暗影組織，暗藏刺客、駭客與雙面間諜。',
-        roles: [
-          { name: '總指揮官', team: 'A', count: 1, power: '隊伍最高領袖，全體會議投票享雙倍票權。', desc: '隊伍核心大腦，需隱藏身分防止刺客擊殺。' },
-          { name: '先鋒武裝', team: 'A', count: 2, power: '配備合金護盾，免疫首輪公決淘汰。', desc: '衝鋒在前掩護重要隊友。' },
-          { name: '天眼駭客', team: 'A', count: 1, power: '每輪可查驗一名目標玩家的所屬陣營。', desc: '收集情報的關鍵特工。' },
-          { name: '生化醫官', team: 'A', count: 1, power: '可指定守護一名隊員免於負面效果。', desc: '維持隊伍生存力的關鍵。' },
-          { name: '外勤特工', team: 'A', count: 6, power: '一般人員，以集體智慧與觀察找出破綻。', desc: '紅隊堅固基石。' },
-          
-          { name: '暗影首領', team: 'B', count: 1, power: '每局有一次夜間強制指名對決權限。', desc: '敵對陣營的最高統帥。' },
-          { name: '幽靈刺客', team: 'B', count: 2, power: '終局若能精準猜中敵方總指揮官，直接逆轉勝。', desc: '致命的精準狙擊者。' },
-          { name: '信號干擾者', team: 'B', count: 1, power: '可封鎖一位玩家在該輪的技能發動。', desc: '戰術干擾核心。' },
-          { name: '臥底間諜', team: 'B', count: 1, power: '向對手偽裝成對方的陣營成員。', desc: '雙面特工，挑撥敵方內部。' },
-          { name: '深淵部隊', team: 'B', count: 6, power: '一般戰鬥員，配合首領號令展開伏擊。', desc: '藍隊隱密獠牙。' }
-        ]
-      },
-      fantasy_kingdoms: {
-        id: 'fantasy_kingdoms',
-        name: '聖輝與暗月 (奇幻陣營)',
-        desc: '聖輝王國 vs 暗月教團，經典王道奇幻職業陣營。',
-        roles: [
-          { name: '光輝聖騎士', team: 'A', count: 1, power: '神聖護盾：替身旁一人承受一次負面效果。', desc: '純白信條的捍衛者。' },
-          { name: '大魔導士', team: 'A', count: 2, power: '真理之眼：查驗任意一人的真實身分。', desc: '洞察戰局的高階智者。' },
-          { name: '光明祭司', team: 'A', count: 2, power: '神聖復甦：給予隊友額外發言與辯護時間。', desc: '治癒與信賴之源。' },
-          { name: '皇家守衛', team: 'A', count: 6, power: '忠誠之刃：誓死保衛聖騎士。', desc: '堅毅勇敢的王國士兵。' },
-          
-          { name: '暗月領主', team: 'B', count: 1, power: '支配意志：在關鍵裁決時有一票否決權。', desc: '隱居暗處的月之王。' },
-          { name: '夜幕死士', team: 'B', count: 2, power: '影刃突襲：可強迫指定目標進行一對一質詢。', desc: '穿梭黑夜的奪命者。' },
-          { name: '狂亂術士', team: 'B', count: 2, power: '心靈迷霧：交換兩名玩家的發言順序。', desc: '操弄混亂的邪術師。' },
-          { name: '暗夜追隨者', team: 'B', count: 6, power: '暗黑狂潮：集體行使審判投票。', desc: '冷酷無情的暗月信徒。' }
-        ]
-      },
-      party_fun: {
-        id: 'party_fun',
-        name: '派對歡樂大亂鬥 (團康破冰)',
-        desc: '幽默好玩的互動懲罰與任務，適合聚會、迎新破冰！',
-        roles: [
-          { name: '熾熱廚神', team: 'A', count: 1, power: '本回合指定一人替你喝一杯或做鬼臉。', desc: '紅隊掌杓老大。' },
-          { name: '熱情麥克風', team: 'A', count: 2, power: '發言時必須用RAP或唱歌腔調表達。', desc: '氣氛擔當。' },
-          { name: '爆米花達人', team: 'A', count: 8, power: '看熱鬧不嫌事大，投票只能跟風。', desc: '歡樂吃瓜群眾。' },
-          
-          { name: '冰霜調酒師', team: 'B', count: 1, power: '有權調配一杯懲罰特調或指定神秘指令。', desc: '藍隊冷面笑匠。' },
-          { name: '冷面解說員', team: 'B', count: 2, power: '發言全程不能笑，笑了要接受小處罰。', desc: '極度嚴肅角色。' },
-          { name: '氣氛破壞狂', team: 'B', count: 8, power: '發言時必須反對上一位講話的人。', desc: '專門唱反調。' }
-        ]
-      }
-    };
-
-    // 主要應用程式
     function App() {
-      const [appMode, setAppMode] = useState('welcome'); // welcome, room_lobby, room_game, pass_play
-      const [playerName, setPlayerName] = useState(() => '特工_' + Math.floor(100 + Math.random() * 900));
-      const [soundEnabled, setSoundEnabled] = useState(true);
-
-      // 房間連線與資料
+      // 頁面狀態: 'home' | 'lobby' | 'game'
+      const [gameState, setGameState] = useState('home');
       const [roomId, setRoomId] = useState('');
-      const [inputRoomId, setInputRoomId] = useState('');
-      const [isHost, setIsHost] = useState(true);
-      const [selectedDeckKey, setSelectedDeckKey] = useState('cyber_agents');
-      const [teamAName, setTeamAName] = useState('熾焰赤紅隊');
-      const [teamBName, setTeamBName] = useState('深淵湛藍隊');
+      const [joinRoomInput, setJoinRoomInput] = useState('');
+      const [playerName, setPlayerName] = useState('');
+      const [myPlayerId, setMyPlayerId] = useState('');
+      const [isHost, setIsHost] = useState(false);
+      
+      // 房間資料
+      const [players, setPlayers] = useState([]);
+      const [roomStatus, setRoomStatus] = useState('waiting'); // 'waiting' | 'started'
+      
+      // 卡池自訂設定
+      const [rolesCatalog, setRolesCatalog] = useState(DEFAULT_ROLES_CATALOG);
+      // roleCountMap: { roleId: count }
+      const [roleCounts, setRoleCounts] = useState({
+        'r1': 1, 'r2': 3, 'r3': 2, 'r4': 2, 'r5': 2,
+        'b1': 1, 'b2': 3, 'b3': 2, 'b4': 2, 'b5': 2
+      });
+      const [showDeckModal, setShowDeckModal] = useState(false);
+      
+      // 新增角色用表單
+      const [newRoleName, setNewRoleName] = useState('');
+      const [newRoleTeam, setNewRoleTeam] = useState('red');
+      const [newRoleDesc, setNewRoleDesc] = useState('');
+      const [newRoleIcon, setNewRoleIcon] = useState('⭐');
 
-      // 玩家陣列 (預設產生 20 個槽位，隨時可增減)
-      const [players, setPlayers] = useState([
-        { id: 'p1', name: '特工阿豪 (房主)', team: null, role: null, seen: false, isHost: true },
-        { id: 'p2', name: '特工小櫻', team: null, role: null, seen: false },
-        { id: 'p3', name: '特工凱文', team: null, role: null, seen: false },
-        { id: 'p4', name: '特工小雅', team: null, role: null, seen: false },
-        { id: 'p5', name: '特工大飛', team: null, role: null, seen: false },
-        { id: 'p6', name: '特工露露', team: null, role: null, seen: false },
-        { id: 'p7', name: '特工阿傑', team: null, role: null, seen: false },
-        { id: 'p8', name: '特工婷婷', team: null, role: null, seen: false },
-        { id: 'p9', name: '特工小明', team: null, role: null, seen: false },
-        { id: 'p10', name: '特工阿華', team: null, role: null, seen: false },
-        { id: 'p11', name: '特工威廉', team: null, role: null, seen: false },
-        { id: 'p12', name: '特工麗莎', team: null, role: null, seen: false },
-        { id: 'p13', name: '特工安迪', team: null, role: null, seen: false },
-        { id: 'p14', name: '特工晴晴', team: null, role: null, seen: false },
-        { id: 'p15', name: '特工雷克斯', team: null, role: null, seen: false },
-        { id: 'p16', name: '特工小雨', team: null, role: null, seen: false },
-        { id: 'p17', name: '特工艾倫', team: null, role: null, seen: false },
-        { id: 'p18', name: '特工潔西卡', team: null, role: null, seen: false },
-        { id: 'p19', name: '特工浩克', team: null, role: null, seen: false },
-        { id: 'p20', name: '特工茱莉亞', team: null, role: null, seen: false },
-      ]);
+      // 玩家防窺翻牌 (按住翻牌)
+      const [isRevealed, setIsRevealed] = useState(false);
+      // 房主專屬上帝視角 (預設關閉)
+      const [isGodMode, setIsGodMode] = useState(false);
 
-      // 當前檢視玩家 (方便單機預覽或切換身分)
-      const [activePlayerIndex, setActivePlayerIndex] = useState(0);
-      const [peekCard, setPeekCard] = useState(false);
-      const [showGodEye, setShowGodEye] = useState(false);
-      const [copied, setCopied] = useState(false);
+      // 本地多標籤廣播通訊 (免後端即可在同瀏覽器不同分頁即時互動測試)
+      const channel = useMemo(() => new BroadcastChannel('faction_clash_sync'), []);
 
-      // 計時器
-      const [timerSec, setTimerSec] = useState(120);
-      const [timerRunning, setTimerRunning] = useState(false);
-
-      // 單機傳閱模式 (Pass & Play)
-      const [passTotalCount, setPassTotalCount] = useState(20);
-      const [passCurrentIdx, setPassCurrentIdx] = useState(0);
-      const [passRevealed, setPassRevealed] = useState(false);
-      const [passStage, setPassStage] = useState('passing'); // passing, finish
-      const [passAssignedList, setPassAssignedList] = useState([]);
-
-      const sound = (type) => {
-        if (soundEnabled) playAudio(type);
-      };
-
-      // 計時器倒數邏輯
+      // 初始化 PlayerId
       useEffect(() => {
-        let interval = null;
-        if (timerRunning && timerSec > 0) {
-          interval = setInterval(() => {
-            setTimerSec(prev => {
-              if (prev <= 1) {
-                sound('bell');
-                setTimerRunning(false);
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
+        let storedId = sessionStorage.getItem('fc_player_id');
+        if (!storedId) {
+          storedId = 'p_' + Math.random().toString(36).substring(2, 9);
+          sessionStorage.setItem('fc_player_id', storedId);
         }
-        return () => clearInterval(interval);
-      }, [timerRunning, timerSec]);
+        setMyPlayerId(storedId);
+      }, []);
 
-      // 產生 6 位隨機房間號
-      const generateRoomCode = () => {
-        return Math.floor(100000 + Math.random() * 900000).toString();
+      // 跨分頁訊息同步監聽
+      useEffect(() => {
+        channel.onmessage = (event) => {
+          const { type, payload } = event.data;
+          if (payload.roomId !== roomId) return;
+
+          if (type === 'SYNC_ROOM') {
+            setPlayers(payload.players);
+            setRoomStatus(payload.roomStatus);
+            if (payload.roleCounts) setRoleCounts(payload.roleCounts);
+            if (payload.rolesCatalog) setRolesCatalog(payload.rolesCatalog);
+            if (payload.roomStatus === 'started') setGameState('game');
+          } else if (type === 'PLAYER_JOINED') {
+            setPlayers(prev => {
+              if (prev.some(p => p.id === payload.player.id)) return prev;
+              const next = [...prev, payload.player];
+              if (isHost) syncRoomData(next, roomStatus, roleCounts, rolesCatalog);
+              return next;
+            });
+          }
+        };
+      }, [channel, roomId, isHost, roomStatus, roleCounts, rolesCatalog]);
+
+      const syncRoomData = (currentPlayers, status, counts = roleCounts, catalog = rolesCatalog) => {
+        channel.postMessage({
+          type: 'SYNC_ROOM',
+          payload: { roomId, players: currentPlayers, roomStatus: status, roleCounts: counts, rolesCatalog: catalog }
+        });
       };
 
-      // 隨機洗牌均分兩隊 & 發放身分卡核心演算法
-      const dealCardsAndTeams = (currentPlayersList) => {
-        const total = currentPlayersList.length;
-        if (total < 2) return currentPlayersList;
+      // 計算當前卡池總卡片數
+      const totalCardsInDeck = useMemo(() => {
+        return Object.values(roleCounts).reduce((sum, count) => sum + (count || 0), 0);
+      }, [roleCounts]);
 
-        // 1. 打亂玩家順序
-        const shuffledPlayers = [...currentPlayersList].sort(() => Math.random() - 0.5);
-        const half = Math.ceil(total / 2);
+      // 1. 建立房間 (只有房主 1 人，不再塞滿 20 人)
+      const handleCreateRoom = () => {
+        if (!playerName.trim()) { alert('請輸入您的暱稱'); return; }
+        const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const hostPlayer = { id: myPlayerId, name: playerName.trim(), isHost: true, team: null, role: null };
+        
+        setRoomId(newCode);
+        setIsHost(true);
+        setPlayers([hostPlayer]);
+        setRoomStatus('waiting');
+        setGameState('lobby');
+      };
 
-        // 2. 展開所選卡包的陣營角色池
-        const currentDeck = PRESET_DECKS[selectedDeckKey]?.roles || PRESET_DECKS.cyber_agents.roles;
-        const poolA = [];
-        const poolB = [];
+      // 2. 加入房間
+      const handleJoinRoom = () => {
+        if (!playerName.trim()) { alert('請輸入您的暱稱'); return; }
+        if (!joinRoomInput.trim()) { alert('請輸入 6 碼房間號'); return; }
+        
+        const code = joinRoomInput.trim();
+        setRoomId(code);
+        setIsHost(false);
+        const newPlayer = { id: myPlayerId, name: playerName.trim(), isHost: false, team: null, role: null };
+        setPlayers([newPlayer]);
+        setGameState('lobby');
 
-        currentDeck.forEach(role => {
-          const count = role.count || 1;
+        // 通知房主與其他玩家
+        channel.postMessage({
+          type: 'PLAYER_JOINED',
+          payload: { roomId: code, player: newPlayer }
+        });
+      };
+
+      // 3. 調整卡池角色數量 (+ / -)
+      const updateRoleCount = (roleId, delta) => {
+        const current = roleCounts[roleId] || 0;
+        const next = Math.max(0, current + delta);
+        const updated = { ...roleCounts, [roleId]: next };
+        setRoleCounts(updated);
+        if (isHost) syncRoomData(players, roomStatus, updated, rolesCatalog);
+      };
+
+      // 4. 新增自訂角色至卡池庫
+      const handleAddNewRole = (e) => {
+        e.preventDefault();
+        if (!newRoleName.trim()) return;
+        const newId = 'custom_' + Date.now();
+        const newRole = {
+          id: newId,
+          name: newRoleName.trim(),
+          team: newRoleTeam,
+          icon: newRoleIcon || '⭐',
+          desc: newRoleDesc.trim() || '自訂特殊角色'
+        };
+        const updatedCatalog = [...rolesCatalog, newRole];
+        const updatedCounts = { ...roleCounts, [newId]: 1 };
+        setRolesCatalog(updatedCatalog);
+        setRoleCounts(updatedCounts);
+        setNewRoleName('');
+        setNewRoleDesc('');
+        if (isHost) syncRoomData(players, roomStatus, updatedCounts, updatedCatalog);
+      };
+
+      // 5. 開始遊戲：隨機分隊並發放卡池身分
+      const handleStartGame = () => {
+        if (players.length < 2) {
+          alert('至少需要 2 位玩家才能開始分隊！');
+          return;
+        }
+
+        // 展開目前設定的所有卡片
+        let deck = [];
+        rolesCatalog.forEach(role => {
+          const count = roleCounts[role.id] || 0;
           for (let i = 0; i < count; i++) {
-            if (role.team === 'A') poolA.push({ ...role });
-            else if (role.team === 'B') poolB.push({ ...role });
+            deck.push({ ...role });
           }
         });
 
-        // 隨機打亂卡池
-        poolA.sort(() => Math.random() - 0.5);
-        poolB.sort(() => Math.random() - 0.5);
+        if (deck.length < players.length) {
+          alert(`卡池張數 (${deck.length} 張) 少於目前在線人數 (${players.length} 人)！請點擊「卡池設定」增加角色張數。`);
+          return;
+        }
 
-        // 備用基本卡 (若人數超過預設卡包)
-        const defaultRoleA = { name: '紅隊主力戰鬥員', team: 'A', power: '普通陣營成員，發揮投票權。', desc: '為紅隊奮勇作戰。' };
-        const defaultRoleB = { name: '藍隊精英先鋒', team: 'B', power: '普通陣營成員，查察周遭線索。', desc: '為藍隊隱匿出擊。' };
+        // 洗牌卡池
+        deck.sort(() => Math.random() - 0.5);
 
-        // 3. 分配隊伍與卡片（前 half 為紅隊，其餘為藍隊）
-        const assigned = shuffledPlayers.map((player, idx) => {
-          const isA = idx < half;
-          const assignedRole = isA 
-            ? (poolA.pop() || defaultRoleA)
-            : (poolB.pop() || defaultRoleB);
+        // 洗牌玩家並平均分兩隊 (紅 vs 藍)
+        const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+        const half = Math.ceil(shuffledPlayers.length / 2);
 
+        const assignedPlayers = shuffledPlayers.map((p, idx) => {
+          const assignedRole = deck[idx];
+          // 若身分有指定陣營以身分優先，否則依序分成紅白兩隊
+          let assignedTeam = assignedRole.team !== 'neutral' ? assignedRole.team : (idx < half ? 'red' : 'blue');
           return {
-            ...player,
-            team: isA ? 'A' : 'B',
-            teamName: isA ? teamAName : teamBName,
-            role: assignedRole,
-            seen: false
+            ...p,
+            team: assignedTeam,
+            role: assignedRole
           };
         });
 
-        return assigned;
+        setPlayers(assignedPlayers);
+        setRoomStatus('started');
+        setGameState('game');
+        syncRoomData(assignedPlayers, 'started', roleCounts, rolesCatalog);
       };
 
-      // 啟動開房
-      const handleCreateRoom = () => {
-        sound('click');
-        const code = generateRoomCode();
-        setRoomId(code);
-        setIsHost(true);
-        // 替換第一名為自己輸入的暱稱
-        setPlayers(prev => {
-          const updated = [...prev];
-          updated[0].name = playerName + ' (房主)';
-          return updated;
-        });
-        setAppMode('room_lobby');
-      };
+      // 取得本人資訊
+      const myInfo = players.find(p => p.id === myPlayerId) || { name: playerName, team: null, role: null };
+      const redTeam = players.filter(p => p.team === 'red');
+      const blueTeam = players.filter(p => p.team === 'blue');
 
-      // 加入房間
-      const handleJoinRoom = () => {
-        sound('click');
-        const code = inputRoomId.trim();
-        if (!code) return;
-        setRoomId(code);
-        setIsHost(false);
-        setAppMode('room_lobby');
-      };
-
-      // 房主啟動洗牌與分隊
-      const handleStartGame = () => {
-        sound('deal');
-        const assigned = dealCardsAndTeams(players);
-        setPlayers(assigned);
-        setActivePlayerIndex(0);
-        setTimerSec(180);
-        setTimerRunning(false);
-        setAppMode('room_game');
-      };
-
-      // 單機傳閱抽卡初始化
-      const handleStartPassAndPlay = () => {
-        sound('deal');
-        const count = Math.max(4, Math.min(24, passTotalCount));
-        const dummyPlayers = Array.from({ length: count }, (_, i) => ({
-          id: `p_local_${i + 1}`,
-          name: `玩家 #${i + 1}`
-        }));
-
-        const assigned = dealCardsAndTeams(dummyPlayers);
-        // 打亂展示順序，避免先看的都是紅隊
-        assigned.sort(() => Math.random() - 0.5);
-
-        setPassAssignedList(assigned);
-        setPassCurrentIdx(0);
-        setPassRevealed(false);
-        setPassStage('passing');
-        setAppMode('pass_play');
-      };
-
-      // 複製房間代碼
-      const copyCode = () => {
-        sound('click');
-        const text = `【陣營風雲】遊戲房間碼：${roomId}\n快開啟網頁一起抽卡對決！`;
-        try {
-          const el = document.createElement('textarea');
-          el.value = text;
-          document.body.appendChild(el);
-          el.select();
-          document.execCommand('copy');
-          document.body.removeChild(el);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      // ==========================================
-      // 頁面 1：歡迎首頁
-      // ==========================================
-      if (appMode === 'welcome') {
-        return (
-          <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 max-w-4xl mx-auto">
-            {/* 頂部 Header */}
-            <header className="flex items-center justify-between py-4 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 via-amber-500 to-indigo-600 p-[2px] flex items-center justify-center shadow-lg shadow-rose-900/30">
-                  <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                    <span className="text-xl">⚔️</span>
-                  </div>
-                </div>
-                <div>
-                  <h1 className="font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-amber-200 to-sky-400">
-                    陣營風雲：身分對決
-                  </h1>
-                  <p className="text-xs text-slate-400">20人隨機均等分隊 & 機密防窺抽卡器</p>
-                </div>
+      return (
+        <div className="max-w-4xl mx-auto pb-12">
+          {/* Header 導覽列 */}
+          <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-3xl">⚔️</span>
+              <div>
+                <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">
+                  陣營風雲：身分對決
+                </h1>
+                <p className="text-xs text-zinc-400">支援 2-24 人隨機分隊 & 自訂身分卡池</p>
               </div>
-              <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 transition"
-              >
-                {soundEnabled ? '🔊 音效開' : '🔇 靜音'}
-              </button>
-            </header>
+            </div>
 
-            {/* 中間主體 */}
-            <main className="my-8 flex-1 flex flex-col justify-center">
-              <div className="text-center mb-8">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-300 border border-rose-500/20 mb-3">
-                  🔥 支援 2 ~ 24 人（最佳 20 人 10 vs 10 陣營戰）
+            {roomId && (
+              <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                <span className="text-xs text-zinc-400">房間號:</span>
+                <span className="text-sm font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
+                <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
+                  {isHost ? '房主' : '玩家'}
                 </span>
-                <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-3">
-                  隨機平衡分隊，抽取你的<span className="text-amber-400">王牌身分</span>！
-                </h2>
-                <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto">
-                  免下載安裝，瀏覽器直接開玩。一鍵均分成兩大陣營，隱密翻牌防窺機制讓臥底、刺客與指揮官滴水不漏！
-                </p>
               </div>
+            )}
+          </header>
 
-              {/* 暱稱設定欄 */}
-              <div className="max-w-md mx-auto w-full mb-8 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  設定你的玩家暱稱
-                </label>
+          {/* 視圖 1: 首頁開房 / 加入 */}
+          {gameState === 'home' && (
+            <div className="max-w-md mx-auto bg-zinc-900/90 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">您的暱稱</label>
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    placeholder="例如：特工 007"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-zinc-800/60">
+                  <button
+                    onClick={handleCreateRoom}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <span>👑 建立新房間 (當房主)</span>
+                  </button>
+                </div>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-zinc-800"></div>
+                  <span className="flex-shrink mx-4 text-xs text-zinc-500">或輸入房號加入</span>
+                  <div className="flex-grow border-t border-zinc-800"></div>
+                </div>
+
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    maxLength={10}
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="輸入暱稱..."
+                    maxLength={6}
+                    value={joinRoomInput}
+                    onChange={(e) => setJoinRoomInput(e.target.value)}
+                    placeholder="輸入 6 碼房間號"
+                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 text-white font-mono text-center tracking-widest placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
-                    onClick={() => {
-                      sound('click');
-                      setPlayerName('特工_' + Math.floor(100 + Math.random() * 900));
-                    }}
-                    className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl text-slate-300 transition"
+                    onClick={handleJoinRoom}
+                    className="bg-zinc-700 hover:bg-zinc-600 px-5 py-2 rounded-xl text-white font-medium transition"
                   >
-                    隨機名
+                    加入
                   </button>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* 模式卡片 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto w-full">
-                {/* 模式 A：連線多機房模式 */}
-                <div className="bg-gradient-to-b from-slate-900 to-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-amber-500/40 transition">
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl mb-4">
-                      🌐
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-xl font-black text-white">多人連線房間</h3>
-                      <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">
-                        推薦
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                      建立 6 碼遊戲房，讓 20 位朋友用各自的手機加入。房主一鍵分隊，各自防窺抽卡！
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleCreateRoom}
-                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 active:scale-98 transition flex items-center justify-center gap-2"
-                    >
-                      👑 建立新房間 (當房主/主持)
-                    </button>
-
-                    <div className="flex gap-2 pt-2 border-t border-slate-800/80">
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={inputRoomId}
-                        onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
-                        placeholder="輸入 6 位房間碼"
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-center font-mono tracking-widest text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      />
-                      <button
-                        onClick={handleJoinRoom}
-                        className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs active:scale-98 transition"
-                      >
-                        加入
-                      </button>
-                    </div>
-                  </div>
+          {/* 視圖 2: 等待大廳 (含卡池設定與名單) */}
+          {gameState === 'lobby' && (
+            <div className="space-y-6">
+              {/* 大廳頂部控制卡 */}
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <span>等待大廳</span>
+                    <span className="text-sm font-normal bg-zinc-800 px-2.5 py-0.5 rounded-full text-zinc-300">
+                      目前人數: <strong className="text-white">{players.length}</strong> 人
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">請等待所有朋友輸入房間號碼加入大廳。</p>
                 </div>
 
-                {/* 模式 B：單機輪流傳閱模式 */}
-                <div className="bg-gradient-to-b from-slate-900 to-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-indigo-500/40 transition">
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl mb-4">
-                      📱
-                    </div>
-                    <h3 className="text-xl font-black text-white mb-1">單機傳閱抽卡</h3>
-                    <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                      線下聚會或無網路環境時，只需 1 台手機，輪流傳給 20 位玩家長按翻牌確認身分。
-                    </p>
-
-                    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 mb-4">
-                      <div className="flex justify-between items-center text-xs mb-1">
-                        <span className="text-slate-400">總參與人數：</span>
-                        <span className="font-black text-indigo-400 text-sm">{passTotalCount} 人</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={4}
-                        max={24}
-                        step={2}
-                        value={passTotalCount}
-                        onChange={(e) => setPassTotalCount(parseInt(e.target.value, 10))}
-                        className="w-full accent-indigo-500 cursor-pointer"
-                      />
-                      <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                        <span>4人</span>
-                        <span>12人</span>
-                        <span className="text-indigo-400 font-bold">20人 (10v10)</span>
-                        <span>24人</span>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* 卡池設定按鈕 */}
                   <button
-                    onClick={handleStartPassAndPlay}
-                    className="w-full py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-indigo-600 text-white font-bold text-sm active:scale-98 transition flex items-center justify-center gap-2"
+                    onClick={() => setShowDeckModal(true)}
+                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition"
                   >
-                    ▶️ 開始單機傳閱分隊
+                    <span>🛠️ 編輯/選擇角色池</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${totalCardsInDeck >= players.length ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                      {totalCardsInDeck} 張卡
+                    </span>
                   </button>
+
+                  {/* 房主開始按鈕 */}
+                  {isHost ? (
+                    <button
+                      onClick={handleStartGame}
+                      className="bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 hover:opacity-90 px-6 py-2 rounded-xl font-bold text-white shadow-lg transition"
+                    >
+                      🎲 開始隨機分隊抽身分
+                    </button>
+                  ) : (
+                    <span className="text-xs text-amber-400/80 bg-amber-400/10 px-3 py-2 rounded-xl border border-amber-400/20">
+                      ⏳ 等待房主開始遊戲...
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* 卡包切換 Bar */}
-              <div className="mt-8 max-w-3xl mx-auto w-full bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🃏</span>
-                  <div>
-                    <p className="text-[11px] text-slate-400">當前身分卡池包：</p>
-                    <p className="text-sm font-black text-white">{PRESET_DECKS[selectedDeckKey]?.name}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5 flex-wrap">
-                  {Object.keys(PRESET_DECKS).map(key => (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        sound('click');
-                        setSelectedDeckKey(key);
-                      }}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition font-bold ${
-                        selectedDeckKey === key
-                          ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
-                          : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-white'
+              {/* 玩家列表 */}
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                <h3 className="text-sm font-semibold text-zinc-400 mb-3">大廳玩家名單 ({players.length})</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {players.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className={`p-3 rounded-xl border flex items-center gap-2.5 ${
+                        p.id === myPlayerId ? 'bg-indigo-950/40 border-indigo-500/50' : 'bg-zinc-800/40 border-zinc-800'
                       }`}
                     >
-                      {PRESET_DECKS[key].name.split(' ')[0]}
-                    </button>
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">
+                        {idx + 1}
+                      </div>
+                      <div className="truncate">
+                        <div className="text-sm font-medium truncate flex items-center gap-1">
+                          {p.name}
+                          {p.isHost && <span className="text-amber-400 text-xs">👑</span>}
+                        </div>
+                        {p.id === myPlayerId && <div className="text-[10px] text-indigo-400">我自己</div>}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-            </main>
+            </div>
+          )}
 
-            <footer className="text-center py-3 text-xs text-slate-600 border-t border-slate-900">
-              陣營對決系統 • 支援純瀏覽器獨立運行 • 20人高彈性即時平衡分隊
-            </footer>
-          </div>
-        );
-      }
+          {/* 視圖 3: 遊戲開始 (防窺抽卡 & 兩隊名單) */}
+          {gameState === 'game' && (
+            <div className="space-y-6">
+              {/* 控制列: 上帝視角與重新開始 */}
+              <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-400">遊戲狀態:</span>
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-medium">進行中</span>
+                </div>
 
-      // ==========================================
-      // 頁面 2：等待大廳 (Room Lobby)
-      // ==========================================
-      if (appMode === 'room_lobby') {
-        const total = players.length;
-
-        return (
-          <div className="min-h-screen flex flex-col justify-between bg-slate-950 p-4 sm:p-6">
-            {/* Top Bar */}
-            <header className="max-w-5xl mx-auto w-full flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    sound('click');
-                    setAppMode('welcome');
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400 hover:text-white"
-                >
-                  ← 返回首頁
-                </button>
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase tracking-widest">當前房間號</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-2xl font-black text-amber-400">{roomId}</span>
+                <div className="flex items-center gap-3">
+                  {/* 房主上帝視角切換 (預設關閉) */}
+                  {isHost && (
                     <button
-                      onClick={copyCode}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 font-bold"
+                      onClick={() => setIsGodMode(!isGodMode)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border font-medium flex items-center gap-1.5 transition ${
+                        isGodMode ? 'bg-amber-500 text-black border-amber-400 font-bold' : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                      }`}
                     >
-                      {copied ? '✓ 已複製' : '複製代碼'}
+                      <span>{isGodMode ? '👁️ 上帝視角 (開啟中)' : '🔒 上帝視角 (已關閉)'}</span>
                     </button>
+                  )}
+                  {isHost && (
+                    <button
+                      onClick={() => {
+                        setRoomStatus('waiting');
+                        setGameState('lobby');
+                        syncRoomData(players, 'waiting');
+                      }}
+                      className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition"
+                    >
+                      重新分隊 / 返回大廳
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 個人防窺翻牌卡片區 */}
+              <div className="max-w-md mx-auto">
+                <div className="text-center mb-2">
+                  <span className="text-xs text-zinc-400">👇 按住下方卡片不放可查看身分，放開立刻自動蓋牌（防偷看）</span>
+                </div>
+
+                <div
+                  onMouseDown={() => setIsRevealed(true)}
+                  onMouseUp={() => setIsRevealed(false)}
+                  onTouchStart={() => setIsRevealed(true)}
+                  onTouchEnd={() => setIsRevealed(false)}
+                  className="w-full h-80 cursor-pointer select-none perspective-1000"
+                >
+                  <div className={`relative w-full h-full duration-300 transform-style-3d ${isRevealed ? 'rotate-y-180' : ''}`}>
+                    {/* 卡片背面 (未翻開) */}
+                    <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-indigo-500/40 rounded-2xl flex flex-col items-center justify-center p-6 shadow-2xl">
+                      <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-4xl mb-4">
+                        🔒
+                      </div>
+                      <h3 className="text-lg font-bold text-zinc-100">機密身分卡</h3>
+                      <p className="text-xs text-zinc-400 mt-2">按住此處翻開檢視</p>
+                      <div className="mt-4 text-[11px] text-zinc-500 bg-zinc-950/60 px-3 py-1 rounded-full">
+                        玩家: {myInfo.name}
+                      </div>
+                    </div>
+
+                    {/* 卡片正面 (翻開後) */}
+                    <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 ${
+                      myInfo.team === 'red' ? 'bg-gradient-to-br from-red-950 via-zinc-900 to-zinc-900 border-red-500' :
+                      myInfo.team === 'blue' ? 'bg-gradient-to-br from-blue-950 via-zinc-900 to-zinc-900 border-blue-500' :
+                      'bg-gradient-to-br from-amber-950 via-zinc-900 to-zinc-900 border-amber-500'
+                    }`}>
+                      <div className="flex justify-between items-start">
+                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider ${
+                          myInfo.team === 'red' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                          myInfo.team === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                          'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {myInfo.team === 'red' ? '熾焰紅隊' : myInfo.team === 'blue' ? '深海藍隊' : '中立陣營'}
+                        </span>
+                        <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
+                      </div>
+
+                      <div className="text-center my-auto">
+                        <h2 className="text-2xl font-black text-white tracking-wide">{myInfo.role?.name || '特工'}</h2>
+                        <p className="text-xs text-zinc-300 mt-3 px-2 leading-relaxed bg-zinc-950/40 py-2.5 rounded-xl border border-zinc-800">
+                          {myInfo.role?.desc || '暫無專屬技能說明'}
+                        </p>
+                      </div>
+
+                      <div className="text-[11px] text-zinc-400 text-center">
+                        鬆開手指立即蓋牌隱藏
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="text-right">
-                <p className="text-xs text-slate-400">目前就位人數</p>
-                <p className="text-lg font-black text-emerald-400">
-                  {total} <span className="text-xs text-slate-500">/ 20 人滿編</span>
-                </p>
-              </div>
-            </header>
-
-            {/* 大廳 20 人席位總覽 */}
-            <main className="max-w-5xl mx-auto w-full my-6 flex-1 flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-4">
-                    <h2 className="font-black text-white text-base flex items-center gap-2">
-                      👥 20 位玩家準備名冊
-                    </h2>
-                    <span className="text-xs text-slate-400">
-                      兩隊將自動均分為 {Math.ceil(total / 2)} vs {Math.floor(total / 2)}
-                    </span>
+              {/* 兩隊玩家陣營名單 (預設不洩漏他人身分) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 紅隊名單 */}
+                <div className="bg-red-950/20 border border-red-900/40 rounded-2xl p-4">
+                  <div className="flex justify-between items-center pb-2 mb-3 border-b border-red-900/40">
+                    <h3 className="font-bold text-red-400 flex items-center gap-2">
+                      <span>🔥 熾焰紅隊</span>
+                      <span className="text-xs bg-red-900/40 px-2 py-0.5 rounded-full">{redTeam.length} 人</span>
+                    </h3>
                   </div>
-
-                  {/* 20人網格 */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5 max-h-[460px] overflow-y-auto pr-1">
-                    {players.map((p, idx) => (
-                      <div
-                        key={p.id}
-                        className={`p-2.5 rounded-xl border flex flex-col justify-between ${
-                          idx === 0
-                            ? 'bg-amber-500/10 border-amber-500/40'
-                            : 'bg-slate-950/70 border-slate-800/80'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
-                          <span className="font-mono">#{idx + 1}</span>
-                          {idx === 0 && <span className="text-amber-400 font-bold">房主</span>}
-                        </div>
-                        <input
-                          type="text"
-                          value={p.name}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setPlayers(prev => prev.map((pl, i) => i === idx ? { ...pl, name: val } : pl));
-                          }}
-                          className="w-full bg-transparent text-xs font-bold text-white focus:outline-none focus:border-b border-amber-500 truncate"
-                        />
-                        <div className="mt-2 flex items-center gap-1.5 text-[9px] text-emerald-400 font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                          <span>準備就緒</span>
-                        </div>
+                  <div className="space-y-2">
+                    {redTeam.map(p => (
+                      <div key={p.id} className="flex justify-between items-center bg-zinc-900/70 p-2.5 rounded-xl border border-red-950">
+                        <span className="text-sm font-medium">{p.name} {p.id === myPlayerId && '(你)'}</span>
+                        <span className="text-xs font-mono">
+                          {p.id === myPlayerId || isGodMode ? (
+                            <span className="text-red-300 font-semibold">{p.role?.icon} {p.role?.name}</span>
+                          ) : (
+                            <span className="text-zinc-500">🔒 機密身分</span>
+                          )}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 房主啟動分隊按鈕 */}
-                <div className="mt-6 pt-4 border-t border-slate-800">
-                  <button
-                    onClick={handleStartGame}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-slate-950 font-black text-base shadow-xl shadow-orange-500/20 active:scale-98 transition flex items-center justify-center gap-2"
-                  >
-                    🎲 立即隨機分隊並發放身分卡！ (10 vs 10)
-                  </button>
-                </div>
-              </div>
-
-              {/* 右側：陣營名稱自訂 */}
-              <div className="w-full lg:w-80 bg-slate-900/50 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-black text-white text-sm pb-3 border-b border-slate-800 mb-4 flex items-center gap-2">
-                    ⚙️ 兩軍陣營自訂
-                  </h3>
-
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <label className="text-xs font-bold text-rose-400 uppercase tracking-wider block mb-1">
-                        🔴 陣營 A (紅隊名稱)
-                      </label>
-                      <input
-                        type="text"
-                        value={teamAName}
-                        onChange={(e) => setTeamAName(e.target.value)}
-                        className="w-full bg-slate-950 border border-rose-500/40 rounded-xl px-3 py-2 text-rose-200 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-rose-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-sky-400 uppercase tracking-wider block mb-1">
-                        🔵 陣營 B (藍隊名稱)
-                      </label>
-                      <input
-                        type="text"
-                        value={teamBName}
-                        onChange={(e) => setTeamBName(e.target.value)}
-                        className="w-full bg-slate-950 border border-sky-500/40 rounded-xl px-3 py-2 text-sky-200 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      />
-                    </div>
+                {/* 藍隊名單 */}
+                <div className="bg-blue-950/20 border border-blue-900/40 rounded-2xl p-4">
+                  <div className="flex justify-between items-center pb-2 mb-3 border-b border-blue-900/40">
+                    <h3 className="font-bold text-blue-400 flex items-center gap-2">
+                      <span>💧 深海藍隊</span>
+                      <span className="text-xs bg-blue-900/40 px-2 py-0.5 rounded-full">{blueTeam.length} 人</span>
+                    </h3>
                   </div>
-
-                  <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3">
-                    <p className="text-xs font-bold text-slate-300 mb-1">已選卡包：</p>
-                    <p className="text-xs font-black text-amber-400 mb-1">{PRESET_DECKS[selectedDeckKey]?.name}</p>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      {PRESET_DECKS[selectedDeckKey]?.desc}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 p-3 rounded-xl bg-slate-950/40 border border-slate-800/50 text-[11px] text-slate-500">
-                  ✨ 提示：若 20 人在現場，可讓每個人在清單上修改自己的名字，點擊分隊後即可依序或各自翻牌！
-                </div>
-              </div>
-            </main>
-          </div>
-        );
-      }
-
-      // ==========================================
-      // 頁面 3：遊戲進行與防窺抽卡 (Room Game)
-      // ==========================================
-      if (appMode === 'room_game') {
-        const currentPlayer = players[activePlayerIndex] || players[0];
-        const isTeamA = currentPlayer.team === 'A';
-        const role = currentPlayer.role;
-
-        return (
-          <div className="min-h-screen flex flex-col justify-between bg-slate-950 p-4 sm:p-6">
-            {/* Top Bar: Timer & DM Controls */}
-            <header className="max-w-4xl mx-auto w-full flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="font-mono text-sm text-amber-400 font-bold">房間 #{roomId}</span>
-              </div>
-
-              {/* DM 倒數計時器 */}
-              <div className="flex items-center gap-2">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1 flex items-center gap-2 text-xs font-mono font-bold text-white">
-                  <span>⏱️ {Math.floor(timerSec / 60)}:{(timerSec % 60).toString().padStart(2, '0')}</span>
-                  <button
-                    onClick={() => {
-                      sound('click');
-                      setTimerRunning(!timerRunning);
-                    }}
-                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
-                  >
-                    {timerRunning ? '暫停' : '開始'}
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => {
-                    sound('click');
-                    setShowGodEye(!showGodEye);
-                  }}
-                  className={`px-3 py-1 rounded-xl border text-xs font-bold transition ${
-                    showGodEye
-                      ? 'bg-rose-500/20 border-rose-500 text-rose-300'
-                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  {showGodEye ? '👁️ 關閉上帝視角' : '👁️ 上帝視角 (DM)'}
-                </button>
-              </div>
-            </header>
-
-            {/* 主內容：防窺卡牌 */}
-            <main className="max-w-lg mx-auto w-full my-6 flex-1 flex flex-col items-center justify-center">
-              {/* 切換檢視席位 (方便主持或單機切換) */}
-              <div className="w-full flex items-center justify-between bg-slate-900/60 border border-slate-800 rounded-xl p-2.5 mb-4">
-                <span className="text-xs text-slate-400 font-medium">當前檢視席位：</span>
-                <select
-                  value={activePlayerIndex}
-                  onChange={(e) => {
-                    sound('click');
-                    setActivePlayerIndex(parseInt(e.target.value, 10));
-                    setPeekCard(false);
-                  }}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold text-amber-400 focus:outline-none"
-                >
-                  {players.map((p, idx) => (
-                    <option key={p.id} value={idx}>
-                      #{idx + 1} {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 翻牌保護提示 */}
-              <div className="mb-3 text-center">
-                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1 rounded-full">
-                  🛡️ 防窺保護：請按住卡片不放翻閱，鬆開立刻隱藏！
-                </span>
-              </div>
-
-              {/* 卡牌本體 */}
-              <div
-                onMouseDown={() => {
-                  sound('reveal');
-                  setPeekCard(true);
-                }}
-                onMouseUp={() => setPeekCard(false)}
-                onTouchStart={() => {
-                  sound('reveal');
-                  setPeekCard(true);
-                }}
-                onTouchEnd={() => setPeekCard(false)}
-                className={`w-full max-w-sm rounded-3xl p-1 transition-all duration-300 select-none shadow-2xl cursor-pointer ${
-                  peekCard
-                    ? (isTeamA ? 'bg-gradient-to-tr from-rose-600 via-orange-500 to-amber-500 scale-[1.02]' : 'bg-gradient-to-tr from-sky-600 via-indigo-500 to-blue-500 scale-[1.02]')
-                    : 'bg-gradient-to-tr from-slate-700 via-slate-800 to-slate-900 hover:scale-[1.01]'
-                }`}
-              >
-                <div className="w-full bg-slate-950 rounded-[22px] p-6 min-h-[400px] flex flex-col justify-between text-center border border-slate-800">
-                  {!peekCard ? (
-                    /* 卡背：遮蔽狀態 */
-                    <div className="flex-1 flex flex-col items-center justify-center py-6">
-                      <div className="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-4xl mb-6 shadow-inner">
-                        🔒
-                      </div>
-                      <h3 className="text-xl font-black text-white mb-2">機密身分已鎖定</h3>
-                      <p className="text-xs text-slate-400 max-w-xs mb-8">
-                        請確認身旁無人偷窺，長按下方按鈕翻開查看您的陣營與身分技能。
-                      </p>
-                      <div className="px-6 py-3 rounded-xl bg-amber-500 text-slate-950 font-black text-sm tracking-wider shadow-lg shadow-amber-500/20 animate-pulse">
-                        按住查看身分
-                      </div>
-                    </div>
-                  ) : (
-                    /* 卡面：揭示狀態 */
-                    <div className="flex-1 flex flex-col justify-between py-2">
-                      <div>
-                        {/* 陣營標籤 */}
-                        <div
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-4"
-                          style={{
-                            backgroundColor: isTeamA ? 'rgba(244, 63, 94, 0.2)' : 'rgba(14, 165, 233, 0.2)',
-                            color: isTeamA ? '#fb7185' : '#38bdf8',
-                            border: isTeamA ? '1px solid rgba(244, 63, 94, 0.4)' : '1px solid rgba(14, 165, 233, 0.4)'
-                          }}
-                        >
-                          {isTeamA ? '🔥' : '💧'} {currentPlayer.teamName}
-                        </div>
-
-                        {/* 角色名稱 */}
-                        <h2 className="text-3xl font-black text-white mb-2">{role?.name || '特工隊員'}</h2>
-                        <p className="text-xs text-slate-400 italic mb-5">"{role?.desc}"</p>
-                      </div>
-
-                      {/* 技能與任務目標 */}
-                      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 text-left mb-4 shadow-inner">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
-                          ⚡ 專屬技能 / 陣營目標
+                  <div className="space-y-2">
+                    {blueTeam.map(p => (
+                      <div key={p.id} className="flex justify-between items-center bg-zinc-900/70 p-2.5 rounded-xl border border-blue-950">
+                        <span className="text-sm font-medium">{p.name} {p.id === myPlayerId && '(你)'}</span>
+                        <span className="text-xs font-mono">
+                          {p.id === myPlayerId || isGodMode ? (
+                            <span className="text-blue-300 font-semibold">{p.role?.icon} {p.role?.name}</span>
+                          ) : (
+                            <span className="text-zinc-500">🔒 機密身分</span>
+                          )}
                         </span>
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {role?.power || '與隊友配合，在公決投票時找出潛伏的敵方特工！'}
-                        </p>
                       </div>
-
-                      <p className="text-[10px] text-slate-500 font-semibold">
-                        ⚠️ 鬆開手指立即重新遮蔽
-                      </p>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* 上帝視角 (DM 面板) */}
-              {showGodEye && (
-                <div className="w-full mt-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
-                    <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                      👁️ 上帝視角全覽名冊 (共 20 人)
-                    </h4>
-                    <span className="text-[10px] text-slate-400">10 vs 10</span>
+          {/* 卡池自訂設定彈窗 Modal */}
+          {showDeckModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
+              <div className="bg-zinc-900 border border-zinc-700 w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
+                {/* 彈窗 Header */}
+                <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <span>🛠️️ 角色池配置</span>
+                      <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">
+                        總共加入: {totalCardsInDeck} 張卡
+                      </span>
+                    </h3>
+                    <p className="text-xs text-zinc-400">依需求調整各身分卡加入數量，也可自行新增全新角色。</p>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    {/* 紅隊名冊 */}
-                    <div className="bg-rose-950/20 border border-rose-900/40 rounded-xl p-2.5">
-                      <p className="font-bold text-rose-400 mb-1.5 pb-1 border-b border-rose-900/40">
-                        🔥 {teamAName} ({players.filter(p => p.team === 'A').length}人)
-                      </p>
-                      <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
-                        {players.filter(p => p.team === 'A').map(p => (
-                          <div key={p.id} className="flex justify-between py-0.5">
-                            <span className="text-white">{p.name}</span>
-                            <span className="font-bold text-rose-300">{p.role?.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 藍隊名冊 */}
-                    <div className="bg-sky-950/20 border border-sky-900/40 rounded-xl p-2.5">
-                      <p className="font-bold text-sky-400 mb-1.5 pb-1 border-b border-sky-900/40">
-                        💧 {teamBName} ({players.filter(p => p.team === 'B').length}人)
-                      </p>
-                      <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
-                        {players.filter(p => p.team === 'B').map(p => (
-                          <div key={p.id} className="flex justify-between py-0.5">
-                            <span className="text-white">{p.name}</span>
-                            <span className="font-bold text-sky-300">{p.role?.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setShowDeckModal(false)}
+                    className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center"
+                  >
+                    ✕
+                  </button>
                 </div>
-              )}
-            </main>
 
-            {/* Footer 控制列 */}
-            <footer className="max-w-4xl mx-auto w-full flex items-center justify-between pt-3 border-t border-slate-900">
-              <button
-                onClick={() => {
-                  sound('click');
-                  setAppMode('room_lobby');
-                }}
-                className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white"
-              >
-                ← 返回大廳重新調度
-              </button>
-              <button
-                onClick={handleStartGame}
-                className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold"
-              >
-                🔄 重新洗牌分隊
-              </button>
-            </footer>
-          </div>
-        );
-      }
+                {/* 角色數量調整清單 */}
+                <div className="p-4 overflow-y-auto space-y-3 flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {rolesCatalog.map(role => {
+                      const count = roleCounts[role.id] || 0;
+                      return (
+                        <div
+                          key={role.id}
+                          className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                            count > 0 ? 'bg-zinc-800/80 border-zinc-600' : 'bg-zinc-900/50 border-zinc-800 opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <span className="text-2xl">{role.icon}</span>
+                            <div className="truncate">
+                              <div className="text-sm font-semibold truncate flex items-center gap-1.5">
+                                {role.name}
+                                <span className={`text-[10px] px-1 rounded ${
+                                  role.team === 'red' ? 'bg-red-500/20 text-red-400' :
+                                  role.team === 'blue' ? 'bg-blue-500/20 text-blue-400' :
+                                  'bg-amber-500/20 text-amber-400'
+                                }`}>
+                                  {role.team === 'red' ? '紅' : role.team === 'blue' ? '藍' : '中立'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-400 truncate max-w-[140px]">{role.desc}</p>
+                            </div>
+                          </div>
 
-      // ==========================================
-      // 頁面 4：單機傳閱抽卡 (Pass & Play)
-      // ==========================================
-      if (appMode === 'pass_play') {
-        const total = passAssignedList.length;
-        const current = passAssignedList[passCurrentIdx];
-        const isTeamA = current?.team === 'A';
-
-        return (
-          <div className="min-h-screen flex flex-col justify-between bg-slate-950 p-4 sm:p-6">
-            <header className="max-w-md mx-auto w-full flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="text-xs font-black text-indigo-400">📱 單機傳閱抽卡模式</span>
-              <button
-                onClick={() => setAppMode('welcome')}
-                className="text-xs px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-400"
-              >
-                結束模式
-              </button>
-            </header>
-
-            <main className="max-w-md mx-auto w-full my-6 flex-1 flex flex-col justify-center">
-              {passStage === 'passing' ? (
-                <div className="space-y-4">
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">傳閱進度：</span>
-                    <span className="font-black text-indigo-400">
-                      第 {passCurrentIdx + 1} 位 / 共 {total} 位玩家
-                    </span>
+                          {/* 增減數量按鈕 */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              disabled={!isHost}
+                              onClick={() => updateRoleCount(role.id, -1)}
+                              className="w-7 h-7 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-30 rounded-lg flex items-center justify-center font-bold text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="w-5 text-center font-mono font-bold text-sm">{count}</span>
+                            <button
+                              disabled={!isHost}
+                              onClick={() => updateRoleCount(role.id, 1)}
+                              className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 rounded-lg flex items-center justify-center font-bold text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {!passRevealed ? (
-                    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 text-center shadow-xl">
-                      <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-3xl mx-auto mb-4">
-                        🤝
-                      </div>
-                      <h3 className="text-xl font-black text-white mb-2">
-                        請交給【第 {passCurrentIdx + 1} 位玩家】
-                      </h3>
-                      <p className="text-xs text-slate-400 mb-6">
-                        請其他人不要偷看！由本人接過手機親自點擊按鈕查看身分。
-                      </p>
-                      <button
-                        onClick={() => {
-                          sound('reveal');
-                          setPassRevealed(true);
-                        }}
-                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 text-white font-black text-sm shadow-lg shadow-indigo-500/20 active:scale-98 transition"
-                      >
-                        我是本人，翻開我的身分
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      className="rounded-3xl p-1 shadow-2xl"
-                      style={{
-                        background: isTeamA
-                          ? 'linear-gradient(to top right, #e11d48, #f59e0b)'
-                          : 'linear-gradient(to top right, #0284c7, #6366f1)'
-                      }}
-                    >
-                      <div className="bg-slate-950 rounded-[22px] p-6 text-center border border-slate-800">
-                        <div
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase mb-3"
-                          style={{
-                            backgroundColor: isTeamA ? 'rgba(244, 63, 94, 0.2)' : 'rgba(14, 165, 233, 0.2)',
-                            color: isTeamA ? '#fb7185' : '#38bdf8'
-                          }}
+                  {/* 自訂新增角色區塊 (僅房主可見) */}
+                  {isHost && (
+                    <form onSubmit={handleAddNewRole} className="mt-4 pt-4 border-t border-zinc-800">
+                      <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">➕ 新增自訂角色</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <input
+                          type="text"
+                          placeholder="角色名稱 (例: 隱形刺客)"
+                          value={newRoleName}
+                          onChange={(e) => setNewRoleName(e.target.value)}
+                          className="bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs text-white"
+                        />
+                        <select
+                          value={newRoleTeam}
+                          onChange={(e) => setNewRoleTeam(e.target.value)}
+                          className="bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs text-white"
                         >
-                          {isTeamA ? '🔥' : '💧'} {current.teamName}
-                        </div>
-
-                        <h2 className="text-2xl font-black text-white mb-1">{current.role?.name}</h2>
-                        <p className="text-xs text-slate-400 italic mb-4">"{current.role?.desc}"</p>
-
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-left mb-6">
-                          <span className="text-[10px] font-bold text-amber-400 block mb-1">⚡ 技能 / 目標</span>
-                          <p className="text-xs text-slate-200">{current.role?.power}</p>
-                        </div>
-
+                          <option value="red">熾焰紅隊</option>
+                          <option value="blue">深海藍隊</option>
+                          <option value="neutral">中立陣營</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="技能描述"
+                          value={newRoleDesc}
+                          onChange={(e) => setNewRoleDesc(e.target.value)}
+                          className="bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs text-white"
+                        />
                         <button
-                          onClick={() => {
-                            sound('click');
-                            if (passCurrentIdx + 1 < total) {
-                              setPassCurrentIdx(passCurrentIdx + 1);
-                              setPassRevealed(false);
-                            } else {
-                              setPassStage('finish');
-                            }
-                          }}
-                          className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                          type="submit"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-1.5 rounded-lg"
                         >
-                          記住身分了，交給下一位玩家 →
+                          加入角色庫
                         </button>
                       </div>
-                    </div>
+                    </form>
                   )}
                 </div>
-              ) : (
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 text-center shadow-xl">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-4">
-                    🎉
-                  </div>
-                  <h3 className="text-2xl font-black text-white mb-2">全體 {total} 位玩家已就位！</h3>
-                  <p className="text-xs text-slate-400 mb-6">
-                    兩大陣營身分均已發放完畢，勢均力敵！現在可以正式開始你們的桌遊對決或辯論審判。
-                  </p>
-                  <div className="space-y-2.5">
-                    <button
-                      onClick={handleStartPassAndPlay}
-                      className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs"
-                    >
-                      重新分隊洗牌
-                    </button>
-                    <button
-                      onClick={() => setAppMode('welcome')}
-                      className="w-full py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
-                    >
-                      返回首頁
-                    </button>
-                  </div>
+
+                {/* 彈窗 Footer */}
+                <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
+                  <span className="text-xs text-zinc-400">
+                    目前總卡數: <strong className={totalCardsInDeck >= players.length ? "text-emerald-400" : "text-rose-400"}>{totalCardsInDeck}</strong> / 玩家數: {players.length}
+                  </span>
+                  <button
+                    onClick={() => setShowDeckModal(false)}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-5 py-2 rounded-xl"
+                  >
+                    確定套用
+                  </button>
                 </div>
-              )}
-            </main>
-
-            <footer className="text-center py-2 text-xs text-slate-600 border-t border-slate-900">
-              單機傳閱模式 • 適合線下聚會、露營無網路環境
-            </footer>
-          </div>
-        );
-      }
-
-      return null;
+              </div>
+            </div>
+          )}
+        </div>
+      );
     }
 
-    // 啟動 React
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
 </html>
