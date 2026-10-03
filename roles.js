@@ -151,6 +151,12 @@ window.OFFICIAL_ROLES_CATALOG = [
   // 普通成員
   { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🛡️', desc: '保護總統安全，不要讓『總統』與『炸彈客』在同一個房間！', pairs: 'red_mem' },
   { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🎯', desc: '協助炸彈客，讓『炸彈客』與『總統』在同一個房間引爆！', pairs: 'blue_mem' },
+
+  // 進階核心身分
+  { id: 'blue_drone', name: '藍色無人機 (Blue Drone)', team: 'blue', icon: '🛸', desc: '主要角色。遊戲結束時若與「紅色鐵拳」身處同一個房間，則藍隊獲勝。', pairs: 'red_fist' },
+  { id: 'red_fist', name: '紅色鐵拳 (Red Fist)', team: 'red', icon: '✊', desc: '主要角色。遊戲結束時若與「藍色無人機」身處不同房間，則紅隊獲勝。', pairs: 'blue_drone' },
+  { id: 'blue_firecracker', name: '藍色爆竹 (Blue Firecracker)', team: 'blue', icon: '🧨', desc: '無人機替補角色。若無人機被埋牌或死亡，接替其所有職責。', pairs: 'red_foot' },
+  { id: 'red_foot', name: '紅色鐵足 (Red Foot)', team: 'red', icon: '🦶', desc: '紅色鐵拳替補角色。若紅色鐵拳被埋牌或死亡，接替其所有職責。', pairs: 'blue_firecracker' },
   
   // 灰隊對應關係 (Grey Team)
   { id: 'survivor', name: '倖存者 (Survivor)', team: 'grey', icon: '🧗', desc: '遊戲結束時，自己和『炸彈客』不在同一個房間時獲勝。', pairs: 'victim' },
