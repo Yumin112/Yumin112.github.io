@@ -171,8 +171,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'stunt_double', name: '替身演員 (Stunt Double)', team: 'grey', icon: '🎬', desc: '遊戲結束時若與總統分處不同房間，且自己死於炸彈引爆則獲勝。' },
   { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『卡片分享』或『顏色分享』者的勝利條件，若無分享則失敗。' },
   { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『卡片分享』或『顏色分享』的人若失敗則你獲勝，若無分享則失敗。' },
-  { id: 'frotteur', name: '摩擦癖 (Frotteur)', team: 'grey', icon: '🖐️', desc: '終局前必須觸碰過全場每一位玩家；若被假道學抓住手腕則直接判負。', pairs: 'prude' },
-  { id: 'prude', name: '假道學 (Prude)', team: 'grey', icon: '🚫', desc: '抓住摩擦癖的手腕直到終局即獲勝；被抓住的兩人將綁定移動。', pairs: 'frotteur' },
+  { id: 'frotteur', name: '性騷擾者 (Frotteur)', team: 'grey', icon: '🖐️', desc: '遊戲結束前必須觸碰過全場每一位玩家；若被『保守人士』抓住手腕則直接失敗。', pairs: 'prude' },
+  { id: 'prude', name: '保守人士 (Prude)', team: 'grey', icon: '🚫', desc: '抓住『性騷擾者』的手腕直到遊戲結束即獲勝；抓住後兩人將綁定移動。', pairs: 'frotteur' },
   { id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨', desc: '首輪指定兩名孩子，終局時這兩名玩家若皆與總統同室則獲勝。' },
   { id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩', desc: '首輪指定兩名孩子，終局時這兩名玩家皆未死於炸彈引爆則獲勝。' },
   
@@ -194,8 +194,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'minion', name: '僕從 (Minion)', team: 'grey', icon: '🙇', desc: '遊戲結束時，與你在同一個房間的領隊從來沒有被篡位過則獲勝。' },
   { id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '在最後一輪結束前，必須將自己的卡片換為紅隊或藍隊卡並倒戈。' },
   { id: 'telepath', name: '心靈感應者 (Telepath)', team: 'grey', icon: '🔮', desc: '最後一輪亮牌預測終局進入本房間的人質玩家，猜中即獲勝。' },
-  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束時，所有玩家揭露身分前公開猜測被埋葬的是什麼卡，猜對獲勝。' },
-  { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '終局前公開依序點名猜測全場每一位玩家的卡牌顏色，全對即獲勝。' },
+  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個角色，猜對獲勝。' },
+  { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束後公開玩家身分前，依序點名猜測全場每一位玩家的卡牌顏色，全對即獲勝。' },
   { id: 'mastermind', name: '策劃者 (Mastermind)', team: 'grey', icon: '♟️', desc: '遊戲結束時你是一個房間領隊，且曾做過對面房間領隊則獲勝。' },
   { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '收繳埋葬卡；若紅藍平手，交牌較多一隊勝；若平局未解則法官獨贏。' },
   { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟『炸彈客』及『總統』都進行過『卡片分享』則獲勝。' },
@@ -206,10 +206,10 @@ window.OFFICIAL_ROLES_CATALOG = [
 
   // 紫色、粉色、黑色與特殊陣營
   { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'purple', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' },
-  { id: 'drunk', name: '酒鬼 (Drunk)', team: 'purple', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『清醒者』互換並繼承其條件。' },
+  { id: 'drunk', name: '酒鬼 (Drunk)', team: 'purple', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『埋葬卡』互換並繼承其條件。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '開局藏寶特殊角色；若玩家未能在終局前找到寶藏，則你獲勝。' },
   { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獲勝。' },
-  { id: 'yellow_assassin', name: '黃色刺客 (Yellow Assassin)', team: 'yellow', icon: '🟡', desc: '任何與你進行『卡片分享』或『顏色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
+  { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『卡片分享』或『顏色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
   
   // 綠隊 (Green Team)
   { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『卡片分享』或『顏色分享』者皆感染成殭屍！全體存活玩家皆變成殭屍即獲勝。' },
