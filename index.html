@@ -36,7 +36,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-    // 取得隊伍設定（優先讀取外部 team.js）
+    // 取得隊伍設定（讀取外部 team.js）
     const getTeamMeta = (teamKey) => {
       const key = (teamKey || '').toLowerCase();
       const teamMap = (window.OFFICIAL_TEAM_CONFIG && window.OFFICIAL_TEAM_CONFIG[0]) || {};
@@ -1086,17 +1086,21 @@
                 </div>
               </div>
 
-              {/* 回合資訊預覽 */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-wrap gap-4 text-xs text-zinc-400 justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-400 font-bold">⏱️ 回合時間規劃:</span>
-                  {roundSettings.map((min, idx) => (
-                    <span key={idx} className="bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded text-zinc-200">
-                      第 {idx + 1} 輪: <strong>{min}</strong> 分鐘
-                    </span>
-                  ))}
+              {/* 【優化 1】：回合時間排版（名稱改為「回合時間」，修復手機版擠壓折行問題） */}
+              <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
+                    ⏱️ 回合時間:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {roundSettings.map((min, idx) => (
+                      <span key={idx} className="bg-zinc-800 border border-zinc-700 px-2 py-1 rounded-md text-zinc-200 font-medium whitespace-nowrap">
+                        <span className="text-zinc-400">R{idx + 1}:</span> <strong className="text-amber-400">{min}</strong>分
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div>第一階段先分房就位，確認後才發放身分與計時。</div>
+                <div className="text-[11px] text-zinc-500 shrink-0">第一階段先分房就位，確認後才發放身分與計時。</div>
               </div>
 
               {/* 線上玩家名單 */}
@@ -1361,12 +1365,13 @@
                       onTouchMove={handleTouchMove}
                       className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[340px] transition-all duration-150 ${myTeamMeta.cardBg}`}
                     >
+                      {/* 【優化 2】：顏色分享視圖（字體加大至 text-xl，調色盤縮小至 text-3xl） */}
                       {isColorOnly ? (
                         <div className="my-auto flex flex-col items-center justify-center text-center space-y-4 pointer-events-none">
-                          <span className={`text-sm px-4 py-1.5 rounded-full font-black tracking-widest uppercase border ${myTeamMeta.badge}`}>
+                          <span className={`text-xl px-6 py-2 rounded-full font-black tracking-widest uppercase border shadow-lg ${myTeamMeta.badge}`}>
                             {myTeamMeta.label}
                           </span>
-                          <div className="text-6xl animate-pulse">🎨</div>
+                          <div className="text-3xl animate-pulse">🎨</div>
                           <p className="text-xs text-zinc-300 font-semibold tracking-wider bg-zinc-950/60 px-4 py-2 rounded-xl border border-zinc-700/60">
                             正在進行【顏色分享】<br/><span className="text-[10px] text-zinc-400">移出框框或放手立即恢復完整身分</span>
                           </p>
