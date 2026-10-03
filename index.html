@@ -11,9 +11,10 @@
   <!-- MQTT.js (跨裝置中繼) -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- 引入獨立隊伍與角色資料庫 -->
+  <!-- 引入獨立隊伍、角色資料庫與角色機制外掛 -->
   <script src="./team.js"></script>
   <script src="./roles.js"></script>
+  <script src="./roles-mechanics.js"></script>
 
   <!-- React & Babel -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -117,6 +118,7 @@
       // 角色互動與交換行為
       const [isColorOnly, setIsColorOnly] = useState(false);
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
+      const [swapModalConfig, setSwapModalConfig] = useState(null);
       const [swapRequestData, setSwapRequestData] = useState(null); 
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
       const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
@@ -175,16 +177,6 @@
         });
         return Object.values(groups);
       }, [rolesCatalog, roleCounts]);
-
-      const canSwapRole = useMemo(() => {
-        return Boolean(myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun'));
-      }, [myInfo.role]);
-
-      const canDrunkSwapBuried = useMemo(() => {
-        const isDrunk = myInfo.role && myInfo.role.id === 'drunk';
-        const isLastRound = currentRoundIndex === roundSettings.length - 1;
-        return Boolean(isDrunk && buriedCard && isLastRound);
-      }, [myInfo.role, buriedCard, currentRoundIndex, roundSettings.length]);
 
       // 保持最新狀態快照
       useEffect(() => {
@@ -572,13 +564,6 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest]);
 
-      useEffect(() => {
-        if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
-          setSwapStatusMessage('🎉 身分已成功交換！');
-          setTimeout(() => setSwapStatusMessage(''), 2500);
-        }
-      }, [canSwapRole, swapStatusMessage]);
-
       // 房間管理業務函式
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
@@ -948,36 +933,12 @@
         setSwapRequestData(null);
       };
 
+      // 房長端交換業務：交由 RoleMechanics 執行
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
-          const p1 = prev.find(p => p.id === id1);
-          const p2 = prev.find(p => p.id === id2);
-          if (!p1 || !p2) return prev;
-
-          const role1 = p1.role;
-          const team1 = p1.team;
-          const role2 = p2.role;
-          const team2 = p2.team;
-
-          const next = prev.map(p => {
-            if (p.id === id1) {
-              return {
-                ...p,
-                role: role2,
-                team: team2,
-                hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun')
-              };
-            }
-            if (p.id === id2) {
-              return {
-                ...p,
-                role: role1,
-                team: team1,
-                hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun')
-              };
-            }
-            return p;
-          });
+          const next = window.RoleMechanics 
+            ? window.RoleMechanics.applyPlayerSwap(prev, id1, id2) 
+            : prev;
 
           if (clientRef.current) {
             clientRef.current.publish(`trb_game_sync_room_${latestStateRef.current.roomId}`, JSON.stringify({
@@ -992,37 +953,25 @@
         });
       }, [broadcastLatest]);
 
+      // 房長端酒鬼交換業務：交由 RoleMechanics 執行
       const executeDrunkBuriedSwapOnHost = useCallback((drunkPlayerId) => {
         const curBuried = latestStateRef.current.buriedCard;
-        if (!curBuried) return;
+        if (!curBuried || !window.RoleMechanics) return;
 
         setPlayers(prev => {
-          const drunkPlayer = prev.find(p => p.id === drunkPlayerId);
-          if (!drunkPlayer) return prev;
-
-          const oldRole = drunkPlayer.role;
-          const newRole = curBuried;
-          const newBuried = oldRole;
+          const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(
+            prev,
+            curBuried,
+            drunkPlayerId
+          );
 
           setBuriedCard(newBuried);
 
-          const next = prev.map(p => {
-            if (p.id === drunkPlayerId) {
-              return {
-                ...p,
-                role: newRole,
-                team: newRole.team,
-                hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')
-              };
-            }
-            return p;
-          });
-
           setTimeout(() => {
-            broadcastLatest({ players: next, buriedCard: newBuried });
+            broadcastLatest({ players: nextPlayers, buriedCard: newBuried });
           }, 50);
 
-          return next;
+          return nextPlayers;
         });
       }, [broadcastLatest]);
 
@@ -1081,7 +1030,7 @@
       };
 
       // ==========================================
-      // 6. 畫面渲染樹 (JSX Render Tree)
+      // 3. 畫面渲染樹 (JSX Render Tree)
       // ==========================================
 
       return (
@@ -1200,7 +1149,7 @@
                         onClick={() => { setTempRoundSettings([...roundSettings]); setShowRoundConfigModal(true); }}
                         className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-200 transition active:scale-95"
                       >
-                        ⚙️️ 回合設定 ({roundSettings.length}輪)
+                        ⚙ 回合設定 ({roundSettings.length}輪)
                       </button>
 
                       <button
@@ -1458,7 +1407,7 @@
                 </div>
               )}
 
-              {/* [階段三] 遊戲結束面板（修復：即使關閉彈窗未做選擇，按鈕依然常駐存在） */}
+              {/* [階段三] 遊戲結束面板 */}
               {roomStatus === 'ended' && (
                 <div className="space-y-4">
                   <div className={`p-6 rounded-2xl border-2 text-center shadow-2xl space-y-4 ${
@@ -1474,7 +1423,6 @@
                       </div>
                     </div>
 
-                    {/* 房長操作按鈕常駐顯示 */}
                     {isHost && (
                       <div className="flex flex-wrap items-center justify-center gap-3 pt-2 border-t border-white/10">
                         <button
@@ -1540,7 +1488,7 @@
                 </div>
               )}
 
-              {/* 核心身分卡（按住顏色分享 / 交換操作） */}
+              {/* 核心身分卡（按住顏色分享 / 通用動作插槽） */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -1586,48 +1534,46 @@
                         </p>
                       </div>
 
-                      {canSwapRole && (
-                        <div className="my-2">
-                          <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowSwapTargetModal(true);
-                            }}
-                            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950 font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border border-amber-300/40"
-                          >
-                            <span>🔄 發起身分交換</span>
-                            <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
-                              {myInfo.role?.name} 專屬
-                            </span>
-                          </button>
-                        </div>
-                      )}
+                      {/* 【角色機制外掛通插槽】：由 RoleMechanics 自動注入，新增角色無需修改此段 */}
+                      {(() => {
+                        const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
+                          currentRoundIndex,
+                          roundSettings,
+                          buriedCard,
+                          openSwapModal: (config) => {
+                            setSwapModalConfig(config);
+                            setShowSwapTargetModal(true);
+                          },
+                          openDrunkModal: () => setShowDrunkConfirmModal(true)
+                        });
 
-                      {canDrunkSwapBuried && (
-                        <div className="my-2">
-                          <button
-                            type="button"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowDrunkConfirmModal(true);
-                            }}
-                            className="w-full bg-gradient-to-r from-purple-500 to-amber-500 hover:from-purple-400 hover:to-amber-400 text-zinc-950 font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border border-purple-300/40"
-                          >
-                            <span>🍺 與埋葬卡互換身分</span>
-                            <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
-                              最後一輪專屬
-                            </span>
-                          </button>
-                        </div>
-                      )}
+                        if (!action) return null;
+
+                        return (
+                          <div className="my-2">
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                action.onClick();
+                              }}
+                              className={`w-full bg-gradient-to-r ${action.style} font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border`}
+                            >
+                              <span>{action.label}</span>
+                              {action.badge && (
+                                <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
+                                  {action.badge}
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })()}
 
                       <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none">
-                            玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
+                        玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
                       </div>
                     </React.Fragment>
                   )}
@@ -1847,7 +1793,7 @@
             </div>
           )}
 
-          {/* 彈窗：主動身分交換對象選擇 */}
+          {/* 彈窗：主動身分交換對象選擇（由外掛設定注入） */}
           {showSwapTargetModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1857,23 +1803,22 @@
                   </h3>
                   <button onClick={() => setShowSwapTargetModal(false)} className="text-zinc-400 hover:text-white">✕</button>
                 </div>
-                <p className="text-xs text-zinc-300">
-                  {myInfo.role?.id === 'leprechaun'
-                    ? '🍀 小妖精規則：曾當過小妖精的玩家不可再次交換。'
-                    : '🥔 燙手山芋規則：交換給和你進行任何分享行為的玩家。'}
-                </p>
+                
+                {swapModalConfig?.ruleDesc && (
+                  <p className="text-xs text-zinc-300">{swapModalConfig.ruleDesc}</p>
+                )}
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                   {players.filter(p => p.id !== myPlayerId).map(p => {
-                    const isLeprechaunDisabled = myInfo.role?.id === 'leprechaun' && p.hasBeenLeprechaun;
+                    const isDisabled = swapModalConfig?.isTargetDisabled ? swapModalConfig.isTargetDisabled(p) : false;
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        disabled={isLeprechaunDisabled}
+                        disabled={isDisabled}
                         onClick={() => handleSendSwapRequest(p)}
                         className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
-                          isLeprechaunDisabled
+                          isDisabled
                             ? 'bg-zinc-900/60 border-zinc-800/80 opacity-40 cursor-not-allowed'
                             : 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700 hover:border-amber-400 cursor-pointer active:scale-95'
                         }`}
@@ -1883,9 +1828,9 @@
                           {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
                         </div>
                         <div>
-                          {isLeprechaunDisabled ? (
+                          {isDisabled ? (
                             <span className="text-[10px] text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-900/60">
-                              曾當過小妖精
+                              {swapModalConfig?.disabledBadge || '無法選擇'}
                             </span>
                           ) : (
                             <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
@@ -2135,7 +2080,7 @@
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
                   <span className="text-xs text-zinc-400">
                     {tempTotalCardsInDeck === players.length + 1 
-                      ? '💡 角色數比人數多 1 張，本局將產生 1 張未分配的【埋葬卡】'
+                      ? '💡 角色數比人數多 1 張，本局將產生 1 張未分配的【埋葬卡】' 
                       : '請確認卡牌總數大於或等於玩家人數'}
                   </span>
                   <button
