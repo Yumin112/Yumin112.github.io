@@ -8,7 +8,7 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- MQTT.js (免金鑰跨裝置中繼) -->
+  <!-- MQTT.js (跨裝置中繼) -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
   <!-- 引入獨立隊伍與角色資料庫 -->
@@ -36,7 +36,13 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-    // 取得隊伍設定（讀取外部 team.js）
+    // ==========================================
+    // 1. 全域工具函式與規則配置 (Utilities & Rules)
+    // ==========================================
+
+    /**
+     * 取得隊伍樣式設定（優先讀取外部 team.js）
+     */
     const getTeamMeta = (teamKey) => {
       const key = (teamKey || '').toLowerCase();
       const teamMap = (window.OFFICIAL_TEAM_CONFIG && window.OFFICIAL_TEAM_CONFIG[0]) || {};
@@ -52,7 +58,9 @@
       };
     };
 
-    // 根據官方規則計算人質數量[cite: 9]
+    /**
+     * 依官方人數與輪次規則計算當輪人質交換數量
+     */
     const getHostageCount = (playerCount, totalRounds, roundIndex) => {
       let schedule5Rounds = [1, 1, 1, 1, 1];
       if (playerCount <= 10) schedule5Rounds = [1, 1, 1, 1, 1];
@@ -68,10 +76,25 @@
       return schedule5Rounds[roundIndex] || 1;
     };
 
+    /**
+     * 秒數轉 mm:ss 格式字串
+     */
+    const formatTime = (secs) => {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    // ==========================================
+    // 2. 主應用程式組件 (Main App Component)
+    // ==========================================
+
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      // 基本房間狀態
+      // ----------------------------------------
+      // 2.1 狀態定義：連線與房間基礎
+      // ----------------------------------------
       const [gameState, setGameState] = useState('home'); 
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
@@ -81,48 +104,119 @@
       const [connStatus, setConnStatus] = useState('未連線');
       const [isVerifying, setIsVerifying] = useState(false);
 
-      // 玩家與房間進度
+      // ----------------------------------------
+      // 2.2 狀態定義：玩家名單與進度
+      // ----------------------------------------
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
       const [buriedCard, setBuriedCard] = useState(null);
 
-      // 輪次配置與計時
+      // ----------------------------------------
+      // 2.3 狀態定義：輪次與計時
+      // ----------------------------------------
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 卡池配置
+      // ----------------------------------------
+      // 2.4 狀態定義：角色池與彈窗配置
+      // ----------------------------------------
       const [roleCounts, setRoleCounts] = useState({
         pres: 1, bomb: 1, doctor: 1, engineer: 1
       });
       const [showDeckModal, setShowDeckModal] = useState(false);
-
-      // 彈窗暫存設定
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
       const [deckViewMode, setDeckViewMode] = useState('detailed');
 
-      // 互動狀態
+      // ----------------------------------------
+      // 2.5 狀態定義：角色互動與交換行為
+      // ----------------------------------------
       const [isColorOnly, setIsColorOnly] = useState(false);
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
       const [swapRequestData, setSwapRequestData] = useState(null); 
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
       const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
 
-      // 勝負判定邏輯狀態
+      // ----------------------------------------
+      // 2.6 狀態定義：勝負判定問答
+      // ----------------------------------------
       const [showVictoryModal, setShowVictoryModal] = useState(false);
       const [victoryStep, setVictoryStep] = useState(1);
       const [victoryAns, setVictoryAns] = useState({});
       const [gameResult, setGameResult] = useState(null);
 
+      // ----------------------------------------
+      // 2.7 參照容器 (Refs)
+      // ----------------------------------------
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
 
-      // 保持最新狀態映射，全員持久化保存個人進度快照
+      // ----------------------------------------
+      // 3. 記憶化衍生狀態 (Derived State / Memos)
+      // ----------------------------------------
+      const myInfo = useMemo(() => {
+        return players.find(p => p.id === myPlayerId) || {
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+        };
+      }, [players, myPlayerId, playerName]);
+
+      const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);
+      const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);
+      const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);
+
+      const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
+      const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
+
+      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
+      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
+
+      const currentHostageCount = useMemo(() => {
+        return getHostageCount(players.length, roundSettings.length, currentRoundIndex);
+      }, [players.length, roundSettings.length, currentRoundIndex]);
+
+      // 角色池一覽（同名跨陣營合併）
+      const activeRolesInDeck = useMemo(() => {
+        const groups = {};
+        rolesCatalog.forEach(role => {
+          const count = roleCounts[role.id] || 0;
+          if (count > 0) {
+            if (!groups[role.name]) {
+              groups[role.name] = {
+                name: role.name,
+                icon: role.icon,
+                desc: role.desc,
+                teams: [role.team]
+              };
+            } else {
+              if (!groups[role.name].teams.includes(role.team)) {
+                groups[role.name].teams.push(role.team);
+              }
+            }
+          }
+        });
+        return Object.values(groups);
+      }, [rolesCatalog, roleCounts]);
+
+      const canSwapRole = useMemo(() => {
+        return Boolean(myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun'));
+      }, [myInfo.role]);
+
+      const canDrunkSwapBuried = useMemo(() => {
+        const isDrunk = myInfo.role && myInfo.role.id === 'drunk';
+        const isLastRound = currentRoundIndex === roundSettings.length - 1;
+        return Boolean(isDrunk && buriedCard && isLastRound);
+      }, [myInfo.role, buriedCard, currentRoundIndex, roundSettings.length]);
+
+      // ----------------------------------------
+      // 4. 通訊廣播與生命週期 (Sync, Network & Lifecycle)
+      // ----------------------------------------
+
+      // 保持最新狀態快照，供非同步網路事件讀取並寫入本地快取
       useEffect(() => {
         latestStateRef.current = {
           players,
@@ -160,7 +254,7 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState, buriedCard, gameResult]);
 
-      // 廣播全場狀態
+      // 廣播全場狀態更新
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -178,7 +272,7 @@
         }), { qos: 1 });
       }, []);
 
-      // 本地重置狀態並返回首頁
+      // 重置本機所有遊戲狀態返回首頁
       const resetToHome = useCallback(() => {
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch(e) {}
@@ -204,87 +298,7 @@
         setConnStatus('未連線');
       }, []);
 
-      // 房長執行交換核心
-      const executeSwapOnHost = useCallback((id1, id2) => {
-        setPlayers(prev => {
-          const p1 = prev.find(p => p.id === id1);
-          const p2 = prev.find(p => p.id === id2);
-          if (!p1 || !p2) return prev;
-
-          const role1 = p1.role;
-          const team1 = p1.team;
-          const role2 = p2.role;
-          const team2 = p2.team;
-
-          const next = prev.map(p => {
-            if (p.id === id1) {
-              return {
-                ...p,
-                role: role2,
-                team: team2,
-                hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun')
-              };
-            }
-            if (p.id === id2) {
-              return {
-                ...p,
-                role: role1,
-                team: team1,
-                hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun')
-              };
-            }
-            return p;
-          });
-
-          if (clientRef.current) {
-            clientRef.current.publish(`trb_game_sync_room_${latestStateRef.current.roomId}`, JSON.stringify({
-              type: 'SWAP_SUCCESS',
-              player1Id: id1,
-              player2Id: id2
-            }), { qos: 1 });
-          }
-
-          setTimeout(() => { broadcastLatest({ players: next }); }, 50);
-          return next;
-        });
-      }, [broadcastLatest]);
-
-      // 房長執行酒鬼與埋葬卡交換
-      const executeDrunkBuriedSwapOnHost = useCallback((drunkPlayerId) => {
-        const curBuried = latestStateRef.current.buriedCard;
-        if (!curBuried) return;
-
-        setPlayers(prev => {
-          const drunkPlayer = prev.find(p => p.id === drunkPlayerId);
-          if (!drunkPlayer) return prev;
-
-          const oldRole = drunkPlayer.role;
-          const newRole = curBuried;
-          const newBuried = oldRole;
-
-          setBuriedCard(newBuried);
-
-          const next = prev.map(p => {
-            if (p.id === drunkPlayerId) {
-              return {
-                ...p,
-                role: newRole,
-                team: newRole.team,
-                hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')
-              };
-            }
-            return p;
-          });
-
-          setTimeout(() => {
-            broadcastLatest({ players: next, buriedCard: newBuried });
-          }, 50);
-
-          return next;
-        });
-      }, [broadcastLatest]);
-
-      // 雲端 MQTT 通訊通道
+      // 建立 MQTT 連線通道與封包監聽
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
@@ -479,9 +493,9 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [broadcastLatest, executeSwapOnHost, executeDrunkBuriedSwapOnHost, resetToHome]);
+      }, [broadcastLatest, resetToHome]);
 
-      // 初始化與冷啟動還原
+      // 初始化冷啟動狀態還原
       useEffect(() => {
         let storedId = localStorage.getItem('trb_player_uid_v5');
         if (!storedId) {
@@ -517,6 +531,7 @@
               if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
               if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
 
+              // 房長關閉分頁離線時間補償
               if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
                 const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
                 const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
@@ -588,59 +603,7 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest]);
 
-      // 記憶化衍生狀態
-      const myInfo = useMemo(() => {
-        return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
-        };
-      }, [players, myPlayerId, playerName]);
-
-      const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);
-      const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);
-      const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);
-
-      const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
-      const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
-
-      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
-      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
-
-      const currentHostageCount = useMemo(() => {
-        return getHostageCount(players.length, roundSettings.length, currentRoundIndex);
-      }, [players.length, roundSettings.length, currentRoundIndex]);
-
-      const activeRolesInDeck = useMemo(() => {
-        const groups = {};
-        rolesCatalog.forEach(role => {
-          const count = roleCounts[role.id] || 0;
-          if (count > 0) {
-            if (!groups[role.name]) {
-              groups[role.name] = {
-                name: role.name,
-                icon: role.icon,
-                desc: role.desc,
-                teams: [role.team]
-              };
-            } else {
-              if (!groups[role.name].teams.includes(role.team)) {
-                groups[role.name].teams.push(role.team);
-              }
-            }
-          }
-        });
-        return Object.values(groups);
-      }, [rolesCatalog, roleCounts]);
-
-      const canSwapRole = useMemo(() => {
-        return Boolean(myInfo.role && (myInfo.role.id === 'hot_potato' || myInfo.role.id === 'leprechaun'));
-      }, [myInfo.role]);
-
-      const canDrunkSwapBuried = useMemo(() => {
-        const isDrunk = myInfo.role && myInfo.role.id === 'drunk';
-        const isLastRound = currentRoundIndex === roundSettings.length - 1;
-        return Boolean(isDrunk && buriedCard && isLastRound);
-      }, [myInfo.role, buriedCard, currentRoundIndex, roundSettings.length]);
-
+      // 交換成功提示自動解除監聽
       useEffect(() => {
         if (!canSwapRole && swapStatusMessage.includes('等待對方確認中')) {
           setSwapStatusMessage('🎉 身分已成功交換！');
@@ -648,7 +611,11 @@
         }
       }, [canSwapRole, swapStatusMessage]);
 
-      // 建立新房間
+      // ----------------------------------------
+      // 5. 業務邏輯處理常式 (Event Handlers)
+      // ----------------------------------------
+
+      // [房間管理] 建立房間
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -669,7 +636,7 @@
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
-      // 加入房間驗證
+      // [房間管理] 加入房間與 6 秒握手驗證
       const handleJoinRoom = () => {
         const trimmedName = playerName.trim() || '特工';
         const code = joinRoomInput.trim();
@@ -750,7 +717,7 @@
         });
       };
 
-      // 離開房間
+      // [房間管理] 離開房間
       const handleLeaveRoom = () => {
         const confirmMsg = isHost ? '您是房長，離開後將會解散房間，確定要離開嗎？' : '確定要離開當前房間嗎？';
         if (!window.confirm(confirmMsg)) return;
@@ -772,7 +739,7 @@
         }
       };
 
-      // 分配房間
+      // [輪次控制] 開始分房
       const handleStartAssignRooms = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
@@ -811,7 +778,7 @@
         });
       };
 
-      // 發放卡片並啟動計時
+      // [輪次控制] 就位發牌並啟動倒數（含埋葬卡判定）
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -854,6 +821,7 @@
         });
       };
 
+      // [輪次控制] 進入次輪或結束遊戲
       const handleNextRoundConfirm = () => {
         if (currentRoundIndex + 1 < roundSettings.length) {
           const nextIdx = currentRoundIndex + 1;
@@ -876,7 +844,7 @@
         }
       };
 
-      // 勝負邏輯樹推導[cite: 8]
+      // [勝負判定] 依邏輯樹推導結算結果
       const resolveGameResult = (ans) => {
         const inSameRoom = ans.sameRoom;
         const engShared = ans.engineerShared;
@@ -910,6 +878,7 @@
         }
       };
 
+      // [勝負判定] 步驟答題跳轉
       const handleVictoryAnswer = (key, val) => {
         const updatedAns = { ...victoryAns, [key]: val };
         setVictoryAns(updatedAns);
@@ -959,6 +928,7 @@
         }
       };
 
+      // [勝負判定] 結算並全場廣播
       const finalizeVictory = (finalAns) => {
         const result = resolveGameResult(finalAns);
         setGameResult(result);
@@ -966,6 +936,7 @@
         broadcastLatest({ gameResult: result });
       };
 
+      // [互動操作] 純色分享手勢監聽
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -976,6 +947,7 @@
         }
       };
 
+      // [互動操作] 送出身分交換請求
       const handleSendSwapRequest = (targetPlayer) => {
         setShowSwapTargetModal(false);
         if (!clientRef.current || targetPlayer.id === myPlayerId) return;
@@ -991,6 +963,7 @@
         }));
       };
 
+      // [互動操作] 接受交換請求
       const handleAcceptSwap = () => {
         if (!swapRequestData) return;
         const p1Id = swapRequestData.fromId;
@@ -1009,6 +982,7 @@
         }
       };
 
+      // [互動操作] 拒絕交換請求
       const handleRejectSwap = () => {
         if (!swapRequestData || !clientRef.current) return;
         clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
@@ -1019,6 +993,7 @@
         setSwapRequestData(null);
       };
 
+      // [特殊技能] 酒鬼確認換取埋葬卡
       const handleConfirmDrunkSwap = () => {
         setShowDrunkConfirmModal(false);
         if (!buriedCard) return;
@@ -1034,6 +1009,7 @@
         }
       };
 
+      // [卡池配置] 角色點選切換與 pairs 連動
       const handleToggleRole = (roleId) => {
         if (!isHost) return;
         setTempRoleCounts(prev => {
@@ -1064,6 +1040,7 @@
         });
       };
 
+      // [卡池配置] 全部取消選取
       const handleDeselectAllRoles = () => {
         if (!isHost) return;
         const cleared = {};
@@ -1073,15 +1050,16 @@
         setTempRoleCounts(cleared);
       };
 
-      const formatTime = (secs) => {
-        const m = Math.floor(secs / 60);
-        const s = secs % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-      };
+      // ==========================================
+      // 6. 畫面渲染樹 (JSX Render Tree)
+      // ==========================================
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
-          {/* 頂部導覽列 */}
+          
+          {/* ------------------------------------ */}
+          {/* 6.1 頂部導覽列 (Global Header)       */}
+          {/* ------------------------------------ */}
           <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
             <div className="flex items-center gap-2">
               <span className="text-3xl">💣</span>
@@ -1091,8 +1069,8 @@
                 </h1>
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
                   <span>{connStatus}</span>
-                  {roomId && <span>玩家: {players.length} 人</span>}
-                  {roomId && buriedCard && <span className="text-amber-400 font-bold">• 埋葬卡</span>}
+                  {roomId && <span>• 玩家: {players.length} 人</span>}
+                  {roomId && buriedCard && <span className="text-amber-400 font-bold">• 埋葬卡: 1 張</span>}
                 </div>
               </div>
             </div>
@@ -1116,7 +1094,9 @@
             )}
           </header>
 
-          {/* 首頁 */}
+          {/* ------------------------------------ */}
+          {/* 6.2 首頁：建立 / 加入房間 (Home View) */}
+          {/* ------------------------------------ */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
               <div className="space-y-4">
@@ -1167,9 +1147,12 @@
             </div>
           )}
 
-          {/* 等待大廳 */}
+          {/* ------------------------------------ */}
+          {/* 6.3 等待大廳 (Lobby View)             */}
+          {/* ------------------------------------ */}
           {gameState === 'lobby' && (
             <div className="space-y-6">
+              {/* 大廳狀態與房長操作列 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                   <h2 className="text-lg font-bold flex items-center gap-2">
@@ -1220,7 +1203,7 @@
                 </div>
               </div>
 
-              {/* 回合時間規劃 */}
+              {/* 回合時間規劃預覽 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
@@ -1237,7 +1220,7 @@
                 <div className="text-[11px] text-zinc-500 shrink-0">第一階段先分房就位，確認後才發放身分與計時。</div>
               </div>
 
-              {/* 線上玩家名單 */}
+              {/* 線上玩家列表 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
                 <h3 className="text-sm font-semibold text-zinc-400 mb-3">線上玩家列表 ({players.length})</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
@@ -1263,7 +1246,7 @@
                 </div>
               </div>
 
-              {/* 等候大廳：本局使用角色池一覽 */}
+              {/* 大廳預覽：本局角色池一覽 */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1321,10 +1304,13 @@
             </div>
           )}
 
-          {/* 遊戲進行階段 */}
+          {/* ------------------------------------ */}
+          {/* 6.4 遊戲進行與結算 (Game & Result)    */}
+          {/* ------------------------------------ */}
           {gameState === 'game' && (
             <div className="space-y-6">
-              {/* 分房就位中 */}
+              
+              {/* [階段一] 分房移動就位 */}
               {roomStatus === 'room_assigned' && (
                 <div className="space-y-5">
                   <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-blue-900/40 border border-indigo-500/50 p-5 rounded-2xl text-center shadow-xl space-y-3">
@@ -1357,7 +1343,7 @@
                     )}
                   </div>
 
-                  {/* 房間名單對照 */}
+                  {/* 房間分配名單對照 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-zinc-900/80 border border-indigo-500/30 rounded-2xl p-4">
                       <h3 className="font-bold text-indigo-300 mb-3 flex items-center justify-between">
@@ -1392,10 +1378,10 @@
                 </div>
               )}
 
-              {/* 正式輪次中 / 換人質暫停（遊戲結束階段已移至下方結果面板） */}
+              {/* [階段二] 進行中與換人質暫停 */}
               {roomStatus !== 'room_assigned' && roomStatus !== 'ended' && (
                 <div className="space-y-6">
-                  {/* 回合計時看板 */}
+                  {/* 倒數看板與人質數量提示 */}
                   <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
                     roomStatus === 'round_paused' ? 'bg-amber-950/40 border-amber-500 animate-pulse' : 'bg-zinc-900 border-zinc-800'
                   }`}>
@@ -1409,11 +1395,10 @@
                         </h2>
                       </div>
 
-                      {/* 人質數量排版 */}
                       {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
                           <div className="text-xs text-amber-300 font-bold">
-                            ⚠️ 本輪時間到！請選出人質交換
+                            ⚠️️ 本輪時間到！請選出人質交換
                           </div>
                           <div className="flex items-center justify-center sm:justify-end gap-1.5 shrink-0">
                             <span className="text-xs text-amber-200">需交換:</span>
@@ -1454,7 +1439,7 @@
                 </div>
               )}
 
-              {/* 遊戲結束階段：純淨的勝負結果面板（含操作按鈕） */}
+              {/* [階段三] 遊戲結束面板（整併勝負與操作按鈕） */}
               {roomStatus === 'ended' && (
                 <div className="space-y-4">
                   {gameResult && (
@@ -1468,7 +1453,6 @@
                         <div className="text-3xl sm:text-4xl font-black text-white">{gameResult}</div>
                       </div>
 
-                      {/* 房長操作按鈕（整併至結果面板下方） */}
                       {isHost && (
                         <div className="flex flex-wrap items-center justify-center gap-3 pt-2 border-t border-white/10">
                           <button
@@ -1498,7 +1482,7 @@
                     </div>
                   )}
 
-                  {/* 遊戲結束時：若有埋葬卡，公布埋葬卡身分 */}
+                  {/* 埋葬卡揭曉 */}
                   {buriedCard && (
                     <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2">
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
@@ -1517,7 +1501,7 @@
                 </div>
               )}
 
-              {/* 實體房間提示 */}
+              {/* 房間歸屬與即時提示 */}
               <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs text-indigo-300">你的初始房間分配：</span>
                 <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
@@ -1525,7 +1509,6 @@
                 </span>
               </div>
 
-              {/* 交換狀態提示 */}
               {swapStatusMessage && (
                 <div className={`max-w-sm mx-auto border text-xs px-4 py-2.5 rounded-xl text-center font-bold animate-pulse ${
                   swapStatusMessage.includes('成功')
@@ -1536,7 +1519,7 @@
                 </div>
               )}
 
-              {/* 個人身分卡 */}
+              {/* 核心身分卡（按住顏色分享 / 交換操作） */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -1625,14 +1608,14 @@
                       )}
 
                       <div className="text-[11px] text-zinc-400 text-center bg-zinc-950/40 py-1.5 rounded-lg border border-zinc-800/60 pointer-events-none">
-                            玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
+                        玩家: <strong className="text-zinc-200">{myInfo.name}</strong>
                       </div>
                     </React.Fragment>
                   )}
                 </div>
               </div>
 
-              {/* 遊戲中角色池一覽 */}
+              {/* 進行中：角色池一覽 */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1690,7 +1673,11 @@
             </div>
           )}
 
-          {/* 彈窗：勝負判定問答[cite: 8] */}
+          {/* ------------------------------------ */}
+          {/* 6.5 各類彈窗組件 (Modals)            */}
+          {/* ------------------------------------ */}
+
+          {/* 彈窗：勝負判定問答（依附圖一） */}
           {showVictoryModal && isHost && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
@@ -1704,7 +1691,7 @@
                 {victoryStep === 1 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 與 👔 總統<br />在同一個房間嗎？[cite: 8]
+                      💣 炸彈客 與 👔 總統<br />在同一個房間嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -1726,7 +1713,7 @@
                 {victoryStep === 2 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙️ 工程師<br />分享卡片嗎？[cite: 8]
+                      💣 炸彈客 有和 ⚙️️ 工程師<br />分享卡片嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -1748,7 +1735,7 @@
                 {victoryStep === 3 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      👔 總統 有和 🩺 醫生<br />分享卡片嗎？[cite: 8]
+                      👔 總統 有和 🩺 醫生<br />分享卡片嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -1770,7 +1757,7 @@
                 {victoryStep === 4 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      👔 總統 有和 🩺 醫生<br />分享卡片嗎？[cite: 8]
+                      👔 總統 有和 🩺 醫生<br />分享卡片嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -1792,7 +1779,7 @@
                 {victoryStep === 5 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙️ 工程師<br />分享卡片嗎？[cite: 8]
+                      💣 炸彈客 有和 ⚙️ 工程師<br />分享卡片嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -1814,7 +1801,7 @@
             </div>
           )}
 
-          {/* 彈窗：酒鬼與埋葬卡互換身分確認 */}
+          {/* 彈窗：酒鬼與埋葬卡交換確認 */}
           {showDrunkConfirmModal && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
@@ -1845,7 +1832,7 @@
             </div>
           )}
 
-          {/* 彈窗 1：選擇交換對象 */}
+          {/* 彈窗：主動身分交換對象選擇 (燙手山芋 / 小妖精) */}
           {showSwapTargetModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1899,7 +1886,7 @@
             </div>
           )}
 
-          {/* 彈窗 2：被交換者確認 */}
+          {/* 彈窗：被動身分交換確認請求 */}
           {swapRequestData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
@@ -1931,7 +1918,7 @@
             </div>
           )}
 
-          {/* 回合設定彈窗 */}
+          {/* 彈窗：輪次與時間長度設定 */}
           {showRoundConfigModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
@@ -2006,11 +1993,10 @@
             </div>
           )}
 
-          {/* 卡池配置彈窗 */}
+          {/* 彈窗：角色池配置（切換檢視 / pairs 連動 / 清空） */}
           {showDeckModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
-                {/* 彈窗頂部 */}
                 <div className="p-4 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -2042,7 +2028,7 @@
                       onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
                       className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
                     >
-                      {deckViewMode === 'detailed' ? '👁️ 僅圖示' : '📄 詳細資料'}
+                      {deckViewMode === 'detailed' ? '👁️️ 僅圖示' : '📄 詳細資料'}
                     </button>
 
                     <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center hover:text-white">
@@ -2051,13 +2037,14 @@
                   </div>
                 </div>
 
-                {/* 卡池列表 */}
+                {/* 卡池列表展示區 */}
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
                   <div className={`grid gap-2.5 ${deckViewMode === 'iconOnly' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                     {rolesCatalog.map(role => {
                       const isSelected = (tempRoleCounts[role.id] || 0) > 0;
                       const meta = getTeamMeta(role.team);
 
+                      // 簡化模式：僅圖示與名稱
                       if (deckViewMode === 'iconOnly') {
                         return (
                           <div 
@@ -2087,6 +2074,7 @@
                         );
                       }
 
+                      // 完整詳細資料模式
                       return (
                         <div 
                           key={role.id} 
@@ -2132,7 +2120,6 @@
                   </div>
                 </div>
 
-                {/* 彈窗底部 */}
                 <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
                   <span className="text-xs text-zinc-400">
                     {tempTotalCardsInDeck === players.length + 1 
@@ -2154,6 +2141,7 @@
               </div>
             </div>
           )}
+
         </div>
       );
     }
