@@ -52,6 +52,23 @@
       };
     };
 
+    // 根據官方附圖計算人質數量
+    const getHostageCount = (playerCount, totalRounds, roundIndex) => {
+      let schedule5Rounds = [1, 1, 1, 1, 1];
+      if (playerCount <= 10) schedule5Rounds = [1, 1, 1, 1, 1];
+      else if (playerCount <= 13) schedule5Rounds = [2, 2, 2, 1, 1];
+      else if (playerCount <= 17) schedule5Rounds = [3, 2, 2, 1, 1];
+      else if (playerCount <= 21) schedule5Rounds = [4, 3, 2, 1, 1];
+      else schedule5Rounds = [5, 4, 3, 2, 1];
+
+      if (totalRounds === 3) {
+        // 取倒數三輪（時鐘 3, 2, 1）
+        const schedule3Rounds = schedule5Rounds.slice(2);
+        return schedule3Rounds[roundIndex] || 1;
+      }
+      return schedule5Rounds[roundIndex] || 1;
+    };
+
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
@@ -95,6 +112,12 @@
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
       const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
 
+      // 勝負判定邏輯狀態
+      const [showVictoryModal, setShowVictoryModal] = useState(false);
+      const [victoryStep, setVictoryStep] = useState(1);
+      const [victoryAns, setVictoryAns] = useState({});
+      const [gameResult, setGameResult] = useState(null); // '紅隊獲勝' | '藍隊獲勝' | '沒有隊伍獲勝'
+
       const clientRef = useRef(null);
       const timerIntervalRef = useRef(null);
       const cardRef = useRef(null);
@@ -114,7 +137,8 @@
           roomId,
           myPlayerId,
           gameState,
-          buriedCard
+          buriedCard,
+          gameResult
         };
 
         if (roomId && myPlayerId) {
@@ -129,12 +153,13 @@
             timeLeft,
             isTimerRunning,
             buriedCard,
+            gameResult,
             myProfile,
             savedAt: Date.now()
           };
           localStorage.setItem('trb_saved_game_context', JSON.stringify(snapshot));
         }
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState, buriedCard]);
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState, buriedCard, gameResult]);
 
       // 廣播全場狀態
       const broadcastLatest = useCallback((override = {}) => {
@@ -149,7 +174,8 @@
           roundSettings: s.roundSettings,
           currentRoundIndex: s.currentRoundIndex,
           timeLeft: s.timeLeft,
-          buriedCard: s.buriedCard
+          buriedCard: s.buriedCard,
+          gameResult: s.gameResult
         }), { qos: 1 });
       }, []);
 
@@ -168,6 +194,8 @@
         setIsHost(false);
         setPlayers([]);
         setBuriedCard(null);
+        setGameResult(null);
+        setShowVictoryModal(false);
         setGameState('home');
         setRoomStatus('waiting');
         setIsTimerRunning(false);
@@ -422,11 +450,15 @@
                 setCurrentRoundIndex(data.currentRoundIndex);
                 setTimeLeft(data.timeLeft);
                 if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
+                if (data.gameResult !== undefined) setGameResult(data.gameResult);
 
                 if (data.roomStatus === 'round_active') {
                   setGameState('game');
                   setIsTimerRunning(true);
-                } else if (data.roomStatus === 'round_paused' || data.roomStatus === 'ended' || data.roomStatus === 'room_assigned') {
+                } else if (data.roomStatus === 'round_paused' || data.roomStatus === 'room_assigned') {
+                  setGameState('game');
+                  setIsTimerRunning(false);
+                } else if (data.roomStatus === 'ended') {
                   setGameState('game');
                   setIsTimerRunning(false);
                 } else if (data.roomStatus === 'waiting') {
@@ -484,7 +516,9 @@
               if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
               if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
               if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
+              if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
 
+              // 房長關閉分頁期間的離線秒數補償
               if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
                 const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
                 const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
@@ -570,6 +604,15 @@
       const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
       const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
 
+      // 檢查本局是否有醫生或工程師
+      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
+      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
+
+      // 當前輪次應交換的人質數量
+      const currentHostageCount = useMemo(() => {
+        return getHostageCount(players.length, roundSettings.length, currentRoundIndex);
+      }, [players.length, roundSettings.length, currentRoundIndex]);
+
       // 角色池一覽 (同名角色合併)
       const activeRolesInDeck = useMemo(() => {
         const groups = {};
@@ -625,6 +668,7 @@
         setIsHost(true);
         setPlayers([me]);
         setBuriedCard(null);
+        setGameResult(null);
         setRoomStatus('waiting');
         setGameState('lobby');
 
@@ -768,7 +812,8 @@
           roomStatus: 'room_assigned',
           currentRoundIndex: 0,
           timeLeft: roundSettings[0] * 60,
-          buriedCard: null
+          buriedCard: null,
+          gameResult: null
         });
       };
 
@@ -803,13 +848,15 @@
         setTimeLeft(initialTime);
         setRoomStatus('round_active');
         setIsTimerRunning(true);
+        setGameResult(null);
 
         broadcastLatest({
           players: assignedWithRoles,
           roomStatus: 'round_active',
           currentRoundIndex: 0,
           timeLeft: initialTime,
-          buriedCard: generatedBuried
+          buriedCard: generatedBuried,
+          gameResult: null
         });
       };
 
@@ -823,10 +870,119 @@
           setIsTimerRunning(true);
           broadcastLatest({ roomStatus: 'round_active', currentRoundIndex: nextIdx, timeLeft: nextTime });
         } else {
+          // 進入遊戲結算
           setRoomStatus('ended');
           setIsTimerRunning(false);
           broadcastLatest({ roomStatus: 'ended', timeLeft: 0 });
+
+          // 房長自動開啟勝負判定問答
+          if (isHost) {
+            setVictoryStep(1);
+            setVictoryAns({});
+            setShowVictoryModal(true);
+          }
         }
+      };
+
+      // 勝負邏輯樹推導函式（依據附圖一）
+      const resolveGameResult = (ans) => {
+        const inSameRoom = ans.sameRoom; // 炸彈客與總統在同一個房間嗎？
+        const engShared = ans.engineerShared; // 炸彈客有和工程師分享卡片嗎？
+        const docShared = ans.doctorShared; // 總統有和醫生分享卡片嗎？
+
+        // 檢查是否有醫生/工程師參與條件判定
+        const needEngineer = hasEngineerInGame;
+        const needDoctor = hasDoctorInGame;
+
+        if (inSameRoom) {
+          // 同房間分支
+          if (needEngineer) {
+            if (engShared) return '紅隊獲勝';
+            // 否 -> 檢查醫生
+            if (needDoctor) {
+              return docShared ? '藍隊獲勝' : '沒有隊伍獲勝';
+            } else {
+              return '沒有隊伍獲勝';
+            }
+          } else {
+            // 沒有工程師角色，炸彈客與總統同房間則紅隊直接獲勝
+            return '紅隊獲勝';
+          }
+        } else {
+          // 不同房間分支
+          if (needDoctor) {
+            if (docShared) return '藍隊獲勝';
+            // 否 -> 檢查工程師
+            if (needEngineer) {
+              return engShared ? '紅隊獲勝' : '沒有隊伍獲勝';
+            } else {
+              return '沒有隊伍獲勝';
+            }
+          } else {
+            // 沒有醫生角色，炸彈客與總統不同房間則藍隊直接獲勝
+            return '藍隊獲勝';
+          }
+        }
+      };
+
+      const handleVictoryAnswer = (key, val) => {
+        const updatedAns = { ...victoryAns, [key]: val };
+        setVictoryAns(updatedAns);
+
+        if (key === 'sameRoom') {
+          if (val === true) {
+            // 同房間 -> 若有工程師，問工程師
+            if (hasEngineerInGame) {
+              setVictoryStep(2); // 問工程師
+            } else {
+              finalizeVictory(updatedAns);
+            }
+          } else {
+            // 不同房間 -> 若有醫生，問醫生
+            if (hasDoctorInGame) {
+              setVictoryStep(3); // 問醫生
+            } else {
+              finalizeVictory(updatedAns);
+            }
+          }
+        } else if (key === 'engineerShared') {
+          if (victoryAns.sameRoom === true) {
+            if (val === true) {
+              finalizeVictory(updatedAns);
+            } else {
+              // 否 -> 若有醫生需再問醫生
+              if (hasDoctorInGame) {
+                setVictoryStep(4); // 問醫生
+              } else {
+                finalizeVictory(updatedAns);
+              }
+            }
+          } else {
+            finalizeVictory(updatedAns);
+          }
+        } else if (key === 'doctorShared') {
+          if (victoryAns.sameRoom === false) {
+            if (val === true) {
+              finalizeVictory(updatedAns);
+            } else {
+              // 否 -> 若有工程師需再問工程師
+              if (hasEngineerInGame) {
+                setVictoryStep(5); // 問工程師
+              } else {
+                finalizeVictory(updatedAns);
+              }
+            }
+          } else {
+            finalizeVictory(updatedAns);
+          }
+        }
+      };
+
+      const finalizeVictory = (finalAns) => {
+        const result = resolveGameResult(finalAns);
+        setGameResult(result);
+        setShowVictoryModal(false);
+        broadcastLatest({ gameResult: result });
       };
 
       const handleTouchMove = (e) => {
@@ -882,7 +1038,6 @@
         setSwapRequestData(null);
       };
 
-      // 酒鬼確認與埋葬卡交換
       const handleConfirmDrunkSwap = () => {
         setShowDrunkConfirmModal(false);
         if (!buriedCard) return;
@@ -898,7 +1053,6 @@
         }
       };
 
-      // 點擊切換角色應用 (Toggle 啟用/停用，並支援 pairs 連動自動選取)
       const handleToggleRole = (roleId) => {
         if (!isHost) return;
         setTempRoleCounts(prev => {
@@ -929,7 +1083,6 @@
         });
       };
 
-      // 全部取消選取
       const handleDeselectAllRoles = () => {
         if (!isHost) return;
         const cleared = {};
@@ -1086,7 +1239,7 @@
                 </div>
               </div>
 
-              {/* 【優化 1】：回合時間排版（名稱改為「回合時間」，修復手機版擠壓折行問題） */}
+              {/* 回合時間規劃 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
@@ -1276,9 +1429,12 @@
                         </h2>
                       </div>
 
+                      {/* 依據附圖二公式呈現當前應交換的人質數量 */}
                       {roomStatus === 'round_paused' && (
-                        <div className="bg-amber-500/20 border border-amber-500 text-amber-300 text-xs px-3 py-1.5 rounded-lg font-bold">
-                          ⚠️ 本輪時間到！請選出人質交換，等候房長確認。
+                        <div className="bg-amber-500/20 border border-amber-500 text-amber-300 text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+                          <span>⚠️ 本輪時間到！請選出</span>
+                          <strong className="text-white text-sm bg-amber-500 px-2 py-0.5 rounded">{currentHostageCount} 位</strong>
+                          <span>人質交換，等候房長確認。</span>
                         </div>
                       )}
                     </div>
@@ -1293,13 +1449,26 @@
                         </button>
                       )}
 
+                      {isHost && roomStatus === 'ended' && (
+                        <button
+                          onClick={() => {
+                            setVictoryStep(1);
+                            setVictoryAns({});
+                            setShowVictoryModal(true);
+                          }}
+                          className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg transition"
+                        >
+                          🏆 重新判定勝負
+                        </button>
+                      )}
+
                       {isHost && (
                         <button
                           onClick={() => {
                             setRoomStatus('waiting');
                             setGameState('lobby');
                             localStorage.removeItem('trb_saved_game_context');
-                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null });
+                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null });
                           }}
                           className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
                         >
@@ -1309,9 +1478,21 @@
                     </div>
                   </div>
 
+                  {/* 遊戲結束勝負公布面板 */}
+                  {roomStatus === 'ended' && gameResult && (
+                    <div className={`p-5 rounded-2xl border-2 text-center shadow-2xl space-y-1.5 ${
+                      gameResult === '紅隊獲勝' ? 'bg-red-950/70 border-red-500 text-red-200' :
+                      gameResult === '藍隊獲勝' ? 'bg-blue-950/70 border-blue-500 text-blue-200' :
+                      'bg-zinc-900 border-zinc-600 text-zinc-300'
+                    }`}>
+                      <div className="text-xs uppercase tracking-wider font-bold">🏁 本局遊戲結果</div>
+                      <div className="text-3xl font-black text-white">{gameResult}</div>
+                    </div>
+                  )}
+
                   {/* 遊戲結束時：若有埋葬卡，公布埋葬卡身分 */}
                   {roomStatus === 'ended' && buriedCard && (
-                    <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2 animate-bounce-once">
+                    <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2">
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
                         <span>⚰️ 本局埋葬卡揭曉</span>
                       </div>
@@ -1365,7 +1546,6 @@
                       onTouchMove={handleTouchMove}
                       className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[340px] transition-all duration-150 ${myTeamMeta.cardBg}`}
                     >
-                      {/* 【優化 2】：顏色分享視圖（字體加大至 text-xl，調色盤縮小至 text-3xl） */}
                       {isColorOnly ? (
                         <div className="my-auto flex flex-col items-center justify-center text-center space-y-4 pointer-events-none">
                           <span className={`text-xl px-6 py-2 rounded-full font-black tracking-widest uppercase border shadow-lg ${myTeamMeta.badge}`}>
@@ -1499,6 +1679,135 @@
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 彈窗：勝負判定問答（依附圖一） */}
+          {showVictoryModal && isHost && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                  <h3 className="text-base font-bold text-white flex items-center gap-1.5">
+                    <span>🏆 勝負判定推導</span>
+                  </h3>
+                  <button onClick={() => setShowVictoryModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+
+                {/* 步驟 1: 炸彈客與總統同房間嗎？ */}
+                {victoryStep === 1 && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      💣 炸彈客 與 👔 總統<br />在同一個房間嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVictoryAnswer('sameRoom', true)}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        是 (在同房間)
+                      </button>
+                      <button
+                        onClick={() => handleVictoryAnswer('sameRoom', false)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        否 (在不同房間)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 步驟 2: (同房間) 炸彈客有和工程師分享卡片嗎？ */}
+                {victoryStep === 2 && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVictoryAnswer('engineerShared', true)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        是
+                      </button>
+                      <button
+                        onClick={() => handleVictoryAnswer('engineerShared', false)}
+                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        否
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 步驟 3: (不同房間) 總統有和醫生分享卡片嗎？ */}
+                {victoryStep === 3 && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      👔 總統 有和 🩺 醫生<br />進行『卡片分享』嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVictoryAnswer('doctorShared', true)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        是
+                      </button>
+                      <button
+                        onClick={() => handleVictoryAnswer('doctorShared', false)}
+                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        否
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 步驟 4: (同房/工程師否) 總統有和醫生分享卡片嗎？ */}
+                {victoryStep === 4 && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      👔 總統 有和 🩺 醫生<br />進行『卡片分享』嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVictoryAnswer('doctorShared', true)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        是
+                      </button>
+                      <button
+                        onClick={() => handleVictoryAnswer('doctorShared', false)}
+                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        否
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 步驟 5: (不同房/醫生否) 炸彈客有和工程師分享卡片嗎？ */}
+                {victoryStep === 5 && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVictoryAnswer('engineerShared', true)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        是
+                      </button>
+                      <button
+                        onClick={() => handleVictoryAnswer('engineerShared', false)}
+                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
+                      >
+                        否
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
