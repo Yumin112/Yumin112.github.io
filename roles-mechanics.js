@@ -50,6 +50,30 @@
           }
         };
       }
+    },
+
+    // 4. 瘋狂科學家：選擇兩位玩家使他們交換角色（一次性技能）
+    mad_scientist: {
+      getActionButton: (ctx) => {
+        // 如果已經使用過一次，則不顯示按鈕
+        if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
+
+        return {
+          label: '🧪 操控角色對調',
+          badge: '瘋狂科學家 (限一次)',
+          style: 'from-lime-500 to-emerald-600 hover:from-lime-400 hover:to-emerald-500 border-lime-300/40 text-zinc-950',
+          onClick: () => {
+            // 觸發選擇兩名玩家進行交換的彈窗
+            ctx.openMadScientistModal({
+              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位玩家使他們交換角色，本技能全場限用一次。',
+              // 提交時除了呼叫 applyPlayerSwap，記得將玩家的 hasUsedMadScientistAbility 標記為 true
+              onConfirm: (p1Id, p2Id) => {
+                ctx.triggerMadScientistSwap(p1Id, p2Id);
+              }
+            });
+          }
+        };
+      }
     }
   };
 
@@ -65,7 +89,7 @@
     /**
      * [房長主機端] 執行兩名玩家身分對調與歷史標記
      */
-    applyPlayerSwap(playersList, p1Id, p2Id) {
+    applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
       const p1 = playersList.find(p => p.id === p1Id);
       const p2 = playersList.find(p => p.id === p2Id);
       if (!p1 || !p2) return playersList;
@@ -76,12 +100,19 @@
       const team2 = p2.team;
 
       return playersList.map(p => {
+        // 如果發起者是瘋狂科學家，標記該玩家已使用技能
+        let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
+        if (initiatorId && p.id === initiatorId) {
+          hasUsedMadScientistAbility = true;
+        }
+
         if (p.id === p1Id) {
           return {
             ...p,
             role: role2,
             team: team2,
-            hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun')
+            hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),
+            hasUsedMadScientistAbility
           };
         }
         if (p.id === p2Id) {
@@ -89,10 +120,14 @@
             ...p,
             role: role1,
             team: team1,
-            hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun')
+            hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
+            hasUsedMadScientistAbility
           };
         }
-        return p;
+        return {
+          ...p,
+          hasUsedMadScientistAbility
+        };
       });
     },
 
