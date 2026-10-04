@@ -49,7 +49,7 @@
         onClick: () => {
           if (ctx.openMadScientistModal) {
             ctx.openMadScientistModal({
-              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位玩家使他們交換角色，本技能全場限用一次。',
+              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，經雙方同意確認後交換角色（本技能限用一次）。',
               onConfirm: (p1Id, p2Id) => {
                 ctx.triggerMadScientistSwap(p1Id, p2Id);
               }
@@ -285,6 +285,7 @@
       const [showMadScientistModal, setShowMadScientistModal] = useState(false);
       const [madScientistConfig, setMadScientistConfig] = useState(null);
       const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);
+      const [madScientistPendingData, setMadScientistPendingData] = useState(null);
 
       // 勝負判定問答
       const [showVictoryModal, setShowVictoryModal] = useState(false);
@@ -299,6 +300,7 @@
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
       const debounceBroadcastTimerRef = useRef(null);
+      const madScientistVoteTrackerRef = useRef(null); // 房長追蹤兩位目標同意狀況
 
       // 記憶化狀態
       const myInfo = useMemo(() => {
@@ -448,9 +450,11 @@
         setRoomStatus('waiting');
         setIsTimerRunning(false);
         setSwapRequestData(null);
+        setMadScientistPendingData(null);
         setSwapStatusMessage('');
         setIsVerifying(false);
         setConnStatus('未連線');
+        madScientistVoteTrackerRef.current = null;
       }, []);
 
       // 房長端交換業務（支援瘋狂科學家發起者標記）
@@ -590,9 +594,98 @@
               return;
             }
 
-            // 房長端接收瘋狂科學家對調請求
-            if (data.type === 'EXECUTE_MAD_SCIENTIST_SWAP' && latestStateRef.current.isHost) {
-              executeSwapOnHost(data.player1Id, data.player2Id, data.initiatorId);
+            // 房長端接收科學家請求：發起雙方審核追蹤
+            if (data.type === 'MAD_SCIENTIST_INITIATE' && latestStateRef.current.isHost) {
+              const { initiatorId, initiatorName, p1Id, p2Id, p1Name, p2Name } = data;
+              madScientistVoteTrackerRef.current = {
+                initiatorId,
+                initiatorName,
+                p1Id,
+                p2Id,
+                approvals: {}
+              };
+
+              // 向兩位目標廣播確認請求
+              client.publish(topic, JSON.stringify({
+                type: 'MAD_SCIENTIST_PROMPT_TARGETS',
+                initiatorId,
+                initiatorName,
+                p1Id,
+                p1Name,
+                p2Id,
+                p2Name
+              }), { qos: 1 });
+              return;
+            }
+
+            // 房長端收集雙方投票
+            if (data.type === 'MAD_SCIENTIST_VOTE' && latestStateRef.current.isHost) {
+              const tracker = madScientistVoteTrackerRef.current;
+              if (!tracker) return;
+
+              if (data.accepted) {
+                tracker.approvals[data.voterId] = true;
+                if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {
+                  // 雙方皆已同意，正式執行交換
+                  executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);
+                  client.publish(topic, JSON.stringify({
+                    type: 'MAD_SCIENTIST_SWAP_COMPLETED',
+                    initiatorId: tracker.initiatorId,
+                    p1Id: tracker.p1Id,
+                    p2Id: tracker.p2Id
+                  }), { qos: 1 });
+                  madScientistVoteTrackerRef.current = null;
+                }
+              } else {
+                // 有一人拒絕，交換宣告失敗
+                client.publish(topic, JSON.stringify({
+                  type: 'MAD_SCIENTIST_REJECTED',
+                  initiatorId: tracker.initiatorId,
+                  rejectorName: data.voterName,
+                  p1Id: tracker.p1Id,
+                  p2Id: tracker.p2Id
+                }), { qos: 1 });
+                madScientistVoteTrackerRef.current = null;
+              }
+              return;
+            }
+
+            // 客戶端收到被要求確認對調的通知
+            if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {
+              if (data.p1Id === uid || data.p2Id === uid) {
+                const otherName = data.p1Id === uid ? data.p2Name : data.p1Name;
+                setMadScientistPendingData({
+                  initiatorId: data.initiatorId,
+                  initiatorName: data.initiatorName,
+                  otherName
+                });
+              }
+              return;
+            }
+
+            // 客戶端接收到瘋狂科學家遭拒絕
+            if (data.type === 'MAD_SCIENTIST_REJECTED') {
+              if (data.initiatorId === uid) {
+                setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);
+                setTimeout(() => setSwapStatusMessage(''), 3500);
+              }
+              if (data.p1Id === uid || data.p2Id === uid) {
+                setMadScientistPendingData(null);
+              }
+              return;
+            }
+
+            // 客戶端收到對調成功完成
+            if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
+              if (data.initiatorId === uid) {
+                setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');
+                setTimeout(() => setSwapStatusMessage(''), 3000);
+              }
+              if (data.p1Id === uid || data.p2Id === uid) {
+                setMadScientistPendingData(null);
+                setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');
+                setTimeout(() => setSwapStatusMessage(''), 3000);
+              }
               return;
             }
 
@@ -1319,23 +1412,39 @@
         }
       };
 
-      // 瘋狂科學家觸發對調
+      // 瘋狂科學家發起對調請求（需雙方同意）
       const handleTriggerMadScientistSwap = useCallback((p1Id, p2Id) => {
-        if (latestStateRef.current.isHost) {
-          executeSwapOnHost(p1Id, p2Id, myPlayerId);
-        } else if (clientRef.current) {
-          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-            type: 'EXECUTE_MAD_SCIENTIST_SWAP',
-            senderId: myPlayerId,
-            initiatorId: myPlayerId,
-            player1Id: p1Id,
-            player2Id: p2Id
-          }), { qos: 1 });
-        }
+        const p1 = players.find(p => p.id === p1Id);
+        const p2 = players.find(p => p.id === p2Id);
+        if (!p1 || !p2 || !clientRef.current) return;
 
-        setSwapStatusMessage('🧪 瘋狂科學家技能已成功啟動！');
-        setTimeout(() => setSwapStatusMessage(''), 3000);
-      }, [executeSwapOnHost, myPlayerId, roomId]);
+        const payload = JSON.stringify({
+          type: 'MAD_SCIENTIST_INITIATE',
+          senderId: myPlayerId,
+          initiatorId: myPlayerId,
+          initiatorName: myInfo.name,
+          p1Id,
+          p1Name: p1.name,
+          p2Id,
+          p2Name: p2.name
+        });
+
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, payload, { qos: 1 });
+        setSwapStatusMessage(`已向 ${p1.name} 與 ${p2.name} 發送對調請求，等待雙方同意中...`);
+      }, [players, myPlayerId, myInfo.name, roomId]);
+
+      // 目標玩家回覆瘋狂科學家對調投票
+      const handleMadScientistTargetVote = (accepted) => {
+        if (!madScientistPendingData || !clientRef.current) return;
+        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
+          type: 'MAD_SCIENTIST_VOTE',
+          senderId: myPlayerId,
+          voterId: myPlayerId,
+          voterName: myInfo.name,
+          accepted
+        }), { qos: 1 });
+        setMadScientistPendingData(null);
+      };
 
       const handleToggleScientistTarget = (pid) => {
         setSelectedScientistTargets(prev => {
@@ -2172,7 +2281,7 @@
             </div>
           )}
 
-          {/* 彈窗：瘋狂科學家對調目標選擇 */}
+          {/* 彈窗：瘋狂科學家對調目標選擇（已取消選擇自己） */}
           {showMadScientistModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-lime-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -2184,7 +2293,7 @@
                 </div>
 
                 <p className="text-xs text-zinc-300">
-                  {madScientistConfig?.ruleDesc || '請在下方點選要強制交換身分的 2 位玩家：'}
+                  {madScientistConfig?.ruleDesc || '請在下方點選要交換身分的 2 位玩家（不能選擇自己），發起後需由雙方同意確認：'}
                 </p>
 
                 <div className="text-xs font-bold text-amber-400">
@@ -2193,7 +2302,7 @@
                 </div>
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                  {players.map(p => {
+                  {players.filter(p => p.id !== myPlayerId).map(p => {
                     const isSelected = selectedScientistTargets.includes(p.id);
                     return (
                       <button
@@ -2208,8 +2317,7 @@
                       >
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-sm text-zinc-100">{p.name}</span>
-                          {p.id === myPlayerId && <span className="text-[10px] text-indigo-400">(你)</span>}
-                          {p.isHost && <span className="text-amber-400 text-xs">👑</span>}
+                          {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
                         </div>
                         <span className={`text-xs font-bold ${isSelected ? 'text-lime-400' : 'text-zinc-500'}`}>
                           {isSelected ? '✓ 已選' : '選取'}
@@ -2223,7 +2331,7 @@
                   <button
                     type="button"
                     onClick={() => setShowMadScientistModal(false)}
-                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 text-xs transition"
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 text-xs transition active:scale-95"
                   >
                     取消
                   </button>
@@ -2231,9 +2339,40 @@
                     type="button"
                     disabled={selectedScientistTargets.length !== 2}
                     onClick={handleConfirmScientistSwap}
-                    className="flex-1 bg-gradient-to-r from-lime-500 to-emerald-600 hover:opacity-90 disabled:opacity-40 text-zinc-950 font-black py-2.5 rounded-xl text-xs transition shadow"
+                    className="flex-1 bg-gradient-to-r from-lime-500 to-emerald-600 hover:opacity-90 disabled:opacity-40 text-zinc-950 font-black py-2.5 rounded-xl text-xs transition shadow active:scale-95"
                   >
-                    確認強制對調
+                    發送對調確認請求
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：被瘋狂科學家選中者的雙向確認請求 */}
+          {madScientistPendingData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-lime-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🧪</div>
+                <h3 className="text-lg font-black text-lime-400">瘋狂科學家對調請求！</h3>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  瘋狂科學家 <strong className="text-white font-bold">{madScientistPendingData.initiatorName}</strong> 想要將你與玩家 <strong className="text-amber-400 font-bold">{madScientistPendingData.otherName}</strong> 的角色強制對調！
+                </p>
+                <p className="text-xs text-zinc-400">需經過你與對方「雙方皆同意」後才會正式對調。是否同意？</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleMadScientistTargetVote(false)}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    拒絕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMadScientistTargetVote(true)}
+                    className="flex-1 bg-lime-500 hover:bg-lime-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    同意對調
                   </button>
                 </div>
               </div>
