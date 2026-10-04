@@ -141,6 +141,7 @@
       const timerIntervalRef = useRef(null);
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
+      const debounceBroadcastTimerRef = useRef(null); // 【優化】：防抖定時器
 
       // 記憶化狀態
       const myInfo = useMemo(() => {
@@ -223,7 +224,7 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState, buriedCard, gameResult]);
 
-      // 廣播全場狀態更新
+      // 廣播全場狀態更新（支援立即發送）
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -241,8 +242,23 @@
         }), { qos: 1 });
       }, []);
 
+      // 【優化】：防抖廣播，避免短時間內玩家批次進房或回報時頻繁發送 FULL_SYNC
+      const debouncedBroadcastLatest = useCallback((delay = 350) => {
+        if (debounceBroadcastTimerRef.current) {
+          clearTimeout(debounceBroadcastTimerRef.current);
+        }
+        debounceBroadcastTimerRef.current = setTimeout(() => {
+          broadcastLatest();
+          debounceBroadcastTimerRef.current = null;
+        }, delay);
+      }, [broadcastLatest]);
+
       // 重置本機所有遊戲狀態返回首頁
       const resetToHome = useCallback(() => {
+        if (debounceBroadcastTimerRef.current) {
+          clearTimeout(debounceBroadcastTimerRef.current);
+          debounceBroadcastTimerRef.current = null;
+        }
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch(e) {}
           clientRef.current = null;
@@ -267,7 +283,7 @@
         setConnStatus('未連線');
       }, []);
 
-      // 建立 MQTT 連線通道 (套用專屬 EMQX Broker 與帳密)
+      // 建立 MQTT 連線通道
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const topic = `trb_game_sync_room_${code}`;
@@ -341,7 +357,8 @@
                 const next = exists 
                   ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
                   : [...prev, data.player];
-                setTimeout(() => { broadcastLatest({ players: next }); }, 100);
+                // 【優化】：改用防抖廣播，收斂短時間內密集進房的廣播次數
+                debouncedBroadcastLatest(300);
                 return next;
               });
               return;
@@ -379,7 +396,8 @@
                     } else {
                       next = [...prev, data.player];
                     }
-                    setTimeout(() => { broadcastLatest({ players: next }); }, 80);
+                    // 【優化】：防抖廣播
+                    debouncedBroadcastLatest(300);
                     return next;
                   });
                 }
@@ -389,7 +407,7 @@
                 setPlayers(prev => {
                   const next = prev.filter(p => p.id !== data.playerId);
                   if (latestStateRef.current.isHost) {
-                    setTimeout(() => { broadcastLatest({ players: next }); }, 50);
+                    debouncedBroadcastLatest(150);
                   }
                   return next;
                 });
@@ -452,7 +470,8 @@
 
               case 'TIME_SYNC':
                 if (!latestStateRef.current.isHost) {
-                  setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 1 ? data.timeLeft : prev));
+                  // 本地誤差超過 2 秒才強制矯正，避免數值閃爍
+                  setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
                 }
                 break;
 
@@ -463,7 +482,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [broadcastLatest, resetToHome]);
+      }, [broadcastLatest, debouncedBroadcastLatest, resetToHome]);
 
       // 初始化冷啟動狀態還原
       useEffect(() => {
@@ -541,7 +560,7 @@
         }
       }, [setupConnection]);
 
-      // 計時器排程
+      // 【優化】：計時器排程（降頻至每 30 秒校正一次，QoS 改為 0）
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -556,12 +575,13 @@
                 return 0;
               }
               const nextSec = prev - 1;
-              if (latestStateRef.current.isHost && nextSec % 5 === 0 && clientRef.current) {
+              // 【優化】：改為每 30 秒校正一次，並使用 qos: 0，減少封包轉發開銷
+              if (latestStateRef.current.isHost && nextSec % 30 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
                   senderId: myPlayerId,
                   timeLeft: nextSec
-                }));
+                }), { qos: 0 });
               }
               return nextSec;
             });
