@@ -37,7 +37,91 @@
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     // ==========================================
-    // 角色專屬機制、動作外掛與主機結算模組 (內嵌整合)
+    // 0. 常數與通訊伺服器配置
+    // ==========================================
+    const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
+    const MQTT_USER = 'yumin112for2r1b!';
+    const MQTT_PASS = '2r1bweb!';
+    const DISCOVERY_TOPIC = 'trb_public_lobby_discovery';
+
+    const STORAGE_KEYS = {
+      UID: 'trb_player_uid_v5',
+      ROOM_ID: 'trb_saved_room_id',
+      PLAYER_NAME: 'trb_saved_player_name',
+      IS_HOST: 'trb_saved_is_host',
+      CONTEXT: 'trb_saved_game_context'
+    };
+
+    // ==========================================
+    // 1. 本地儲存與工具函式 (Utilities & Storage)
+    // ==========================================
+    const safeJsonParse = (str, fallback = null) => {
+      try { return JSON.parse(str); } catch (e) { return fallback; }
+    };
+
+    const StorageManager = {
+      getUid: () => {
+        let uid = localStorage.getItem(STORAGE_KEYS.UID);
+        if (!uid) {
+          uid = 'u_' + Math.random().toString(36).substring(2, 9);
+          localStorage.setItem(STORAGE_KEYS.UID, uid);
+        }
+        return uid;
+      },
+      saveSession: (roomId, name, isHost) => {
+        localStorage.setItem(STORAGE_KEYS.ROOM_ID, roomId);
+        localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, name);
+        localStorage.setItem(STORAGE_KEYS.IS_HOST, String(isHost));
+      },
+      saveContext: (ctx) => {
+        localStorage.setItem(STORAGE_KEYS.CONTEXT, JSON.stringify({ ...ctx, savedAt: Date.now() }));
+      },
+      getContext: () => safeJsonParse(localStorage.getItem(STORAGE_KEYS.CONTEXT), {}),
+      clearSession: () => {
+        localStorage.removeItem(STORAGE_KEYS.ROOM_ID);
+        localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME);
+        localStorage.removeItem(STORAGE_KEYS.IS_HOST);
+        localStorage.removeItem(STORAGE_KEYS.CONTEXT);
+      }
+    };
+
+    const getTeamMeta = (teamKey) => {
+      const key = (teamKey || '').toLowerCase();
+      const teamMap = (window.OFFICIAL_TEAM_CONFIG && window.OFFICIAL_TEAM_CONFIG[0]) || {};
+      if (key === 'gray' && teamMap.grey) return teamMap.grey;
+      if (teamMap[key]) return teamMap[key];
+
+      return {
+        label: `${teamKey || '未知'}隊`,
+        cardBg: 'bg-gradient-to-br from-indigo-950 via-zinc-900 to-zinc-900 border-indigo-500',
+        badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        listBg: 'bg-indigo-950/20 border-indigo-900/40'
+      };
+    };
+
+    const getHostageCount = (playerCount, totalRounds, roundIndex) => {
+      let schedule5Rounds = [1, 1, 1, 1, 1];
+      if (playerCount <= 10) schedule5Rounds = [1, 1, 1, 1, 1];
+      else if (playerCount <= 13) schedule5Rounds = [2, 2, 2, 1, 1];
+      else if (playerCount <= 17) schedule5Rounds = [3, 2, 2, 1, 1];
+      else if (playerCount <= 21) schedule5Rounds = [4, 3, 2, 1, 1];
+      else schedule5Rounds = [5, 4, 3, 2, 1];
+
+      if (totalRounds === 3) {
+        const schedule3Rounds = schedule5Rounds.slice(2);
+        return schedule3Rounds[roundIndex] || 1;
+      }
+      return schedule5Rounds[roundIndex] || 1;
+    };
+
+    const formatTime = (secs) => {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    // ==========================================
+    // 2. 角色專屬機制外掛 (Role Mechanics)
     // ==========================================
     const createMadScientistAction = (badgeText) => (ctx) => {
       if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
@@ -49,10 +133,8 @@
         onClick: () => {
           if (ctx.openMadScientistModal) {
             ctx.openMadScientistModal({
-              ruleDesc: '🧪 瘋狂科學家規則：選擇對其進行卡片揭露的玩家，經雙方同意確認後交換角色（本技能限用一次）。',
-              onConfirm: (p1Id, p2Id) => {
-                ctx.triggerMadScientistSwap(p1Id, p2Id);
-              }
+              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，經雙方同意確認後交換角色（本技能限用一次）。',
+              onConfirm: (p1Id, p2Id) => ctx.triggerMadScientistSwap(p1Id, p2Id)
             });
           }
         }
@@ -96,18 +178,12 @@
             label: '🍺 與埋葬卡互換身分',
             badge: '最後一輪專屬',
             style: 'from-purple-500 to-amber-500 hover:from-purple-400 hover:to-amber-400 border-purple-300/40 text-zinc-950',
-            onClick: () => {
-              ctx.openDrunkModal();
-            }
+            onClick: () => ctx.openDrunkModal()
           };
         }
       },
-      mad_scientist_r: {
-        getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬')
-      },
-      mad_scientist_b: {
-        getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬')
-      }
+      mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },
+      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }
     };
 
     const RoleMechanics = {
@@ -149,10 +225,7 @@
               hasUsedMadScientistAbility
             };
           }
-          return {
-            ...p,
-            hasUsedMadScientistAbility
-          };
+          return { ...p, hasUsedMadScientistAbility };
         });
       },
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
@@ -183,61 +256,12 @@
     window.RoleMechanics = RoleMechanics;
 
     // ==========================================
-    // 0. EMQX 專屬伺服器連線配置
+    // 3. 主應用程式組件 (Main App Component)
     // ==========================================
-    const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
-    const MQTT_USER = 'yumin112for2r1b!';
-    const MQTT_PASS = '2r1bweb!';
-    const DISCOVERY_TOPIC = 'trb_public_lobby_discovery';
-
-    // ==========================================
-    // 1. 全域工具函式與規則配置 (Utilities & Rules)
-    // ==========================================
-
-    const getTeamMeta = (teamKey) => {
-      const key = (teamKey || '').toLowerCase();
-      const teamMap = (window.OFFICIAL_TEAM_CONFIG && window.OFFICIAL_TEAM_CONFIG[0]) || {};
-      
-      if (key === 'gray' && teamMap.grey) return teamMap.grey;
-      if (teamMap[key]) return teamMap[key];
-
-      return {
-        label: `${teamKey || '未知'}隊`,
-        cardBg: 'bg-gradient-to-br from-indigo-950 via-zinc-900 to-zinc-900 border-indigo-500',
-        badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-        listBg: 'bg-indigo-950/20 border-indigo-900/40'
-      };
-    };
-
-    const getHostageCount = (playerCount, totalRounds, roundIndex) => {
-      let schedule5Rounds = [1, 1, 1, 1, 1];
-      if (playerCount <= 10) schedule5Rounds = [1, 1, 1, 1, 1];
-      else if (playerCount <= 13) schedule5Rounds = [2, 2, 2, 1, 1];
-      else if (playerCount <= 17) schedule5Rounds = [3, 2, 2, 1, 1];
-      else if (playerCount <= 21) schedule5Rounds = [4, 3, 2, 1, 1];
-      else schedule5Rounds = [5, 4, 3, 2, 1];
-
-      if (totalRounds === 3) {
-        const schedule3Rounds = schedule5Rounds.slice(2);
-        return schedule3Rounds[roundIndex] || 1;
-      }
-      return schedule5Rounds[roundIndex] || 1;
-    };
-
-    const formatTime = (secs) => {
-      const m = Math.floor(secs / 60);
-      const s = secs % 60;
-      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
-
-    // ==========================================
-    // 2. 主應用程式組件 (Main App Component)
-    // ==========================================
-
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      // 連線與房間基礎
+      // 房間與網路狀態
       const [gameState, setGameState] = useState('home'); 
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
@@ -247,33 +271,31 @@
       const [connStatus, setConnStatus] = useState('未連線');
       const [isVerifying, setIsVerifying] = useState(false);
 
-      // 線上房間大廳探索
+      // 線上大廳探索
       const [showRoomsModal, setShowRoomsModal] = useState(false);
       const [onlineRooms, setOnlineRooms] = useState([]);
       const [isSearchingRooms, setIsSearchingRooms] = useState(false);
 
-      // 玩家名單與進度
+      // 遊戲成員與進度
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
       const [buriedCard, setBuriedCard] = useState(null);
 
-      // 輪次與計時
+      // 輪次計時
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 角色池與彈窗配置
-      const [roleCounts, setRoleCounts] = useState({
-        pres: 1, bomb: 1, doctor: 1, engineer: 1
-      });
+      // 牌池設定
+      const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });
       const [showDeckModal, setShowDeckModal] = useState(false);
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
       const [deckViewMode, setDeckViewMode] = useState('detailed');
 
-      // 角色互動與交換行為
+      // 互動操作
       const [isColorOnly, setIsColorOnly] = useState(false);
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
       const [swapModalConfig, setSwapModalConfig] = useState(null);
@@ -281,28 +303,43 @@
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
       const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
 
-      // 瘋狂科學家專用狀態
+      // 瘋狂科學家狀態
       const [showMadScientistModal, setShowMadScientistModal] = useState(false);
       const [madScientistConfig, setMadScientistConfig] = useState(null);
       const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);
       const [madScientistPendingData, setMadScientistPendingData] = useState(null);
 
-      // 勝負判定問答
+      // 勝負結算
       const [showVictoryModal, setShowVictoryModal] = useState(false);
       const [victoryStep, setVictoryStep] = useState(1);
       const [victoryAns, setVictoryAns] = useState({});
       const [gameResult, setGameResult] = useState(null);
 
-      // Refs
+      // 參照物件
       const clientRef = useRef(null);
       const discoveryClientRef = useRef(null);
       const timerIntervalRef = useRef(null);
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
       const debounceBroadcastTimerRef = useRef(null);
-      const madScientistVoteTrackerRef = useRef(null); // 房長追蹤兩位目標同意狀況
+      const madScientistVoteTrackerRef = useRef(null);
 
-      // 記憶化狀態
+      // 狀態快照更新與持久化
+      useEffect(() => {
+        const stateSnapshot = {
+          players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
+          timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName,
+          gameState, buriedCard, gameResult
+        };
+        latestStateRef.current = stateSnapshot;
+
+        if (roomId && myPlayerId) {
+          const myProfile = players.find(p => p.id === myPlayerId);
+          StorageManager.saveContext({ ...stateSnapshot, myProfile });
+        }
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
+
+      // 記憶化衍生狀態
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
@@ -312,83 +349,38 @@
       const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);
       const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);
       const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);
-
       const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
       const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
-
       const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
       const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
-
-      const currentHostageCount = useMemo(() => {
-        return getHostageCount(players.length, roundSettings.length, currentRoundIndex);
-      }, [players.length, roundSettings.length, currentRoundIndex]);
+      const currentHostageCount = useMemo(() => getHostageCount(players.length, roundSettings.length, currentRoundIndex), [players.length, roundSettings.length, currentRoundIndex]);
 
       const activeRolesInDeck = useMemo(() => {
         const groups = {};
         rolesCatalog.forEach(role => {
-          const count = roleCounts[role.id] || 0;
-          if (count > 0) {
+          if ((roleCounts[role.id] || 0) > 0) {
             if (!groups[role.name]) {
-              groups[role.name] = {
-                name: role.name,
-                icon: role.icon,
-                desc: role.desc,
-                teams: [role.team]
-              };
-            } else {
-              if (!groups[role.name].teams.includes(role.team)) {
-                groups[role.name].teams.push(role.team);
-              }
+              groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };
+            } else if (!groups[role.name].teams.includes(role.team)) {
+              groups[role.name].teams.push(role.team);
             }
           }
         });
         return Object.values(groups);
       }, [rolesCatalog, roleCounts]);
 
-      // 保持最新狀態快照
-      useEffect(() => {
-        latestStateRef.current = {
-          players,
-          roomStatus,
-          roundSettings,
-          roleCounts,
-          currentRoundIndex,
-          timeLeft,
-          isTimerRunning,
-          isHost,
-          roomId,
-          myPlayerId,
-          playerName,
-          gameState,
-          buriedCard,
-          gameResult
-        };
-
-        if (roomId && myPlayerId) {
-          const myProfile = players.find(p => p.id === myPlayerId);
-          const snapshot = {
-            players,
-            roomStatus,
-            gameState,
-            roundSettings,
-            roleCounts,
-            currentRoundIndex,
-            timeLeft,
-            isTimerRunning,
-            buriedCard,
-            gameResult,
-            myProfile,
-            savedAt: Date.now()
-          };
-          localStorage.setItem('trb_saved_game_context', JSON.stringify(snapshot));
+      // 封裝安全發送封包
+      const publishMsg = useCallback((topic, payload, opts = { qos: 1 }) => {
+        if (clientRef.current?.connected) {
+          clientRef.current.publish(topic, JSON.stringify(payload), opts);
         }
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
+      }, []);
 
-      // 廣播全場狀態更新
+      // 全場廣播狀態更新
       const broadcastLatest = useCallback((override = {}) => {
-        if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
-        clientRef.current.publish(`trb_game_sync_room_${s.roomId}`, JSON.stringify({
+        if (!s.roomId) return;
+        publishMsg(`trb_game_sync_room_${s.roomId}`, {
           type: 'FULL_SYNC',
           senderId: s.myPlayerId,
           players: s.players,
@@ -399,46 +391,51 @@
           timeLeft: s.timeLeft,
           buriedCard: s.buriedCard,
           gameResult: s.gameResult
-        }), { qos: 1 });
-      }, []);
+        });
+      }, [publishMsg]);
 
       const debouncedBroadcastLatest = useCallback((delay = 350) => {
-        if (debounceBroadcastTimerRef.current) {
-          clearTimeout(debounceBroadcastTimerRef.current);
-        }
+        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
         debounceBroadcastTimerRef.current = setTimeout(() => {
           broadcastLatest();
           debounceBroadcastTimerRef.current = null;
         }, delay);
       }, [broadcastLatest]);
 
-      // 房長回應大廳探索廣播
       const replyDiscoveryAsHost = useCallback(() => {
-        if (!clientRef.current || !latestStateRef.current.isHost || !latestStateRef.current.roomId) return;
         const s = latestStateRef.current;
-        clientRef.current.publish(DISCOVERY_TOPIC, JSON.stringify({
+        if (!s.isHost || !s.roomId) return;
+        publishMsg(DISCOVERY_TOPIC, {
           type: 'DISCOVERY_ROOM_ANNOUNCE',
           roomId: s.roomId,
           hostName: s.playerName || '房長',
           playerCount: s.players.length,
           roomStatus: s.roomStatus
-        }), { qos: 0 });
-      }, []);
+        }, { qos: 0 });
+      }, [publishMsg]);
 
-      // 重置本機所有遊戲狀態返回首頁
+      // 房長端交換業務
+      const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
+        setPlayers(prev => {
+          const next = window.RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);
+          publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
+            type: 'SWAP_SUCCESS',
+            player1Id: id1,
+            player2Id: id2
+          });
+          setTimeout(() => broadcastLatest({ players: next }), 50);
+          return next;
+        });
+      }, [publishMsg, broadcastLatest]);
+
+      // 重置所有遊戲狀態返回首頁
       const resetToHome = useCallback(() => {
-        if (debounceBroadcastTimerRef.current) {
-          clearTimeout(debounceBroadcastTimerRef.current);
-          debounceBroadcastTimerRef.current = null;
-        }
+        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
         if (clientRef.current) {
-          try { clientRef.current.end(true); } catch(e) {}
+          try { clientRef.current.end(true); } catch (e) {}
           clientRef.current = null;
         }
-        localStorage.removeItem('trb_saved_room_id');
-        localStorage.removeItem('trb_saved_player_name');
-        localStorage.removeItem('trb_saved_is_host');
-        localStorage.removeItem('trb_saved_game_context');
+        StorageManager.clearSession();
 
         setRoomId('');
         setIsHost(false);
@@ -457,33 +454,13 @@
         madScientistVoteTrackerRef.current = null;
       }, []);
 
-      // 房長端交換業務（支援瘋狂科學家發起者標記）
-      const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
-        setPlayers(prev => {
-          const next = window.RoleMechanics 
-            ? window.RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId) 
-            : prev;
-
-          if (clientRef.current) {
-            clientRef.current.publish(`trb_game_sync_room_${latestStateRef.current.roomId}`, JSON.stringify({
-              type: 'SWAP_SUCCESS',
-              player1Id: id1,
-              player2Id: id2
-            }), { qos: 1 });
-          }
-
-          setTimeout(() => { broadcastLatest({ players: next }); }, 50);
-          return next;
-        });
-      }, [broadcastLatest]);
-
-      // 建立 MQTT 連線通道
+      // 建立 MQTT 雙向連線
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const topic = `trb_game_sync_room_${code}`;
 
         if (clientRef.current) {
-          try { clientRef.current.end(true); } catch(e) {}
+          try { clientRef.current.end(true); } catch (e) {}
         }
 
         const client = mqtt.connect(BROKER_URL, {
@@ -499,67 +476,60 @@
         client.on('connect', () => {
           setConnStatus('🟢 已連線');
           client.subscribe(topic, { qos: 1 });
-          if (asHost) {
-            client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
-          }
+          if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
             id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
           };
 
           if (asHost) {
-            client.publish(topic, JSON.stringify({
-              type: 'HOST_RECONNECTED',
-              senderId: uid
-            }), { qos: 1 });
-
+            publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });
             setTimeout(() => {
               broadcastLatest();
               replyDiscoveryAsHost();
             }, 400);
           } else {
-            client.publish(topic, JSON.stringify({
-              type: 'PLAYER_PING_SYNC',
-              senderId: uid,
-              isHost: false,
-              player: currentProfile
-            }), { qos: 1 });
+            publishMsg(topic, { type: 'PLAYER_PING_SYNC', senderId: uid, isHost: false, player: currentProfile });
           }
         });
 
+        // 訊息調度派發器 (Message Dispatcher)
         client.on('message', (t, msg) => {
-          try {
-            const data = JSON.parse(msg.toString());
+          const data = safeJsonParse(msg.toString());
+          if (!data) return;
 
-            if (t === DISCOVERY_TOPIC) {
-              if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {
-                replyDiscoveryAsHost();
-              }
+          // 處理公共大廳探索
+          if (t === DISCOVERY_TOPIC) {
+            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {
+              replyDiscoveryAsHost();
+            }
+            return;
+          }
+
+          // 處理房間解散
+          if (data.type === 'ROOM_DISBANDED') {
+            alert('房長已離開，房間已解散！');
+            resetToHome();
+            return;
+          }
+
+          // 房長專屬邏輯 (Host Dispatcher)
+          if (latestStateRef.current.isHost) {
+            if (data.type === 'CHECK_ROOM_REQ') {
+              const currentPlayers = latestStateRef.current.players || [];
+              const targetName = (data.playerName || '').trim();
+              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);
+
+              publishMsg(topic, isDuplicated
+                ? { type: 'ROOM_JOIN_REJECTED', targetId: data.senderId, reason: 'NAME_DUPLICATED' }
+                : { type: 'ROOM_VERIFIED', targetId: data.senderId, senderId: uid }
+              );
               return;
             }
 
-            if (data.type === 'ROOM_DISBANDED') {
-              alert('房長已離開，房間已解散！');
-              resetToHome();
-              return;
-            }
-
-            if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
-              const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-                id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
-              };
-              client.publish(topic, JSON.stringify({
-                type: 'REPORT_PRESENCE',
-                senderId: uid,
-                player: myCurrent
-              }), { qos: 1 });
-              return;
-            }
-
-            if (data.type === 'REPORT_PRESENCE' && latestStateRef.current.isHost) {
+            if (data.type === 'REPORT_PRESENCE') {
               setPlayers(prev => {
-                const exists = prev.some(p => p.id === data.player.id);
-                const next = exists 
+                const next = prev.some(p => p.id === data.player.id)
                   ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
                   : [...prev, data.player];
                 debouncedBroadcastLatest(300);
@@ -568,244 +538,193 @@
               return;
             }
 
-            if (data.type === 'CHECK_ROOM_REQ' && latestStateRef.current.isHost) {
-              const currentPlayers = latestStateRef.current.players || [];
-              const targetName = (data.playerName || '').trim();
-              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);
-
-              if (isDuplicated) {
-                client.publish(topic, JSON.stringify({
-                  type: 'ROOM_JOIN_REJECTED',
-                  targetId: data.senderId,
-                  reason: 'NAME_DUPLICATED'
-                }), { qos: 1 });
-              } else {
-                client.publish(topic, JSON.stringify({
-                  type: 'ROOM_VERIFIED',
-                  targetId: data.senderId,
-                  senderId: uid
-                }), { qos: 1 });
+            if (data.type === 'EXECUTE_DRUNK_SWAP') {
+              const curBuried = latestStateRef.current.buriedCard;
+              if (curBuried) {
+                setPlayers(prev => {
+                  const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);
+                  setBuriedCard(newBuried);
+                  setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
+                  return nextPlayers;
+                });
               }
               return;
             }
 
-            if (data.type === 'EXECUTE_DRUNK_SWAP' && latestStateRef.current.isHost) {
-              executeDrunkBuriedSwapOnHost(data.playerId);
-              return;
-            }
-
-            // 房長端接收科學家請求：發起雙方審核追蹤
-            if (data.type === 'MAD_SCIENTIST_INITIATE' && latestStateRef.current.isHost) {
-              const { initiatorId, initiatorName, p1Id, p2Id, p1Name, p2Name } = data;
+            if (data.type === 'MAD_SCIENTIST_INITIATE') {
               madScientistVoteTrackerRef.current = {
-                initiatorId,
-                initiatorName,
-                p1Id,
-                p2Id,
-                approvals: {}
+                initiatorId: data.initiatorId, initiatorName: data.initiatorName,
+                p1Id: data.p1Id, p2Id: data.p2Id, approvals: {}
               };
-
-              // 向兩位目標廣播確認請求
-              client.publish(topic, JSON.stringify({
+              publishMsg(topic, {
                 type: 'MAD_SCIENTIST_PROMPT_TARGETS',
-                initiatorId,
-                initiatorName,
-                p1Id,
-                p1Name,
-                p2Id,
-                p2Name
-              }), { qos: 1 });
+                initiatorId: data.initiatorId, initiatorName: data.initiatorName,
+                p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name
+              });
               return;
             }
 
-            // 房長端收集雙方投票
-            if (data.type === 'MAD_SCIENTIST_VOTE' && latestStateRef.current.isHost) {
+            if (data.type === 'MAD_SCIENTIST_VOTE') {
               const tracker = madScientistVoteTrackerRef.current;
               if (!tracker) return;
 
               if (data.accepted) {
                 tracker.approvals[data.voterId] = true;
                 if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {
-                  // 雙方皆已同意，正式執行交換
                   executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);
-                  client.publish(topic, JSON.stringify({
+                  publishMsg(topic, {
                     type: 'MAD_SCIENTIST_SWAP_COMPLETED',
-                    initiatorId: tracker.initiatorId,
-                    p1Id: tracker.p1Id,
-                    p2Id: tracker.p2Id
-                  }), { qos: 1 });
+                    initiatorId: tracker.initiatorId, p1Id: tracker.p1Id, p2Id: tracker.p2Id
+                  });
                   madScientistVoteTrackerRef.current = null;
                 }
               } else {
-                // 有一人拒絕，交換宣告失敗
-                client.publish(topic, JSON.stringify({
+                publishMsg(topic, {
                   type: 'MAD_SCIENTIST_REJECTED',
-                  initiatorId: tracker.initiatorId,
-                  rejectorName: data.voterName,
-                  p1Id: tracker.p1Id,
-                  p2Id: tracker.p2Id
-                }), { qos: 1 });
+                  initiatorId: tracker.initiatorId, rejectorName: data.voterName,
+                  p1Id: tracker.p1Id, p2Id: tracker.p2Id
+                });
                 madScientistVoteTrackerRef.current = null;
               }
               return;
             }
+          }
 
-            // 客戶端收到被要求確認對調的通知
-            if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {
-              if (data.p1Id === uid || data.p2Id === uid) {
-                const otherName = data.p1Id === uid ? data.p2Name : data.p1Name;
-                setMadScientistPendingData({
-                  initiatorId: data.initiatorId,
-                  initiatorName: data.initiatorName,
-                  otherName
-                });
-              }
-              return;
+          // 玩家專屬邏輯 (Player Dispatcher)
+          if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
+            const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
+            };
+            publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
+            return;
+          }
+
+          if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {
+            if (data.p1Id === uid || data.p2Id === uid) {
+              setMadScientistPendingData({
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                otherName: data.p1Id === uid ? data.p2Name : data.p1Name
+              });
             }
+            return;
+          }
 
-            // 客戶端接收到瘋狂科學家遭拒絕
-            if (data.type === 'MAD_SCIENTIST_REJECTED') {
-              if (data.initiatorId === uid) {
-                setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);
-                setTimeout(() => setSwapStatusMessage(''), 3500);
-              }
-              if (data.p1Id === uid || data.p2Id === uid) {
-                setMadScientistPendingData(null);
-              }
-              return;
+          if (data.type === 'MAD_SCIENTIST_REJECTED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
             }
+            if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);
+            return;
+          }
 
-            // 客戶端收到對調成功完成
-            if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
-              if (data.initiatorId === uid) {
-                setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');
-                setTimeout(() => setSwapStatusMessage(''), 3000);
-              }
-              if (data.p1Id === uid || data.p2Id === uid) {
-                setMadScientistPendingData(null);
-                setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');
-                setTimeout(() => setSwapStatusMessage(''), 3000);
-              }
-              return;
+          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');
+              setTimeout(() => setSwapStatusMessage(''), 3000);
             }
+            if (data.p1Id === uid || data.p2Id === uid) {
+              setMadScientistPendingData(null);
+              setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');
+              setTimeout(() => setSwapStatusMessage(''), 3000);
+            }
+            return;
+          }
 
-            if (data.senderId === uid) return;
+          // 忽視自己的廣播
+          if (data.senderId === uid) return;
 
-            switch (data.type) {
-              case 'PLAYER_PING_SYNC':
-                if (latestStateRef.current.isHost) {
-                  setPlayers(prev => {
-                    const existing = prev.find(p => p.id === data.player.id);
-                    let next;
-                    if (existing) {
-                      next = prev.map(p => p.id === data.player.id ? {
-                        ...p,
-                        name: data.player.name,
-                        team: data.player.team || p.team,
-                        role: data.player.role || p.role,
-                        gameRoom: data.player.gameRoom || p.gameRoom
-                      } : p);
-                    } else {
-                      next = [...prev, data.player];
-                    }
-                    debouncedBroadcastLatest(300);
-                    return next;
-                  });
-                }
-                break;
-
-              case 'PLAYER_LEFT':
+          // 一般通用廣播處理
+          switch (data.type) {
+            case 'PLAYER_PING_SYNC':
+              if (latestStateRef.current.isHost) {
                 setPlayers(prev => {
-                  const next = prev.filter(p => p.id !== data.playerId);
-                  if (latestStateRef.current.isHost) {
-                    debouncedBroadcastLatest(150);
-                  }
+                  const existing = prev.find(p => p.id === data.player.id);
+                  const next = existing
+                    ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
+                    : [...prev, data.player];
+                  debouncedBroadcastLatest(300);
                   return next;
                 });
-                break;
+              }
+              break;
 
-              case 'SWAP_REQUEST':
-                if (data.targetId === uid) {
-                  setSwapRequestData({
-                    fromId: data.fromId,
-                    fromName: data.fromName,
-                    fromRoleName: data.fromRoleName
-                  });
-                }
-                break;
+            case 'PLAYER_LEFT':
+              setPlayers(prev => {
+                const next = prev.filter(p => p.id !== data.playerId);
+                if (latestStateRef.current.isHost) debouncedBroadcastLatest(150);
+                return next;
+              });
+              break;
 
-              case 'SWAP_REJECTED':
-                if (data.fromId === uid) {
-                  setSwapStatusMessage('對方拒絕了身分交換請求！');
-                  setTimeout(() => setSwapStatusMessage(''), 3000);
-                }
-                break;
+            case 'SWAP_REQUEST':
+              if (data.targetId === uid) {
+                setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });
+              }
+              break;
 
-              case 'SWAP_SUCCESS':
-                if (data.player1Id === uid || data.player2Id === uid) {
-                  setSwapStatusMessage('🎉 身分已成功交換！');
-                  setTimeout(() => setSwapStatusMessage(''), 2500);
-                }
-                break;
+            case 'SWAP_REJECTED':
+              if (data.fromId === uid) {
+                setSwapStatusMessage('對方拒絕了身分交換請求！');
+                setTimeout(() => setSwapStatusMessage(''), 3000);
+              }
+              break;
 
-              case 'EXECUTE_SWAP':
-                if (latestStateRef.current.isHost) {
-                  executeSwapOnHost(data.player1Id, data.player2Id);
-                }
-                break;
+            case 'SWAP_SUCCESS':
+              if (data.player1Id === uid || data.player2Id === uid) {
+                setSwapStatusMessage('🎉 身分已成功交換！');
+                setTimeout(() => setSwapStatusMessage(''), 2500);
+              }
+              break;
 
-              case 'FULL_SYNC':
-                setPlayers(data.players);
-                setRoomStatus(data.roomStatus);
-                if (data.roleCounts) setRoleCounts(data.roleCounts);
-                if (data.roundSettings) setRoundSettings(data.roundSettings);
-                setCurrentRoundIndex(data.currentRoundIndex);
-                setTimeLeft(data.timeLeft);
-                if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
-                if (data.gameResult !== undefined) setGameResult(data.gameResult);
+            case 'EXECUTE_SWAP':
+              if (latestStateRef.current.isHost) {
+                executeSwapOnHost(data.player1Id, data.player2Id);
+              }
+              break;
 
-                if (data.roomStatus === 'round_active') {
-                  setGameState('game');
-                  setIsTimerRunning(true);
-                } else if (data.roomStatus === 'round_paused' || data.roomStatus === 'room_assigned') {
-                  setGameState('game');
-                  setIsTimerRunning(false);
-                } else if (data.roomStatus === 'ended') {
-                  setGameState('game');
-                  setIsTimerRunning(false);
-                } else if (data.roomStatus === 'waiting') {
-                  setGameState('lobby');
-                  setIsTimerRunning(false);
-                }
-                break;
+            case 'FULL_SYNC':
+              setPlayers(data.players);
+              setRoomStatus(data.roomStatus);
+              if (data.roleCounts) setRoleCounts(data.roleCounts);
+              if (data.roundSettings) setRoundSettings(data.roundSettings);
+              setCurrentRoundIndex(data.currentRoundIndex);
+              setTimeLeft(data.timeLeft);
+              if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
+              if (data.gameResult !== undefined) setGameResult(data.gameResult);
 
-              case 'TIME_SYNC':
-                if (!latestStateRef.current.isHost) {
-                  setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
-                }
-                break;
+              if (['round_active', 'round_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
+                setGameState('game');
+                setIsTimerRunning(data.roomStatus === 'round_active');
+              } else if (data.roomStatus === 'waiting') {
+                setGameState('lobby');
+                setIsTimerRunning(false);
+              }
+              break;
 
-              default:
-                break;
-            }
-          } catch (e) {}
+            case 'TIME_SYNC':
+              if (!latestStateRef.current.isHost) {
+                setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
+              }
+              break;
+
+            default:
+              break;
+          }
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [broadcastLatest, debouncedBroadcastLatest, resetToHome, replyDiscoveryAsHost, executeSwapOnHost]);
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, resetToHome]);
 
-      // 初始化冷啟動狀態還原
+      // 初始化冷啟動狀態
       useEffect(() => {
-        let storedId = localStorage.getItem('trb_player_uid_v5');
-        if (!storedId) {
-          storedId = 'u_' + Math.random().toString(36).substring(2, 9);
-          localStorage.setItem('trb_player_uid_v5', storedId);
-        }
+        const storedId = StorageManager.getUid();
         setMyPlayerId(storedId);
 
-        const savedRoomId = localStorage.getItem('trb_saved_room_id');
-        const savedPlayerName = localStorage.getItem('trb_saved_player_name');
-        const savedIsHost = localStorage.getItem('trb_saved_is_host') === 'true';
+        const savedRoomId = localStorage.getItem(STORAGE_KEYS.ROOM_ID);
+        const savedPlayerName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
+        const savedIsHost = localStorage.getItem(STORAGE_KEYS.IS_HOST) === 'true';
 
         if (savedRoomId && savedPlayerName) {
           setRoomId(savedRoomId);
@@ -813,60 +732,43 @@
           setIsHost(savedIsHost);
 
           let initialList = [];
-          let restoredGameState = 'lobby';
-          let restoredRoomStatus = 'waiting';
+          const savedContext = StorageManager.getContext();
 
-          try {
-            const savedContext = JSON.parse(localStorage.getItem('trb_saved_game_context') || '{}');
-            if (savedContext.roomStatus) {
-              restoredRoomStatus = savedContext.roomStatus;
-              restoredGameState = savedContext.gameState || 'lobby';
-              setRoomStatus(restoredRoomStatus);
-              setGameState(restoredGameState);
+          if (savedContext.roomStatus) {
+            setRoomStatus(savedContext.roomStatus);
+            setGameState(savedContext.gameState || 'lobby');
 
-              if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
-              if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
-              if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
-              if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
-              if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
+            if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
+            if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
+            if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
+            if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
+            if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
 
-              if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
-                const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
-                const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
-                setTimeLeft(remaining);
-                if (remaining > 0) {
-                  setIsTimerRunning(true);
-                } else {
-                  setIsTimerRunning(false);
-                  setRoomStatus('round_paused');
-                }
-              } else if (savedContext.timeLeft !== undefined) {
-                setTimeLeft(savedContext.timeLeft);
-                if (savedContext.isTimerRunning) setIsTimerRunning(true);
-              }
-
-              if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
-                initialList = savedContext.players;
-              } else if (savedContext.myProfile) {
-                initialList = [savedContext.myProfile];
-              }
+            if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
+              const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
+              const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
+              setTimeLeft(remaining);
+              setIsTimerRunning(remaining > 0);
+              if (remaining <= 0) setRoomStatus('round_paused');
+            } else if (savedContext.timeLeft !== undefined) {
+              setTimeLeft(savedContext.timeLeft);
+              if (savedContext.isTimerRunning) setIsTimerRunning(true);
             }
-          } catch (e) {}
+
+            if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
+              initialList = savedContext.players;
+            } else if (savedContext.myProfile) {
+              initialList = [savedContext.myProfile];
+            }
+          }
 
           if (initialList.length === 0) {
             initialList = [{
-              id: storedId,
-              name: savedPlayerName,
-              isHost: savedIsHost,
-              team: null,
-              role: null,
-              gameRoom: null,
-              hasBeenLeprechaun: false,
-              hasUsedMadScientistAbility: false
+              id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
             }];
           }
           setPlayers(initialList);
-
           setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);
         }
       }, [setupConnection]);
@@ -887,11 +789,9 @@
               }
               const nextSec = prev - 1;
               if (latestStateRef.current.isHost && nextSec % 30 === 0 && clientRef.current) {
-                clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-                  type: 'TIME_SYNC',
-                  senderId: myPlayerId,
-                  timeLeft: nextSec
-                }), { qos: 0 });
+                publishMsg(`trb_game_sync_room_${roomId}`, {
+                  type: 'TIME_SYNC', senderId: myPlayerId, timeLeft: nextSec
+                }, { qos: 0 });
               }
               return nextSec;
             });
@@ -900,18 +800,18 @@
           clearInterval(timerIntervalRef.current);
         }
         return () => clearInterval(timerIntervalRef.current);
-      }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest]);
+      }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
 
-      // 房間管理業務函式
+      // 房間管理操作
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const me = { id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false };
+        const me = {
+          id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
+          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
+        };
 
-        localStorage.setItem('trb_saved_room_id', code);
-        localStorage.setItem('trb_saved_player_name', trimmedName);
-        localStorage.setItem('trb_saved_is_host', 'true');
-
+        StorageManager.saveSession(code, trimmedName, true);
         setRoomId(code);
         setIsHost(true);
         setPlayers([me]);
@@ -923,7 +823,6 @@
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
-      // 執行房間驗證與加入
       const executeJoinRoom = (targetCode) => {
         const trimmedName = playerName.trim() || '特工';
         const code = (targetCode || joinRoomInput).trim();
@@ -945,10 +844,9 @@
         });
 
         let verified = false;
-
         const timeoutTimer = setTimeout(() => {
           if (!verified) {
-            try { tempClient.end(true); } catch(e) {}
+            try { tempClient.end(true); } catch (e) {}
             setIsVerifying(false);
             setConnStatus('未連線');
             alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);
@@ -960,149 +858,56 @@
           tempClient.subscribe(topic, { qos: 1 }, (err) => {
             if (!err) {
               tempClient.publish(topic, JSON.stringify({
-                type: 'CHECK_ROOM_REQ',
-                senderId: myPlayerId,
-                playerName: trimmedName
+                type: 'CHECK_ROOM_REQ', senderId: myPlayerId, playerName: trimmedName
               }), { qos: 1 });
             }
           });
         });
 
         tempClient.on('message', (t, msg) => {
-          try {
-            const data = JSON.parse(msg.toString());
-            
-            if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
-              verified = true;
-              clearTimeout(timeoutTimer);
-              try { tempClient.end(true); } catch(e) {}
-              setIsVerifying(false);
-              setConnStatus('未連線');
-              if (data.reason === 'NAME_DUPLICATED') {
-                alert(`⚠️ 加入失敗：房間「${code}」內已存在名為「${trimmedName}」的玩家！\n請更換一個暱稱後再試。`);
-              } else {
-                alert('無法加入房間，已被房長拒絕！');
-              }
-              return;
-            }
+          const data = safeJsonParse(msg.toString());
+          if (!data) return;
 
-            if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {
-              verified = true;
-              clearTimeout(timeoutTimer);
-              try { tempClient.end(true); } catch(e) {}
-              setIsVerifying(false);
-              setShowRoomsModal(false);
+          if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
+            verified = true;
+            clearTimeout(timeoutTimer);
+            try { tempClient.end(true); } catch (e) {}
+            setIsVerifying(false);
+            setConnStatus('未連線');
+            alert(data.reason === 'NAME_DUPLICATED'
+              ? `⚠️ 加入失敗：房間「${code}」內已存在名為「${trimmedName}」的玩家！\n請更換一個暱稱後再試。`
+              : '無法加入房間，已被房長拒絕！');
+            return;
+          }
 
-              localStorage.setItem('trb_saved_room_id', code);
-              localStorage.setItem('trb_saved_player_name', trimmedName);
-              localStorage.setItem('trb_saved_is_host', 'false');
+          if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {
+            verified = true;
+            clearTimeout(timeoutTimer);
+            try { tempClient.end(true); } catch (e) {}
+            setIsVerifying(false);
+            setShowRoomsModal(false);
 
-              setRoomId(code);
-              setIsHost(false);
-              setGameState('lobby');
+            StorageManager.saveSession(code, trimmedName, false);
+            setRoomId(code);
+            setIsHost(false);
+            setGameState('lobby');
 
-              const selfPlayer = {
-                id: myPlayerId,
-                name: trimmedName,
-                isHost: false,
-                team: null,
-                role: null,
-                gameRoom: null,
-                hasBeenLeprechaun: false,
-                hasUsedMadScientistAbility: false
-              };
-              setPlayers([selfPlayer]);
-
-              setupConnection(code, false, trimmedName, myPlayerId);
-            }
-          } catch(e) {}
+            const selfPlayer = {
+              id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false
+            };
+            setPlayers([selfPlayer]);
+            setupConnection(code, false, trimmedName, myPlayerId);
+          }
         });
 
         tempClient.on('error', () => {
           clearTimeout(timeoutTimer);
           setIsVerifying(false);
           setConnStatus('未連線');
-          try { tempClient.end(true); } catch(e) {}
+          try { tempClient.end(true); } catch (e) {}
           alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');
         });
-      };
-
-      const handleJoinRoom = () => {
-        executeJoinRoom(joinRoomInput);
-      };
-
-      // 搜尋線上房間
-      const handleOpenRoomsModal = () => {
-        setShowRoomsModal(true);
-        setOnlineRooms([]);
-        setIsSearchingRooms(true);
-        setConnStatus('連線伺服器中...');
-
-        if (discoveryClientRef.current) {
-          try { discoveryClientRef.current.end(true); } catch(e) {}
-        }
-
-        const discClient = mqtt.connect(BROKER_URL, {
-          clientId: `trb_disc_${myPlayerId}_${Math.random().toString(16).slice(2, 6)}`,
-          username: MQTT_USER,
-          password: MQTT_PASS,
-          clean: true,
-          connectTimeout: 5000
-        });
-
-        discoveryClientRef.current = discClient;
-
-        discClient.on('connect', () => {
-          setConnStatus('🟢 已連線');
-          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {
-            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({
-              type: 'DISCOVERY_QUERY_ROOMS',
-              senderId: myPlayerId
-            }), { qos: 0 });
-          });
-        });
-
-        discClient.on('message', (topic, message) => {
-          try {
-            const data = JSON.parse(message.toString());
-            if (data.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {
-              setOnlineRooms(prev => {
-                const filtered = prev.filter(r => r.roomId !== data.roomId);
-                return [...filtered, {
-                  roomId: data.roomId,
-                  hostName: data.hostName,
-                  playerCount: data.playerCount,
-                  roomStatus: data.roomStatus,
-                  receivedAt: Date.now()
-                }];
-              });
-            }
-          } catch(e) {}
-        });
-
-        discClient.on('error', () => {
-          setConnStatus('連線重試中...');
-        });
-
-        setTimeout(() => {
-          setIsSearchingRooms(false);
-        }, 1500);
-      };
-
-      const handleCloseRoomsModal = () => {
-        setShowRoomsModal(false);
-        if (discoveryClientRef.current) {
-          try { discoveryClientRef.current.end(true); } catch(e) {}
-          discoveryClientRef.current = null;
-        }
-        if (gameState === 'home') {
-          setConnStatus('未連線');
-        }
-      };
-
-      const handleQuickJoinFromList = (selectedRoomId) => {
-        setJoinRoomInput(selectedRoomId);
-        executeJoinRoom(selectedRoomId);
       };
 
       const handleLeaveRoom = () => {
@@ -1110,44 +915,78 @@
         if (!window.confirm(confirmMsg)) return;
 
         if (clientRef.current && roomId) {
-          const payload = JSON.stringify({
+          publishMsg(`trb_game_sync_room_${roomId}`, {
             type: isHost ? 'ROOM_DISBANDED' : 'PLAYER_LEFT',
-            playerId: myPlayerId,
-            senderId: myPlayerId
+            playerId: myPlayerId, senderId: myPlayerId
           });
-
-          clientRef.current.publish(`trb_game_sync_room_${roomId}`, payload, { qos: 1 }, () => {
-            resetToHome();
-          });
-
-          setTimeout(() => { resetToHome(); }, 400);
+          setTimeout(resetToHome, 300);
         } else {
           resetToHome();
         }
       };
 
-      // 遊戲輪次與發牌
+      // 大廳線上房間探尋
+      const handleOpenRoomsModal = () => {
+        setShowRoomsModal(true);
+        setOnlineRooms([]);
+        setIsSearchingRooms(true);
+        setConnStatus('連線伺服器中...');
+
+        if (discoveryClientRef.current) {
+          try { discoveryClientRef.current.end(true); } catch (e) {}
+        }
+
+        const discClient = mqtt.connect(BROKER_URL, {
+          clientId: `trb_disc_${myPlayerId}_${Math.random().toString(16).slice(2, 6)}`,
+          username: MQTT_USER, password: MQTT_PASS, clean: true, connectTimeout: 5000
+        });
+        discoveryClientRef.current = discClient;
+
+        discClient.on('connect', () => {
+          setConnStatus('🟢 已連線');
+          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {
+            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({ type: 'DISCOVERY_QUERY_ROOMS', senderId: myPlayerId }), { qos: 0 });
+          });
+        });
+
+        discClient.on('message', (topic, message) => {
+          const data = safeJsonParse(message.toString());
+          if (data?.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {
+            setOnlineRooms(prev => [
+              ...prev.filter(r => r.roomId !== data.roomId),
+              { roomId: data.roomId, hostName: data.hostName, playerCount: data.playerCount, roomStatus: data.roomStatus, receivedAt: Date.now() }
+            ]);
+          }
+        });
+
+        discClient.on('error', () => setConnStatus('連線重試中...'));
+        setTimeout(() => setIsSearchingRooms(false), 1500);
+      };
+
+      const handleCloseRoomsModal = () => {
+        setShowRoomsModal(false);
+        if (discoveryClientRef.current) {
+          try { discoveryClientRef.current.end(true); } catch (e) {}
+          discoveryClientRef.current = null;
+        }
+        if (gameState === 'home') setConnStatus('未連線');
+      };
+
+      // 遊戲流程推進
       const handleStartAssignRooms = () => {
         if (players.length < 2) {
           alert('至少需要 2 位玩家加入才能開始！');
           return;
         }
-
-        const totalDeckCount = Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0);
-        if (totalDeckCount < players.length) {
-          alert(`卡池張數 (${totalDeckCount} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
+        if (totalCardsInDeck < players.length) {
+          alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
           return;
         }
 
         const shuffled = [...players].sort(() => Math.random() - 0.5);
         const half = Math.ceil(shuffled.length / 2);
-
         const assigned = shuffled.map((p, idx) => ({
-          ...p,
-          team: null,
-          role: null,
-          hasBeenLeprechaun: false,
-          hasUsedMadScientistAbility: false,
+          ...p, team: null, role: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
 
@@ -1157,40 +996,26 @@
         setGameState('game');
 
         broadcastLatest({
-          players: assigned,
-          roomStatus: 'room_assigned',
-          currentRoundIndex: 0,
-          timeLeft: roundSettings[0] * 60,
-          buriedCard: null,
-          gameResult: null
+          players: assigned, roomStatus: 'room_assigned', currentRoundIndex: 0,
+          timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null
         });
       };
 
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
-          const count = roleCounts[role.id] || 0;
-          for (let i = 0; i < count; i++) deck.push({ ...role });
+          for (let i = 0; i < (roleCounts[role.id] || 0); i++) deck.push({ ...role });
         });
         deck.sort(() => Math.random() - 0.5);
 
         const assignedWithRoles = players.map((p, idx) => {
           const r = deck[idx];
-          return {
-            ...p,
-            team: r.team,
-            role: r,
-            hasBeenLeprechaun: r.id === 'leprechaun',
-            hasUsedMadScientistAbility: false
-          };
+          return { ...p, team: r.team, role: r, hasBeenLeprechaun: r.id === 'leprechaun', hasUsedMadScientistAbility: false };
         });
 
-        let generatedBuried = null;
-        if (deck.length === players.length + 1) {
-          generatedBuried = deck[players.length];
-        }
-
+        const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;
         const initialTime = roundSettings[0] * 60;
+
         setPlayers(assignedWithRoles);
         setBuriedCard(generatedBuried);
         setCurrentRoundIndex(0);
@@ -1200,12 +1025,8 @@
         setGameResult(null);
 
         broadcastLatest({
-          players: assignedWithRoles,
-          roomStatus: 'round_active',
-          currentRoundIndex: 0,
-          timeLeft: initialTime,
-          buriedCard: generatedBuried,
-          gameResult: null
+          players: assignedWithRoles, roomStatus: 'round_active', currentRoundIndex: 0,
+          timeLeft: initialTime, buriedCard: generatedBuried, gameResult: null
         });
       };
 
@@ -1231,37 +1052,21 @@
         }
       };
 
-      // 勝負判定邏輯樹
+      // 勝負判定邏輯
       const resolveGameResult = (ans) => {
-        const inSameRoom = ans.sameRoom;
-        const engShared = ans.engineerShared;
-        const docShared = ans.doctorShared;
-
-        const needEngineer = hasEngineerInGame;
-        const needDoctor = hasDoctorInGame;
-
-        if (inSameRoom) {
-          if (needEngineer) {
-            if (engShared) return '紅隊獲勝';
-            if (needDoctor) {
-              return docShared ? '藍隊獲勝' : '沒有隊伍獲勝';
-            } else {
-              return '沒有隊伍獲勝';
-            }
-          } else {
-            return '紅隊獲勝';
+        const { sameRoom, engineerShared, doctorShared } = ans;
+        if (sameRoom) {
+          if (hasEngineerInGame) {
+            if (engineerShared) return '紅隊獲勝';
+            return hasDoctorInGame && doctorShared ? '藍隊獲勝' : '沒有隊伍獲勝';
           }
+          return '紅隊獲勝';
         } else {
-          if (needDoctor) {
-            if (docShared) return '藍隊獲勝';
-            if (needEngineer) {
-              return engShared ? '紅隊獲勝' : '沒有隊伍獲勝';
-            } else {
-              return '沒有隊伍獲勝';
-            }
-          } else {
-            return '藍隊獲勝';
+          if (hasDoctorInGame) {
+            if (doctorShared) return '藍隊獲勝';
+            return hasEngineerInGame && engineerShared ? '紅隊獲勝' : '沒有隊伍獲勝';
           }
+          return '藍隊獲勝';
         }
       };
 
@@ -1271,43 +1076,19 @@
 
         if (key === 'sameRoom') {
           if (val === true) {
-            if (hasEngineerInGame) {
-              setVictoryStep(2);
-            } else {
-              finalizeVictory(updatedAns);
-            }
+            hasEngineerInGame ? setVictoryStep(2) : finalizeVictory(updatedAns);
           } else {
-            if (hasDoctorInGame) {
-              setVictoryStep(3);
-            } else {
-              finalizeVictory(updatedAns);
-            }
+            hasDoctorInGame ? setVictoryStep(3) : finalizeVictory(updatedAns);
           }
         } else if (key === 'engineerShared') {
-          if (victoryAns.sameRoom === true) {
-            if (val === true) {
-              finalizeVictory(updatedAns);
-            } else {
-              if (hasDoctorInGame) {
-                setVictoryStep(4);
-              } else {
-                finalizeVictory(updatedAns);
-              }
-            }
+          if (victoryAns.sameRoom === true && val === false && hasDoctorInGame) {
+            setVictoryStep(4);
           } else {
             finalizeVictory(updatedAns);
           }
         } else if (key === 'doctorShared') {
-          if (victoryAns.sameRoom === false) {
-            if (val === true) {
-              finalizeVictory(updatedAns);
-            } else {
-              if (hasEngineerInGame) {
-                setVictoryStep(5);
-              } else {
-                finalizeVictory(updatedAns);
-              }
-            }
+          if (victoryAns.sameRoom === false && val === false && hasEngineerInGame) {
+            setVictoryStep(5);
           } else {
             finalizeVictory(updatedAns);
           }
@@ -1321,7 +1102,7 @@
         broadcastLatest({ gameResult: result });
       };
 
-      // 互動操作
+      // 互動與技能交換
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -1334,136 +1115,88 @@
 
       const handleSendSwapRequest = (targetPlayer) => {
         setShowSwapTargetModal(false);
-        if (!clientRef.current || targetPlayer.id === myPlayerId) return;
+        if (targetPlayer.id === myPlayerId) return;
 
         setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);
-        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-          type: 'SWAP_REQUEST',
-          senderId: myPlayerId,
-          fromId: myPlayerId,
-          fromName: myInfo.name,
-          fromRoleName: myInfo.role?.name,
-          targetId: targetPlayer.id
-        }));
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'SWAP_REQUEST', senderId: myPlayerId, fromId: myPlayerId,
+          fromName: myInfo.name, fromRoleName: myInfo.role?.name, targetId: targetPlayer.id
+        });
       };
 
       const handleAcceptSwap = () => {
         if (!swapRequestData) return;
-        const p1Id = swapRequestData.fromId;
+        const { fromId: p1Id } = swapRequestData;
         const p2Id = myPlayerId;
         setSwapRequestData(null);
 
         if (latestStateRef.current.isHost) {
           executeSwapOnHost(p1Id, p2Id);
-        } else if (clientRef.current) {
-          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-            type: 'EXECUTE_SWAP',
-            senderId: myPlayerId,
-            player1Id: p1Id,
-            player2Id: p2Id
-          }));
+        } else {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_SWAP', senderId: myPlayerId, player1Id: p1Id, player2Id: p2Id
+          });
         }
       };
 
       const handleRejectSwap = () => {
-        if (!swapRequestData || !clientRef.current) return;
-        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-          type: 'SWAP_REJECTED',
-          senderId: myPlayerId,
-          fromId: swapRequestData.fromId
-        }));
+        if (!swapRequestData) return;
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'SWAP_REJECTED', senderId: myPlayerId, fromId: swapRequestData.fromId
+        });
         setSwapRequestData(null);
       };
-
-      // 房長端酒鬼交換業務
-      const executeDrunkBuriedSwapOnHost = useCallback((drunkPlayerId) => {
-        const curBuried = latestStateRef.current.buriedCard;
-        if (!curBuried || !window.RoleMechanics) return;
-
-        setPlayers(prev => {
-          const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(
-            prev,
-            curBuried,
-            drunkPlayerId
-          );
-
-          setBuriedCard(newBuried);
-
-          setTimeout(() => {
-            broadcastLatest({ players: nextPlayers, buriedCard: newBuried });
-          }, 50);
-
-          return nextPlayers;
-        });
-      }, [broadcastLatest]);
 
       const handleConfirmDrunkSwap = () => {
         setShowDrunkConfirmModal(false);
         if (!buriedCard) return;
 
         if (latestStateRef.current.isHost) {
-          executeDrunkBuriedSwapOnHost(myPlayerId);
-        } else if (clientRef.current) {
-          clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-            type: 'EXECUTE_DRUNK_SWAP',
-            senderId: myPlayerId,
-            playerId: myPlayerId
-          }), { qos: 1 });
+          const curBuried = latestStateRef.current.buriedCard;
+          setPlayers(prev => {
+            const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, myPlayerId);
+            setBuriedCard(newBuried);
+            setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
+            return nextPlayers;
+          });
+        } else {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_DRUNK_SWAP', senderId: myPlayerId, playerId: myPlayerId
+          });
         }
       };
 
-      // 瘋狂科學家發起對調請求（需雙方同意）
       const handleTriggerMadScientistSwap = useCallback((p1Id, p2Id) => {
         const p1 = players.find(p => p.id === p1Id);
         const p2 = players.find(p => p.id === p2Id);
-        if (!p1 || !p2 || !clientRef.current) return;
+        if (!p1 || !p2) return;
 
-        const payload = JSON.stringify({
-          type: 'MAD_SCIENTIST_INITIATE',
-          senderId: myPlayerId,
-          initiatorId: myPlayerId,
-          initiatorName: myInfo.name,
-          p1Id,
-          p1Name: p1.name,
-          p2Id,
-          p2Name: p2.name
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'MAD_SCIENTIST_INITIATE', senderId: myPlayerId, initiatorId: myPlayerId,
+          initiatorName: myInfo.name, p1Id, p1Name: p1.name, p2Id, p2Name: p2.name
         });
-
-        clientRef.current.publish(`trb_game_sync_room_${roomId}`, payload, { qos: 1 });
         setSwapStatusMessage(`已向 ${p1.name} 與 ${p2.name} 發送對調請求，等待雙方同意中...`);
-      }, [players, myPlayerId, myInfo.name, roomId]);
+      }, [players, myPlayerId, myInfo.name, roomId, publishMsg]);
 
-      // 目標玩家回覆瘋狂科學家對調投票
       const handleMadScientistTargetVote = (accepted) => {
-        if (!madScientistPendingData || !clientRef.current) return;
-        clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
-          type: 'MAD_SCIENTIST_VOTE',
-          senderId: myPlayerId,
-          voterId: myPlayerId,
-          voterName: myInfo.name,
-          accepted
-        }), { qos: 1 });
+        if (!madScientistPendingData) return;
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'MAD_SCIENTIST_VOTE', senderId: myPlayerId, voterId: myPlayerId,
+          voterName: myInfo.name, accepted
+        });
         setMadScientistPendingData(null);
       };
 
       const handleToggleScientistTarget = (pid) => {
         setSelectedScientistTargets(prev => {
-          if (prev.includes(pid)) {
-            return prev.filter(id => id !== pid);
-          }
-          if (prev.length >= 2) {
-            return [prev[1], pid];
-          }
-          return [...prev, pid];
+          if (prev.includes(pid)) return prev.filter(id => id !== pid);
+          return prev.length >= 2 ? [prev[1], pid] : [...prev, pid];
         });
       };
 
       const handleConfirmScientistSwap = () => {
         if (selectedScientistTargets.length !== 2) return;
-        const [p1, p2] = selectedScientistTargets;
-        if (madScientistConfig?.onConfirm) {
-          madScientistConfig.onConfirm(p1, p2);
-        }
+        madScientistConfig?.onConfirm(selectedScientistTargets[0], selectedScientistTargets[1]);
         setShowMadScientistModal(false);
         setSelectedScientistTargets([]);
       };
@@ -1472,48 +1205,26 @@
         if (!isHost) return;
         setTempRoleCounts(prev => {
           const isSelected = (prev[roleId] || 0) > 0;
-          const nextCounts = { ...prev };
+          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };
 
-          if (isSelected) {
-            nextCounts[roleId] = 0;
-          } else {
-            nextCounts[roleId] = 1;
-
+          if (!isSelected) {
             const currentRole = rolesCatalog.find(r => r.id === roleId);
-            if (currentRole && currentRole.pairs) {
-              let pairIds = [];
-              if (Array.isArray(currentRole.pairs)) {
-                pairIds = currentRole.pairs;
-              } else if (typeof currentRole.pairs === 'string') {
-                pairIds = currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);
-              }
-
-              pairIds.forEach(pId => {
-                nextCounts[pId] = 1;
-              });
+            if (currentRole?.pairs) {
+              const pairIds = Array.isArray(currentRole.pairs)
+                ? currentRole.pairs
+                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);
+              pairIds.forEach(pId => { next[pId] = 1; });
             }
           }
-
-          return nextCounts;
+          return next;
         });
       };
 
-      const handleDeselectAllRoles = () => {
-        if (!isHost) return;
-        const cleared = {};
-        rolesCatalog.forEach(role => {
-          cleared[role.id] = 0;
-        });
-        setTempRoleCounts(cleared);
-      };
-
       // ==========================================
-      // 3. 畫面渲染樹 (JSX Render Tree)
+      // 4. 畫面渲染樹 (JSX Render Tree)
       // ==========================================
-
       return (
         <div className="max-w-4xl mx-auto pb-12">
-          
           {/* 頂部導覽列 */}
           <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
             <div className="flex items-center gap-2">
@@ -1597,7 +1308,7 @@
                   <button
                     type="button"
                     disabled={isVerifying}
-                    onClick={handleJoinRoom}
+                    onClick={() => executeJoinRoom(joinRoomInput)}
                     className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl text-white font-medium transition active:scale-95 disabled:opacity-50 min-w-[80px]"
                   >
                     {isVerifying ? '驗證中...' : '加入'}
@@ -1637,9 +1348,7 @@
                       <p className="text-sm text-zinc-400 font-medium">
                         {isSearchingRooms ? '正在搜尋附近的線上房間...' : '目前沒有探索到在線房間'}
                       </p>
-                      <p className="text-xs text-zinc-500">
-                        您可以直接建立房間，或請房長開啟房間後點選右上角重新整理。
-                      </p>
+                      <p className="text-xs text-zinc-500">您可以直接建立房間，或請房長開啟房間後點選右上角重新整理。</p>
                     </div>
                   ) : (
                     onlineRooms.map(room => (
@@ -1649,9 +1358,7 @@
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-base font-bold text-amber-400 tracking-wider">
-                              #{room.roomId}
-                            </span>
+                            <span className="font-mono text-base font-bold text-amber-400 tracking-wider">#{room.roomId}</span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
                               room.roomStatus === 'waiting'
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -1669,7 +1376,10 @@
 
                         <button
                           disabled={isVerifying}
-                          onClick={() => handleQuickJoinFromList(room.roomId)}
+                          onClick={() => {
+                            setJoinRoomInput(room.roomId);
+                            executeJoinRoom(room.roomId);
+                          }}
                           className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow active:scale-95 disabled:opacity-50 shrink-0"
                         >
                           {isVerifying ? '加入中...' : '一鍵加入'}
@@ -1698,7 +1408,7 @@
                     </span>
                     {totalCardsInDeck === players.length + 1 && (
                       <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
-                        ⚰️ 將啟用埋葬卡
+                        ⚰️️ 將啟用埋葬卡
                       </span>
                     )}
                   </h2>
@@ -1742,9 +1452,7 @@
               {/* 回合時間規劃 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
-                    ⏱️ 回合時間:
-                  </span>
+                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱️ 回合時間:</span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {roundSettings.map((min, idx) => (
                       <span key={idx} className="bg-zinc-800 border border-zinc-700 px-2 py-1 rounded-md text-zinc-200 font-medium whitespace-nowrap">
@@ -1767,9 +1475,7 @@
                         p.id === myPlayerId ? 'bg-indigo-950/40 border-indigo-500/50' : 'bg-zinc-800/40 border-zinc-800'
                       }`}
                     >
-                      <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">
-                        {idx + 1}
-                      </div>
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">{idx + 1}</div>
                       <div className="truncate">
                         <div className="text-sm font-medium truncate flex items-center gap-1">
                           {p.name}
@@ -1782,7 +1488,7 @@
                 </div>
               </div>
 
-              {/* 等候大廳：本局使用角色池一覽 */}
+              {/* 本局使用角色池一覽 */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -1798,8 +1504,8 @@
                   {activeRolesInDeck.map(group => {
                     const hasBlue = group.teams.includes('blue');
                     const hasRed = group.teams.includes('red');
-                    
                     let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+
                     if (hasBlue && hasRed) {
                       bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
                     } else if (hasBlue) {
@@ -1811,23 +1517,17 @@
                     }
 
                     return (
-                      <div
-                        key={group.name}
-                        className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}
-                      >
+                      <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
                         <div className="flex items-start gap-2.5">
                           <span className="text-2xl mt-0.5">{group.icon}</span>
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-sm text-zinc-100">{group.name}</span>
-                              {group.teams.map(t => {
-                                const meta = getTeamMeta(t);
-                                return (
-                                  <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
-                                    {meta.label}
-                                  </span>
-                                );
-                              })}
+                              {group.teams.map(t => (
+                                <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
+                                  {getTeamMeta(t).label}
+                                </span>
+                              ))}
                             </div>
                             <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
                           </div>
@@ -1843,7 +1543,6 @@
           {/* 遊戲進行階段 */}
           {gameState === 'game' && (
             <div className="space-y-6">
-              
               {/* [階段一] 分房移動就位 */}
               {roomStatus === 'room_assigned' && (
                 <div className="space-y-5">
@@ -1877,7 +1576,6 @@
                     )}
                   </div>
 
-                  {/* 房間分配名單對照 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-zinc-900/80 border border-indigo-500/30 rounded-2xl p-4">
                       <h3 className="font-bold text-indigo-300 mb-3 flex items-center justify-between">
@@ -1923,16 +1621,12 @@
                         <span className="text-xs uppercase tracking-wider text-zinc-400 font-bold">
                           第 {currentRoundIndex + 1} / {roundSettings.length} 輪
                         </span>
-                        <h2 className="text-3xl font-black font-mono tracking-tight text-white">
-                          {formatTime(timeLeft)}
-                        </h2>
+                        <h2 className="text-3xl font-black font-mono tracking-tight text-white">{formatTime(timeLeft)}</h2>
                       </div>
 
                       {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
-                          <div className="text-xs text-amber-300 font-bold">
-                            ⚠️ 本輪時間到！請選出人質交換
-                          </div>
+                          <div className="text-xs text-amber-300 font-bold">⚠️ 本輪時間到！請選出人質交換</div>
                           <div className="flex items-center justify-center sm:justify-end gap-1.5 shrink-0">
                             <span className="text-xs text-amber-200">需交換:</span>
                             <span className="bg-amber-500 text-zinc-950 font-black text-sm px-2.5 py-0.5 rounded-lg shadow-sm">
@@ -1959,7 +1653,7 @@
                           onClick={() => {
                             setRoomStatus('waiting');
                             setGameState('lobby');
-                            localStorage.removeItem('trb_saved_game_context');
+                            StorageManager.clearSession();
                             broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null });
                           }}
                           className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
@@ -1975,7 +1669,6 @@
               {/* [階段三] 遊戲結束面板 */}
               {roomStatus === 'ended' && (
                 <div className="space-y-6">
-                  {/* 勝負結果橫幅 */}
                   <div className={`p-6 rounded-2xl border-2 text-center shadow-2xl space-y-4 ${
                     gameResult === '紅隊獲勝' ? 'bg-red-950/70 border-red-500 text-red-200' :
                     gameResult === '藍隊獲勝' ? 'bg-blue-950/70 border-blue-500 text-blue-200' :
@@ -1984,9 +1677,7 @@
                   }`}>
                     <div>
                       <div className="text-xs uppercase tracking-wider font-bold mb-1 opacity-80">🏁 本局遊戲結果</div>
-                      <div className="text-3xl sm:text-4xl font-black text-white">
-                        {gameResult ? gameResult : '⏳ 等待房長判定勝負...'}
-                      </div>
+                      <div className="text-3xl sm:text-4xl font-black text-white">{gameResult || '⏳ 等待房長判定勝負...'}</div>
                     </div>
 
                     {isHost && (
@@ -2006,7 +1697,7 @@
                           onClick={() => {
                             setRoomStatus('waiting');
                             setGameState('lobby');
-                            localStorage.removeItem('trb_saved_game_context');
+                            StorageManager.clearSession();
                             broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null });
                           }}
                           className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs px-5 py-2.5 rounded-xl transition active:scale-95"
@@ -2017,7 +1708,7 @@
                     )}
                   </div>
 
-                  {/* 全場玩家身分揭曉列表 */}
+                  {/* 全場玩家身分揭曉 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 shadow-2xl space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
                       <div className="flex items-center gap-2">
@@ -2049,12 +1740,8 @@
                               <div className="truncate">
                                 <div className="font-bold text-sm text-zinc-100 truncate flex items-center gap-1.5">
                                   <span>{p.name}</span>
-                                  {p.id === myPlayerId && (
-                                    <span className="text-[10px] text-indigo-400 font-normal">(你)</span>
-                                  )}
-                                  {p.isHost && (
-                                    <span className="text-amber-400 text-xs" title="房長">👑</span>
-                                  )}
+                                  {p.id === myPlayerId && <span className="text-[10px] text-indigo-400 font-normal">(你)</span>}
+                                  {p.isHost && <span className="text-amber-400 text-xs" title="房長">👑</span>}
                                 </div>
                               </div>
 
@@ -2073,9 +1760,7 @@
                             <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60">
                               <div className="flex items-center gap-1.5 truncate">
                                 <span className="text-lg">{p.role?.icon || '❓'}</span>
-                                <span className="text-xs font-bold text-zinc-200 truncate">
-                                  {p.role?.name || '未知身分'}
-                                </span>
+                                <span className="text-xs font-bold text-zinc-200 truncate">{p.role?.name || '未知身分'}</span>
                               </div>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>
                                 {meta.label}
@@ -2106,7 +1791,7 @@
                 </div>
               )}
 
-              {/* 房間歸屬與即時提示 */}
+              {/* 初始房間與狀態提示 */}
               <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs text-indigo-300">你的初始房間分配：</span>
                 <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
@@ -2170,13 +1855,9 @@
                         </p>
                       </div>
 
-                      {/* 角色機制外掛通插槽 */}
                       {(() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
-                          currentRoundIndex,
-                          roundSettings,
-                          buriedCard,
-                          myPlayerState: myInfo,
+                          currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
                           openSwapModal: (config) => {
                             setSwapModalConfig(config);
                             setShowSwapTargetModal(true);
@@ -2223,7 +1904,7 @@
                 </div>
               </div>
 
-              {/* 進行中：角色池一覽 */}
+              {/* 進行中角色池一覽 */}
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -2239,8 +1920,8 @@
                   {activeRolesInDeck.map(group => {
                     const hasBlue = group.teams.includes('blue');
                     const hasRed = group.teams.includes('red');
-                    
                     let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+
                     if (hasBlue && hasRed) {
                       bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
                     } else if (hasBlue) {
@@ -2252,23 +1933,17 @@
                     }
 
                     return (
-                      <div
-                        key={group.name}
-                        className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}
-                      >
+                      <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
                         <div className="flex items-start gap-2.5">
                           <span className="text-2xl mt-0.5">{group.icon}</span>
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-sm text-zinc-100">{group.name}</span>
-                              {group.teams.map(t => {
-                                const meta = getTeamMeta(t);
-                                return (
-                                  <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${meta.badge}`}>
-                                    {meta.label}
-                                  </span>
-                                );
-                              })}
+                              {group.teams.map(t => (
+                                <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
+                                  {getTeamMeta(t).label}
+                                </span>
+                              ))}
                             </div>
                             <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
                           </div>
@@ -2281,7 +1956,7 @@
             </div>
           )}
 
-          {/* 彈窗：瘋狂科學家對調目標選擇（已取消選擇自己） */}
+          {/* 彈窗：瘋狂科學家對調目標選擇 */}
           {showMadScientistModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-lime-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -2545,9 +2220,7 @@
                   <button onClick={() => setShowSwapTargetModal(false)} className="text-zinc-400 hover:text-white">✕</button>
                 </div>
                 
-                {swapModalConfig?.ruleDesc && (
-                  <p className="text-xs text-zinc-300">{swapModalConfig.ruleDesc}</p>
-                )}
+                {swapModalConfig?.ruleDesc && <p className="text-xs text-zinc-300">{swapModalConfig.ruleDesc}</p>}
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                   {players.filter(p => p.id !== myPlayerId).map(p => {
@@ -2717,7 +2390,11 @@
                     {isHost && (
                       <button
                         type="button"
-                        onClick={handleDeselectAllRoles}
+                        onClick={() => {
+                          const cleared = {};
+                          rolesCatalog.forEach(role => { cleared[role.id] = 0; });
+                          setTempRoleCounts(cleared);
+                        }}
                         className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1.5 rounded-lg transition active:scale-95"
                       >
                         清空選取
@@ -2786,29 +2463,18 @@
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <span className="text-2xl shrink-0">{role.icon}</span>
-                              <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
-                                {role.name}
-                              </span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>
-                                {meta.label}
-                              </span>
+                              <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-400'}`}>{role.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>{meta.label}</span>
                             </div>
-
-                            <div className="shrink-0">
-                              <span className={`text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
-                                isSelected 
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' 
-                                  : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
-                              }`}>
-                                {isSelected ? '✔ 已啟用' : '未加入'}
-                              </span>
-                            </div>
+                            <span className={`text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
+                              isSelected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
+                            }`}>
+                              {isSelected ? '✔ 已啟用' : '未加入'}
+                            </span>
                           </div>
 
                           <p className={`text-xs leading-relaxed p-2.5 rounded-lg border break-words ${
-                            isSelected 
-                              ? 'text-zinc-200 bg-zinc-950/60 border-zinc-800/80' 
-                              : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
+                            isSelected ? 'text-zinc-200 bg-zinc-950/60 border-zinc-800/80' : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
                           }`}>
                             {role.desc}
                           </p>
