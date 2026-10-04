@@ -2,6 +2,26 @@
  * 角色專屬機制、動作外掛與主機結算模組
  */
 (function (global) {
+  // 瘋狂科學家（紅/藍）通用的按鈕與動作邏輯
+  const createMadScientistAction = (badgeText) => (ctx) => {
+    // 若該玩家已使用過技能，則不顯示按鈕
+    if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
+
+    return {
+      label: '🧪 操控角色對調',
+      badge: badgeText,
+      style: 'from-lime-500 to-emerald-600 hover:from-lime-400 hover:to-emerald-500 border-lime-300/40 text-zinc-950',
+      onClick: () => {
+        ctx.openMadScientistModal({
+          ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位玩家使他們交換角色，本技能全場限用一次。',
+          onConfirm: (p1Id, p2Id) => {
+            ctx.triggerMadScientistSwap(p1Id, p2Id);
+          }
+        });
+      }
+    };
+  };
+
   // 定義具備專屬互動動作的角色外掛
   const ROLE_PLUGINS = {
     // 1. 燙手山芋：可隨時發起身分交換，無名單限制
@@ -24,7 +44,7 @@
       getActionButton: (ctx) => ({
         label: '🔄 發起身分交換',
         badge: '小妖精 專屬',
-        style: 'from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-emerald-300/40 text-zinc-950',
+        style: 'from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-emerald-500 border-emerald-300/40 text-zinc-950',
         onClick: () => {
           ctx.openSwapModal({
             ruleDesc: '🍀 小妖精規則：曾當過小妖精的玩家不可再次交換。',
@@ -52,28 +72,14 @@
       }
     },
 
-    // 4. 瘋狂科學家：選擇兩位玩家使他們交換角色（一次性技能）
-    mad_scientist: {
-      getActionButton: (ctx) => {
-        // 如果已經使用過一次，則不顯示按鈕
-        if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
+    // 4. 瘋狂科學家 (紅)
+    mad_scientist_r: {
+      getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬')
+    },
 
-        return {
-          label: '🧪 操控角色對調',
-          badge: '瘋狂科學家 (限一次)',
-          style: 'from-lime-500 to-emerald-600 hover:from-lime-400 hover:to-emerald-500 border-lime-300/40 text-zinc-950',
-          onClick: () => {
-            // 觸發選擇兩名玩家進行交換的彈窗
-            ctx.openMadScientistModal({
-              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位玩家使他們交換角色，本技能全場限用一次。',
-              // 提交時除了呼叫 applyPlayerSwap，記得將玩家的 hasUsedMadScientistAbility 標記為 true
-              onConfirm: (p1Id, p2Id) => {
-                ctx.triggerMadScientistSwap(p1Id, p2Id);
-              }
-            });
-          }
-        };
-      }
+    // 5. 瘋狂科學家 (藍)
+    mad_scientist_b: {
+      getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬')
     }
   };
 
@@ -100,7 +106,7 @@
       const team2 = p2.team;
 
       return playersList.map(p => {
-        // 如果發起者是瘋狂科學家，標記該玩家已使用技能
+        // 若發起者為瘋狂科學家，發起者將標記為已使用技能
         let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
         if (initiatorId && p.id === initiatorId) {
           hasUsedMadScientistAbility = true;
