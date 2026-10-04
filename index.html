@@ -324,9 +324,7 @@
 
         client.on('connect', () => {
           setConnStatus('🟢 已連線');
-          // 訂閱遊戲房主題
           client.subscribe(topic, { qos: 1 });
-          // 房長監聽公共探索主題，以便自動回報房間在線狀態
           if (asHost) {
             client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
           }
@@ -359,7 +357,6 @@
           try {
             const data = JSON.parse(msg.toString());
 
-            // 處理探索主題詢問
             if (t === DISCOVERY_TOPIC) {
               if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {
                 replyDiscoveryAsHost();
@@ -397,12 +394,9 @@
               return;
             }
 
-            // 【新增】：房長端驗證房間存在與檢查暱稱重複
             if (data.type === 'CHECK_ROOM_REQ' && latestStateRef.current.isHost) {
               const currentPlayers = latestStateRef.current.players || [];
               const targetName = (data.playerName || '').trim();
-              
-              // 檢查是否有非此 uid 的玩家已有相同名字
               const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);
 
               if (isDuplicated) {
@@ -659,7 +653,7 @@
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
-      // 執行房間驗證與加入（支援直接傳入自訂代碼）
+      // 執行房間驗證與加入
       const executeJoinRoom = (targetCode) => {
         const trimmedName = playerName.trim() || '特工';
         const code = (targetCode || joinRoomInput).trim();
@@ -708,7 +702,6 @@
           try {
             const data = JSON.parse(msg.toString());
             
-            // 暱稱重複檢查回報
             if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
               verified = true;
               clearTimeout(timeoutTimer);
@@ -791,7 +784,6 @@
         discClient.on('connect', () => {
           setConnStatus('🟢 已連線');
           discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {
-            // 發送探索廣播
             discClient.publish(DISCOVERY_TOPIC, JSON.stringify({
               type: 'DISCOVERY_QUERY_ROOMS',
               senderId: myPlayerId
@@ -1270,7 +1262,6 @@
                   <span>👑 建立新房間 (當房長)</span>
                 </button>
 
-                {/* 【新增】：查看當前所有線上房間按鈕 */}
                 <button
                   type="button"
                   onClick={handleOpenRoomsModal}
@@ -1674,7 +1665,8 @@
 
               {/* [階段三] 遊戲結束面板 */}
               {roomStatus === 'ended' && (
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* 勝負結果橫幅 */}
                   <div className={`p-6 rounded-2xl border-2 text-center shadow-2xl space-y-4 ${
                     gameResult === '紅隊獲勝' ? 'bg-red-950/70 border-red-500 text-red-200' :
                     gameResult === '藍隊獲勝' ? 'bg-blue-950/70 border-blue-500 text-blue-200' :
@@ -1716,11 +1708,84 @@
                     )}
                   </div>
 
+                  {/* 【新增】：全體玩家身分揭曉與勝利結算列表 */}
+                  <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 shadow-2xl space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">👥</span>
+                        <h3 className="font-black text-base sm:text-lg text-white">全場玩家身分揭曉與勝利結算</h3>
+                      </div>
+                      <span className="text-xs text-zinc-400 bg-zinc-800/80 px-2.5 py-1 rounded-full border border-zinc-700">
+                        共 {players.length} 位特工
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {players.map(p => {
+                        const meta = getTeamMeta(p.team);
+                        const isRedWinner = gameResult === '紅隊獲勝' && p.team === 'red';
+                        const isBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';
+                        const isWinner = isRedWinner || isBlueWinner;
+
+                        return (
+                          <div
+                            key={p.id}
+                            className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2.5 relative transition-all ${
+                              isWinner
+                                ? 'bg-gradient-to-br from-amber-500/20 via-zinc-900 to-amber-950/30 border-amber-400/80 shadow-lg shadow-amber-500/10 ring-1 ring-amber-400/40'
+                                : 'bg-zinc-900/70 border-zinc-800/90 hover:border-zinc-700'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="truncate">
+                                <div className="font-bold text-sm text-zinc-100 truncate flex items-center gap-1.5">
+                                  <span>{p.name}</span>
+                                  {p.id === myPlayerId && (
+                                    <span className="text-[10px] text-indigo-400 font-normal">(你)</span>
+                                  )}
+                                  {p.isHost && (
+                                    <span className="text-amber-400 text-xs" title="房長">👑</span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-zinc-500 mt-0.5">
+                                  {p.gameRoom ? p.gameRoom.split(' ')[0] : '實體房間'}
+                                </div>
+                              </div>
+
+                              {isWinner ? (
+                                <span className="shrink-0 bg-gradient-to-r from-amber-500 to-amber-400 text-zinc-950 font-black text-xs px-2 py-0.5 rounded-md shadow flex items-center gap-1 animate-bounce">
+                                  <span>👑</span>
+                                  <span>獲勝</span>
+                                </span>
+                              ) : (
+                                <span className="shrink-0 text-zinc-500 text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-800/40">
+                                  {gameResult ? '未勝出' : '結算中'}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="text-lg">{p.role?.icon || '❓'}</span>
+                                <span className="text-xs font-bold text-zinc-200 truncate">
+                                  {p.role?.name || '未知身分'}
+                                </span>
+                              </div>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>
+                                {meta.label}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* 埋葬卡揭曉 */}
                   {buriedCard && (
                     <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2">
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
-                        <span>⚰️ 本局埋葬卡揭曉</span>
+                        <span>⚰️️ 本局埋葬卡揭曉</span>
                       </div>
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-3xl">{buriedCard.icon}</span>
@@ -2231,7 +2296,7 @@
                       </span>
                       {tempTotalCardsInDeck === players.length + 1 && (
                         <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">
-                          ⚰️️ 將多出 1 張埋葬卡
+                          ⚰ 將多出 1 張埋葬卡
                         </span>
                       )}
                     </h3>
