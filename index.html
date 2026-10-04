@@ -49,7 +49,7 @@
         onClick: () => {
           if (ctx.openMadScientistModal) {
             ctx.openMadScientistModal({
-              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，經雙方同意確認後交換角色（本技能限用一次）。',
+              ruleDesc: '🧪 瘋狂科學家規則：選擇對其進行卡片揭露的玩家，經雙方同意確認後交換角色（本技能限用一次）。',
               onConfirm: (p1Id, p2Id) => {
                 ctx.triggerMadScientistSwap(p1Id, p2Id);
               }
