@@ -41,8 +41,9 @@
     // 0. EMQX 專屬伺服器連線配置
     // ==========================================
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
-    const MQTT_USER = 'yumin112for2r1b!';     // 請替換為您在 EMQX Authentication 頁面新增的帳號
-    const MQTT_PASS = '2r1bweb!';    // 請替換為您在 EMQX Authentication 頁面新增的密碼
+    const MQTT_USER = 'yumin112for2r1b!';
+    const MQTT_PASS = '2r1bweb!';
+    const DISCOVERY_TOPIC = 'trb_public_lobby_discovery';
 
     // ==========================================
     // 1. 全域工具函式與規則配置 (Utilities & Rules)
@@ -101,6 +102,11 @@
       const [connStatus, setConnStatus] = useState('未連線');
       const [isVerifying, setIsVerifying] = useState(false);
 
+      // 線上房間大廳探索
+      const [showRoomsModal, setShowRoomsModal] = useState(false);
+      const [onlineRooms, setOnlineRooms] = useState([]);
+      const [isSearchingRooms, setIsSearchingRooms] = useState(false);
+
       // 玩家名單與進度
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
@@ -138,10 +144,11 @@
 
       // Refs
       const clientRef = useRef(null);
+      const discoveryClientRef = useRef(null);
       const timerIntervalRef = useRef(null);
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
-      const debounceBroadcastTimerRef = useRef(null); // 【優化】：防抖定時器
+      const debounceBroadcastTimerRef = useRef(null);
 
       // 記憶化狀態
       const myInfo = useMemo(() => {
@@ -199,6 +206,7 @@
           isHost,
           roomId,
           myPlayerId,
+          playerName,
           gameState,
           buriedCard,
           gameResult
@@ -222,9 +230,9 @@
           };
           localStorage.setItem('trb_saved_game_context', JSON.stringify(snapshot));
         }
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, gameState, buriedCard, gameResult]);
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
 
-      // 廣播全場狀態更新（支援立即發送）
+      // 廣播全場狀態更新
       const broadcastLatest = useCallback((override = {}) => {
         if (!clientRef.current) return;
         const s = { ...latestStateRef.current, ...override };
@@ -242,7 +250,6 @@
         }), { qos: 1 });
       }, []);
 
-      // 【優化】：防抖廣播，避免短時間內玩家批次進房或回報時頻繁發送 FULL_SYNC
       const debouncedBroadcastLatest = useCallback((delay = 350) => {
         if (debounceBroadcastTimerRef.current) {
           clearTimeout(debounceBroadcastTimerRef.current);
@@ -252,6 +259,19 @@
           debounceBroadcastTimerRef.current = null;
         }, delay);
       }, [broadcastLatest]);
+
+      // 房長回應大廳探索廣播
+      const replyDiscoveryAsHost = useCallback(() => {
+        if (!clientRef.current || !latestStateRef.current.isHost || !latestStateRef.current.roomId) return;
+        const s = latestStateRef.current;
+        clientRef.current.publish(DISCOVERY_TOPIC, JSON.stringify({
+          type: 'DISCOVERY_ROOM_ANNOUNCE',
+          roomId: s.roomId,
+          hostName: s.playerName || '房長',
+          playerCount: s.players.length,
+          roomStatus: s.roomStatus
+        }), { qos: 0 });
+      }, []);
 
       // 重置本機所有遊戲狀態返回首頁
       const resetToHome = useCallback(() => {
@@ -304,34 +324,48 @@
 
         client.on('connect', () => {
           setConnStatus('🟢 已連線');
-          client.subscribe(topic, { qos: 1 }, () => {
-            const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
-            };
+          // 訂閱遊戲房主題
+          client.subscribe(topic, { qos: 1 });
+          // 房長監聽公共探索主題，以便自動回報房間在線狀態
+          if (asHost) {
+            client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
+          }
 
-            if (asHost) {
-              client.publish(topic, JSON.stringify({
-                type: 'HOST_RECONNECTED',
-                senderId: uid
-              }), { qos: 1 });
+          const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false
+          };
 
-              setTimeout(() => {
-                broadcastLatest();
-              }, 400);
-            } else {
-              client.publish(topic, JSON.stringify({
-                type: 'PLAYER_PING_SYNC',
-                senderId: uid,
-                isHost: false,
-                player: currentProfile
-              }), { qos: 1 });
-            }
-          });
+          if (asHost) {
+            client.publish(topic, JSON.stringify({
+              type: 'HOST_RECONNECTED',
+              senderId: uid
+            }), { qos: 1 });
+
+            setTimeout(() => {
+              broadcastLatest();
+              replyDiscoveryAsHost();
+            }, 400);
+          } else {
+            client.publish(topic, JSON.stringify({
+              type: 'PLAYER_PING_SYNC',
+              senderId: uid,
+              isHost: false,
+              player: currentProfile
+            }), { qos: 1 });
+          }
         });
 
         client.on('message', (t, msg) => {
           try {
             const data = JSON.parse(msg.toString());
+
+            // 處理探索主題詢問
+            if (t === DISCOVERY_TOPIC) {
+              if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {
+                replyDiscoveryAsHost();
+              }
+              return;
+            }
 
             if (data.type === 'ROOM_DISBANDED') {
               alert('房長已離開，房間已解散！');
@@ -357,18 +391,33 @@
                 const next = exists 
                   ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
                   : [...prev, data.player];
-                // 【優化】：改用防抖廣播，收斂短時間內密集進房的廣播次數
                 debouncedBroadcastLatest(300);
                 return next;
               });
               return;
             }
 
+            // 【新增】：房長端驗證房間存在與檢查暱稱重複
             if (data.type === 'CHECK_ROOM_REQ' && latestStateRef.current.isHost) {
-              client.publish(topic, JSON.stringify({
-                type: 'ROOM_VERIFIED',
-                senderId: uid
-              }), { qos: 1 });
+              const currentPlayers = latestStateRef.current.players || [];
+              const targetName = (data.playerName || '').trim();
+              
+              // 檢查是否有非此 uid 的玩家已有相同名字
+              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);
+
+              if (isDuplicated) {
+                client.publish(topic, JSON.stringify({
+                  type: 'ROOM_JOIN_REJECTED',
+                  targetId: data.senderId,
+                  reason: 'NAME_DUPLICATED'
+                }), { qos: 1 });
+              } else {
+                client.publish(topic, JSON.stringify({
+                  type: 'ROOM_VERIFIED',
+                  targetId: data.senderId,
+                  senderId: uid
+                }), { qos: 1 });
+              }
               return;
             }
 
@@ -396,7 +445,6 @@
                     } else {
                       next = [...prev, data.player];
                     }
-                    // 【優化】：防抖廣播
                     debouncedBroadcastLatest(300);
                     return next;
                   });
@@ -470,7 +518,6 @@
 
               case 'TIME_SYNC':
                 if (!latestStateRef.current.isHost) {
-                  // 本地誤差超過 2 秒才強制矯正，避免數值閃爍
                   setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
                 }
                 break;
@@ -482,7 +529,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [broadcastLatest, debouncedBroadcastLatest, resetToHome]);
+      }, [broadcastLatest, debouncedBroadcastLatest, resetToHome, replyDiscoveryAsHost]);
 
       // 初始化冷啟動狀態還原
       useEffect(() => {
@@ -560,7 +607,7 @@
         }
       }, [setupConnection]);
 
-      // 【優化】：計時器排程（降頻至每 30 秒校正一次，QoS 改為 0）
+      // 計時器排程
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -575,7 +622,6 @@
                 return 0;
               }
               const nextSec = prev - 1;
-              // 【優化】：改為每 30 秒校正一次，並使用 qos: 0，減少封包轉發開銷
               if (latestStateRef.current.isHost && nextSec % 30 === 0 && clientRef.current) {
                 clientRef.current.publish(`trb_game_sync_room_${roomId}`, JSON.stringify({
                   type: 'TIME_SYNC',
@@ -613,15 +659,17 @@
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
-      const handleJoinRoom = () => {
+      // 執行房間驗證與加入（支援直接傳入自訂代碼）
+      const executeJoinRoom = (targetCode) => {
         const trimmedName = playerName.trim() || '特工';
-        const code = joinRoomInput.trim();
+        const code = (targetCode || joinRoomInput).trim();
         if (code.length !== 6) {
           alert('請輸入 6 碼數字房號！');
           return;
         }
 
         setIsVerifying(true);
+        setConnStatus('連線伺服器中...');
 
         const topic = `trb_game_sync_room_${code}`;
         const tempClient = mqtt.connect(BROKER_URL, {
@@ -638,16 +686,19 @@
           if (!verified) {
             try { tempClient.end(true); } catch(e) {}
             setIsVerifying(false);
+            setConnStatus('未連線');
             alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);
           }
         }, 6000);
 
         tempClient.on('connect', () => {
+          setConnStatus('🟢 已連線');
           tempClient.subscribe(topic, { qos: 1 }, (err) => {
             if (!err) {
               tempClient.publish(topic, JSON.stringify({
                 type: 'CHECK_ROOM_REQ',
-                senderId: myPlayerId
+                senderId: myPlayerId,
+                playerName: trimmedName
               }), { qos: 1 });
             }
           });
@@ -656,11 +707,28 @@
         tempClient.on('message', (t, msg) => {
           try {
             const data = JSON.parse(msg.toString());
-            if (data.type === 'ROOM_VERIFIED') {
+            
+            // 暱稱重複檢查回報
+            if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
               verified = true;
               clearTimeout(timeoutTimer);
               try { tempClient.end(true); } catch(e) {}
               setIsVerifying(false);
+              setConnStatus('未連線');
+              if (data.reason === 'NAME_DUPLICATED') {
+                alert(`⚠️ 加入失敗：房間「${code}」內已存在名為「${trimmedName}」的玩家！\n請更換一個暱稱後再試。`);
+              } else {
+                alert('無法加入房間，已被房長拒絕！');
+              }
+              return;
+            }
+
+            if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {
+              verified = true;
+              clearTimeout(timeoutTimer);
+              try { tempClient.end(true); } catch(e) {}
+              setIsVerifying(false);
+              setShowRoomsModal(false);
 
               localStorage.setItem('trb_saved_room_id', code);
               localStorage.setItem('trb_saved_player_name', trimmedName);
@@ -689,9 +757,89 @@
         tempClient.on('error', () => {
           clearTimeout(timeoutTimer);
           setIsVerifying(false);
+          setConnStatus('未連線');
           try { tempClient.end(true); } catch(e) {}
           alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');
         });
+      };
+
+      const handleJoinRoom = () => {
+        executeJoinRoom(joinRoomInput);
+      };
+
+      // 搜尋線上房間
+      const handleOpenRoomsModal = () => {
+        setShowRoomsModal(true);
+        setOnlineRooms([]);
+        setIsSearchingRooms(true);
+        setConnStatus('連線伺服器中...');
+
+        if (discoveryClientRef.current) {
+          try { discoveryClientRef.current.end(true); } catch(e) {}
+        }
+
+        const discClient = mqtt.connect(BROKER_URL, {
+          clientId: `trb_disc_${myPlayerId}_${Math.random().toString(16).slice(2, 6)}`,
+          username: MQTT_USER,
+          password: MQTT_PASS,
+          clean: true,
+          connectTimeout: 5000
+        });
+
+        discoveryClientRef.current = discClient;
+
+        discClient.on('connect', () => {
+          setConnStatus('🟢 已連線');
+          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {
+            // 發送探索廣播
+            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({
+              type: 'DISCOVERY_QUERY_ROOMS',
+              senderId: myPlayerId
+            }), { qos: 0 });
+          });
+        });
+
+        discClient.on('message', (topic, message) => {
+          try {
+            const data = JSON.parse(message.toString());
+            if (data.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {
+              setOnlineRooms(prev => {
+                const filtered = prev.filter(r => r.roomId !== data.roomId);
+                return [...filtered, {
+                  roomId: data.roomId,
+                  hostName: data.hostName,
+                  playerCount: data.playerCount,
+                  roomStatus: data.roomStatus,
+                  receivedAt: Date.now()
+                }];
+              });
+            }
+          } catch(e) {}
+        });
+
+        discClient.on('error', () => {
+          setConnStatus('連線重試中...');
+        });
+
+        setTimeout(() => {
+          setIsSearchingRooms(false);
+        }, 1500);
+      };
+
+      const handleCloseRoomsModal = () => {
+        setShowRoomsModal(false);
+        if (discoveryClientRef.current) {
+          try { discoveryClientRef.current.end(true); } catch(e) {}
+          discoveryClientRef.current = null;
+        }
+        if (gameState === 'home') {
+          setConnStatus('未連線');
+        }
+      };
+
+      const handleQuickJoinFromList = (selectedRoomId) => {
+        setJoinRoomInput(selectedRoomId);
+        executeJoinRoom(selectedRoomId);
       };
 
       const handleLeaveRoom = () => {
@@ -962,7 +1110,7 @@
         setSwapRequestData(null);
       };
 
-      // 房長端交換業務：交由 RoleMechanics 執行
+      // 房長端交換業務
       const executeSwapOnHost = useCallback((id1, id2) => {
         setPlayers(prev => {
           const next = window.RoleMechanics 
@@ -982,7 +1130,7 @@
         });
       }, [broadcastLatest]);
 
-      // 房長端酒鬼交換業務：交由 RoleMechanics 執行
+      // 房長端酒鬼交換業務
       const executeDrunkBuriedSwapOnHost = useCallback((drunkPlayerId) => {
         const curBuried = latestStateRef.current.buriedCard;
         if (!curBuried || !window.RoleMechanics) return;
@@ -1074,7 +1222,7 @@
                   Two Rooms and a Boom!
                 </h1>
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <span>{connStatus}</span>
+                  <span className={connStatus.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{connStatus}</span>
                   {roomId && <span>玩家: {players.length} 人</span>}
                 </div>
               </div>
@@ -1122,9 +1270,18 @@
                   <span>👑 建立新房間 (當房長)</span>
                 </button>
 
+                {/* 【新增】：查看當前所有線上房間按鈕 */}
+                <button
+                  type="button"
+                  onClick={handleOpenRoomsModal}
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-semibold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2 active:scale-95 text-sm"
+                >
+                  <span>📋 查看當前所有線上房間</span>
+                </button>
+
                 <div className="relative flex py-1 items-center">
                   <div className="flex-grow border-t border-zinc-800"></div>
-                  <span className="flex-shrink mx-4 text-xs text-zinc-500">或輸入 6 碼房間號</span>
+                  <span className="flex-shrink mx-4 text-xs text-zinc-500">或手動輸入 6 碼房間號</span>
                   <div className="flex-grow border-t border-zinc-800"></div>
                 </div>
 
@@ -1145,6 +1302,85 @@
                   >
                     {isVerifying ? '驗證中...' : '加入'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：查看線上房間列表 */}
+          {showRoomsModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
+              <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[85vh]">
+                <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/40">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📋</span>
+                    <h3 className="font-bold text-white text-base">線上房間列表</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleOpenRoomsModal}
+                      disabled={isSearchingRooms}
+                      className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 px-2.5 py-1 rounded-lg transition"
+                    >
+                      {isSearchingRooms ? '掃描中...' : '🔄 重新整理'}
+                    </button>
+                    <button onClick={handleCloseRoomsModal} className="text-zinc-400 hover:text-white text-sm w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-800">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 overflow-y-auto space-y-2.5 flex-1">
+                  {onlineRooms.length === 0 ? (
+                    <div className="text-center py-10 space-y-2">
+                      <div className="text-3xl animate-pulse">📡</div>
+                      <p className="text-sm text-zinc-400 font-medium">
+                        {isSearchingRooms ? '正在搜尋附近的線上房間...' : '目前沒有探索到在線房間'}
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        您可以直接建立房間，或請房長開啟房間後點選右上角重新整理。
+                      </p>
+                    </div>
+                  ) : (
+                    onlineRooms.map(room => (
+                      <div
+                        key={room.roomId}
+                        className="bg-zinc-800/80 border border-zinc-700/80 hover:border-indigo-500/60 p-3.5 rounded-xl flex items-center justify-between gap-3 transition"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-base font-bold text-amber-400 tracking-wider">
+                              #{room.roomId}
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                              room.roomStatus === 'waiting'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-zinc-700 text-zinc-400'
+                            }`}>
+                              {room.roomStatus === 'waiting' ? '等候中' : '進行中'}
+                            </span>
+                          </div>
+                          <div className="text-xs text-zinc-300 flex items-center gap-2">
+                            <span>房長: <strong className="text-white">{room.hostName}</strong></span>
+                            <span>•</span>
+                            <span>在線: <strong className="text-indigo-400">{room.playerCount}</strong> 人</span>
+                          </div>
+                        </div>
+
+                        <button
+                          disabled={isVerifying}
+                          onClick={() => handleQuickJoinFromList(room.roomId)}
+                          className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow active:scale-95 disabled:opacity-50 shrink-0"
+                        >
+                          {isVerifying ? '加入中...' : '一鍵加入'}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="p-3 bg-zinc-950/60 border-t border-zinc-800 text-[11px] text-zinc-400 text-center">
+                  💡 點選一鍵加入後，系統會自動幫您帶入房號並驗證暱稱進入房間。
                 </div>
               </div>
             </div>
@@ -1517,7 +1753,7 @@
                 </div>
               )}
 
-              {/* 核心身分卡（按住顏色分享 / 通用動作插槽） */}
+              {/* 核心身分卡 */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -1563,7 +1799,7 @@
                         </p>
                       </div>
 
-                      {/* 【角色機制外掛通插槽】：由 RoleMechanics 自動注入 */}
+                      {/* 角色機制外掛通插槽 */}
                       {(() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
                           currentRoundIndex,
@@ -1822,7 +2058,7 @@
             </div>
           )}
 
-          {/* 彈窗：主動身分交換對象選擇（由外掛設定注入） */}
+          {/* 彈窗：主動身分交換對象選擇 */}
           {showSwapTargetModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border border-amber-500/50 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -1995,7 +2231,7 @@
                       </span>
                       {tempTotalCardsInDeck === players.length + 1 && (
                         <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">
-                          ⚰️ 將多出 1 張埋葬卡
+                          ⚰️️ 將多出 1 張埋葬卡
                         </span>
                       )}
                     </h3>
