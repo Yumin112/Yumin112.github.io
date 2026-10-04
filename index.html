@@ -38,6 +38,13 @@
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     // ==========================================
+    // 0. EMQX 專屬伺服器連線配置
+    // ==========================================
+    const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
+    const MQTT_USER = 'yumin112for2r1b!';     // 請替換為您在 EMQX Authentication 頁面新增的帳號
+    const MQTT_PASS = '2r1bweb!';    // 請替換為您在 EMQX Authentication 頁面新增的密碼
+
+    // ==========================================
     // 1. 全域工具函式與規則配置 (Utilities & Rules)
     // ==========================================
 
@@ -260,18 +267,19 @@
         setConnStatus('未連線');
       }, []);
 
-      // 建立 MQTT 連線通道
+      // 建立 MQTT 連線通道 (套用專屬 EMQX Broker 與帳密)
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
-        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
         const topic = `trb_game_sync_room_${code}`;
 
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch(e) {}
         }
 
-        const client = mqtt.connect(brokerUrl, {
+        const client = mqtt.connect(BROKER_URL, {
           clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,
+          username: MQTT_USER,
+          password: MQTT_PASS,
           clean: true,
           reconnectPeriod: 2000
         });
@@ -595,10 +603,11 @@
 
         setIsVerifying(true);
 
-        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
         const topic = `trb_game_sync_room_${code}`;
-        const tempClient = mqtt.connect(brokerUrl, {
+        const tempClient = mqtt.connect(BROKER_URL, {
           clientId: `trb_v_${myPlayerId}_${Math.random().toString(16).slice(2, 8)}`,
+          username: MQTT_USER,
+          password: MQTT_PASS,
           clean: true,
           connectTimeout: 5000
         });
@@ -661,7 +670,7 @@
           clearTimeout(timeoutTimer);
           setIsVerifying(false);
           try { tempClient.end(true); } catch(e) {}
-          alert('伺服器連線失敗，請檢查網路或改用一般瀏覽器開啟！');
+          alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');
         });
       };
 
@@ -1534,7 +1543,7 @@
                         </p>
                       </div>
 
-                      {/* 【角色機制外掛通插槽】：由 RoleMechanics 自動注入，新增角色無需修改此段 */}
+                      {/* 【角色機制外掛通插槽】：由 RoleMechanics 自動注入 */}
                       {(() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
                           currentRoundIndex,
