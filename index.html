@@ -121,16 +121,20 @@
     };
 
     // ==========================================
-    // 2. 特殊狀態與自帶狀態映射配置
+    // 2. 特殊狀態與自帶狀態映射配置[cite: 1]
     // ==========================================
-    // 開局自帶狀態的角色表
     const ROLE_DEFAULT_STATUSES = {
       shy_b: [{ id: 'shy', name: '害羞', icon: '🙈' }],
       shy_r: [{ id: 'shy', name: '害羞', icon: '🙈' }],
       coy_b: [{ id: 'coy', name: '靦腆', icon: '😳' }],
-      coy_r: [{ id: 'coy', name: '靦腆', icon: '😳' }]
+      coy_r: [{ id: 'coy', name: '靦腆', icon: '😳' }],
+      paranoid_b: [{ id: 'paranoid', name: '妄想', icon: '👀' }],
+      paranoid_r: [{ id: 'paranoid', name: '妄想', icon: '👀' }],
+      fool_b: [{ id: 'foolish', name: '愚蠢', icon: '🤪' }],
+      fool_r: [{ id: 'foolish', name: '愚蠢', icon: '🤪' }]
     };
 
+    // 狀態賦予型技能角色
     const ROLE_STATUS_ACTIONS = {
       zombie: {
         statusId: 'infected', statusName: '感染 (殭屍病毒)', statusIcon: '🧟',
@@ -179,6 +183,46 @@
         btnLabel: '🦹 賦予害羞狀態', badge: '罪犯 專屬',
         style: 'from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 border-indigo-400 text-white',
         promptText: '選擇一位玩家施加【害羞】屬性（不能進行任何揭露）。'
+      }
+    };
+
+    // 狀態清除型技能角色（醫療兵、心理醫生）
+    const ROLE_CLEAR_STATUS_ACTIONS = {
+      medic_b: {
+        type: 'clear_extra',
+        btnLabel: '🏥 清除額外狀態',
+        badge: '醫療兵 專屬',
+        style: 'from-teal-600 to-cyan-700 hover:from-teal-500 hover:to-cyan-600 border-cyan-400 text-white',
+        title: '🏥 選擇玩家清除額外狀態',
+        promptText: '選擇一名玩家清除其所有後天獲得的額外狀態（不包含角色原本自帶狀態）。對方需同意。',
+        confirmDesc: '想要為你清除所有「後天額外獲得」的特殊狀態（你角色原本自帶的狀態會保留）。是否同意接受治療？'
+      },
+      medic_r: {
+        type: 'clear_extra',
+        btnLabel: '🏥 清除額外狀態',
+        badge: '醫療兵 專屬',
+        style: 'from-teal-600 to-cyan-700 hover:from-teal-500 hover:to-cyan-600 border-cyan-400 text-white',
+        title: '🏥 選擇玩家清除額外狀態',
+        promptText: '選擇一名玩家清除其所有後天獲得的額外狀態（不包含角色原本自帶狀態）。對方需同意。',
+        confirmDesc: '想要為你清除所有「後天額外獲得」的特殊狀態（你角色原本自帶的狀態會保留）。是否同意接受治療？'
+      },
+      psychologist_b: {
+        type: 'clear_psychological',
+        btnLabel: '🛋️ 心理治療 (解除心理狀態)',
+        badge: '心理醫生 專屬',
+        style: 'from-sky-600 to-indigo-700 hover:from-sky-500 hover:to-indigo-600 border-sky-400 text-white',
+        title: '🛋️ 選擇玩家進行心理治療',
+        promptText: '選擇一名玩家清除其【靦腆】、【害羞】、【妄想】狀態。對方需同意。',
+        confirmDesc: '想要對你進行心理治療，清除你身上的【靦腆】、【害羞】、【妄想】狀態。是否同意接受治療？'
+      },
+      psychologist_r: {
+        type: 'clear_psychological',
+        btnLabel: '🛋️ 心理治療 (解除心理狀態)',
+        badge: '心理醫生 專屬',
+        style: 'from-sky-600 to-indigo-700 hover:from-sky-500 hover:to-indigo-600 border-sky-400 text-white',
+        title: '🛋️ 選擇玩家進行心理治療',
+        promptText: '選擇一名玩家清除其【靦腆】、【害羞】、【妄想】狀態。對方需同意。',
+        confirmDesc: '想要對你進行心理治療，清除你身上的【靦腆】、【害羞】、【妄想】狀態。是否同意接受治療？'
       }
     };
 
@@ -244,6 +288,7 @@
         if (!myRole) return null;[cite: 1]
         if (ROLE_PLUGINS[myRole.id]) return ROLE_PLUGINS[myRole.id].getActionButton(context);
 
+        // 檢查狀態賦予技能
         const statusConfig = ROLE_STATUS_ACTIONS[myRole.id];
         if (statusConfig) {
           return {
@@ -253,6 +298,18 @@
             onClick: () => context.openGrantStatusModal(statusConfig)
           };
         }
+
+        // 檢查狀態清除技能 (醫療兵 / 心理醫生)
+        const clearConfig = ROLE_CLEAR_STATUS_ACTIONS[myRole.id];
+        if (clearConfig) {
+          return {
+            label: clearConfig.btnLabel,
+            badge: clearConfig.badge,
+            style: clearConfig.style,
+            onClick: () => context.openClearStatusModal(clearConfig)
+          };
+        }
+
         return null;[cite: 1]
       },
       applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
@@ -260,14 +317,14 @@
         const p2 = playersList.find(p => p.id === p2Id);[cite: 1]
         if (!p1 || !p2) return playersList;[cite: 1]
 
-        const { role: role1, team: team1 } = p1;
-        const { role: role2, team: team2 } = p2;
+        const { role: role1, team: team1 } = p1;[cite: 1]
+        const { role: role2, team: team2 } = p2;[cite: 1]
 
         return playersList.map(p => {
           let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;[cite: 1]
-          if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;
+          if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;[cite: 1]
 
-          if (p.id === p1Id) {
+          if (p.id === p1Id) {[cite: 1]
             return {
               ...p,
               role: role2,
@@ -276,7 +333,7 @@
               hasUsedMadScientistAbility
             };
           }
-          if (p.id === p2Id) {
+          if (p.id === p2Id) {[cite: 1]
             return {
               ...p,
               role: role1,
@@ -297,7 +354,7 @@
         const newRole = curBuried;[cite: 1]
 
         const nextPlayers = playersList.map(p => {
-          if (p.id === drunkPlayerId) {
+          if (p.id === drunkPlayerId) {[cite: 1]
             return {
               ...p,
               role: newRole,
@@ -315,6 +372,29 @@
             const currentStatuses = p.statuses || [];
             if (currentStatuses.some(s => s.id === statusObj.id)) return p;
             return { ...p, statuses: [...currentStatuses, statusObj] };
+          }
+          return p;
+        });
+      },
+      applyClearStatus(playersList, targetPlayerId, clearType) {
+        return playersList.map(p => {
+          if (p.id === targetPlayerId) {
+            const currentStatuses = p.statuses || [];
+
+            if (clearType === 'clear_extra') {
+              // 醫療兵：清除額外狀態，僅保留該角色自帶的原始狀態
+              const defaultStatuses = (p.role && ROLE_DEFAULT_STATUSES[p.role.id]) || [];
+              const defaultIds = defaultStatuses.map(s => s.id);
+              const filtered = currentStatuses.filter(s => defaultIds.includes(s.id));
+              return { ...p, statuses: filtered };
+            }
+
+            if (clearType === 'clear_psychological') {
+              // 心理醫生：清除 靦腆(coy)、害羞(shy)、妄想(paranoid)
+              const targetsToRemove = ['coy', 'shy', 'paranoid'];
+              const filtered = currentStatuses.filter(s => !targetsToRemove.includes(s.id));
+              return { ...p, statuses: filtered };
+            }
           }
           return p;
         });
@@ -432,7 +512,7 @@
       const [roomStatus, setRoomStatus] = useState('waiting');[cite: 1]
       const [buriedCard, setBuriedCard] = useState(null);[cite: 1]
 
-      // 輪次計時（包含全域絕對結束時間戳 roundEndTime）
+      // 輪次計時
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]);[cite: 1]
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);[cite: 1]
       const [timeLeft, setTimeLeft] = useState(180);[cite: 1]
@@ -461,10 +541,15 @@
       const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);[cite: 1]
       const [madScientistPendingData, setMadScientistPendingData] = useState(null);[cite: 1]
 
-      // 特殊狀態賦予
+      // 特殊狀態賦予模態
       const [showGrantStatusModal, setShowGrantStatusModal] = useState(false);
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
+
+      // 特殊狀態清除模態 (醫療兵 / 心理醫生)
+      const [showClearStatusModal, setShowClearStatusModal] = useState(false);
+      const [activeClearConfig, setActiveClearConfig] = useState(null);
+      const [clearPromptData, setClearPromptData] = useState(null);
 
       // 勝負結算
       const [showVictoryModal, setShowVictoryModal] = useState(false);[cite: 1]
@@ -599,6 +684,20 @@
         });
       }, [publishMsg, broadcastLatest]);
 
+      const executeClearStatusOnHost = useCallback((targetId, clearType, initiatorId = null, actionName = '') => {
+        setPlayers(prev => {
+          const next = window.RoleMechanics.applyClearStatus(prev, targetId, clearType);
+          publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
+            type: 'STATUS_CLEARED_SUCCESS',
+            targetId,
+            initiatorId,
+            actionName
+          });
+          setTimeout(() => broadcastLatest({ players: next }), 50);
+          return next;
+        });
+      }, [publishMsg, broadcastLatest]);
+
       const resetToHome = useCallback(() => {
         if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);[cite: 1]
         if (clientRef.current) {[cite: 1]
@@ -621,6 +720,8 @@
         setMadScientistPendingData(null);[cite: 1]
         setShowGrantStatusModal(false);
         setStatusPromptData(null);
+        setShowClearStatusModal(false);
+        setClearPromptData(null);
         setSwapStatusMessage('');[cite: 1]
         setIsVerifying(false);[cite: 1]
         setConnStatus('未連線');[cite: 1]
@@ -637,13 +738,13 @@
         }
 
         const client = mqtt.connect(BROKER_URL, {
-          clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,
-          username: MQTT_USER,
-          password: MQTT_PASS,
-          clean: true,
-          reconnectPeriod: 2000
+          clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,[cite: 1]
+          username: MQTT_USER,[cite: 1]
+          password: MQTT_PASS,[cite: 1]
+          clean: true,[cite: 1]
+          reconnectPeriod: 2000[cite: 1]
         });
-        clientRef.current = client;
+        clientRef.current = client;[cite: 1]
 
         client.on('connect', () => {
           setConnStatus('🟢 已連線');[cite: 1]
@@ -687,8 +788,8 @@
           if (!data) return;[cite: 1]
 
           if (t === DISCOVERY_TOPIC) {[cite: 1]
-            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) replyDiscoveryAsHost();
-            return;
+            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) replyDiscoveryAsHost();[cite: 1]
+            return;[cite: 1]
           }
 
           if (data.type === 'ROOM_DISBANDED') {[cite: 1]
@@ -706,7 +807,7 @@
                 ? { type: 'ROOM_JOIN_REJECTED', targetId: data.senderId, reason: 'NAME_DUPLICATED' }[cite: 1]
                 : { type: 'ROOM_VERIFIED', targetId: data.senderId, senderId: uid }[cite: 1]
               );
-              return;
+              return;[cite: 1]
             }
             if (data.type === 'REPORT_PRESENCE') {[cite: 1]
               setPlayers(prev => {
@@ -716,7 +817,7 @@
                 debouncedBroadcastLatest(300);[cite: 1]
                 return next;
               });
-              return;
+              return;[cite: 1]
             }
             if (data.type === 'EXECUTE_DRUNK_SWAP') {[cite: 1]
               const curBuried = latestStateRef.current.buriedCard;[cite: 1]
@@ -728,7 +829,7 @@
                   return nextPlayers;
                 });
               }
-              return;
+              return;[cite: 1]
             }
             if (data.type === 'MAD_SCIENTIST_INITIATE') {[cite: 1]
               madScientistVoteTrackerRef.current = {[cite: 1]
@@ -740,7 +841,7 @@
                 initiatorId: data.initiatorId, initiatorName: data.initiatorName,[cite: 1]
                 p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name[cite: 1]
               });
-              return;
+              return;[cite: 1]
             }
             if (data.type === 'MAD_SCIENTIST_VOTE') {[cite: 1]
               const tracker = madScientistVoteTrackerRef.current;[cite: 1]
@@ -764,10 +865,14 @@
                 });
                 madScientistVoteTrackerRef.current = null;[cite: 1]
               }
-              return;
+              return;[cite: 1]
             }
             if (data.type === 'EXECUTE_GRANT_STATUS') {
               executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
+              return;
+            }
+            if (data.type === 'EXECUTE_CLEAR_STATUS') {
+              executeClearStatusOnHost(data.targetId, data.clearType, data.initiatorId, data.actionName);
               return;
             }
           }
@@ -778,7 +883,7 @@
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });[cite: 1]
-            return;
+            return;[cite: 1]
           }
 
           if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {[cite: 1]
@@ -789,7 +894,7 @@
                 otherName: data.p1Id === uid ? data.p2Name : data.p1Name[cite: 1]
               });
             }
-            return;
+            return;[cite: 1]
           }
 
           if (data.type === 'MAD_SCIENTIST_REJECTED') {[cite: 1]
@@ -798,7 +903,7 @@
               setTimeout(() => setSwapStatusMessage(''), 3500);[cite: 1]
             }
             if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);[cite: 1]
-            return;
+            return;[cite: 1]
           }
 
           if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {[cite: 1]
@@ -811,9 +916,10 @@
               setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');[cite: 1]
               setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
             }
-            return;
+            return;[cite: 1]
           }
 
+          // 賦予狀態請求
           if (data.type === 'STATUS_PROMPT_TARGET') {
             if (data.targetId === uid) {
               setStatusPromptData({
@@ -842,6 +948,42 @@
             }
             if (data.targetId === uid) {
               setSwapStatusMessage(`✨ 你已獲得【${data.statusName}】狀態！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
+          // 清除狀態請求 (醫療兵 / 心理醫生)
+          if (data.type === 'CLEAR_STATUS_PROMPT_TARGET') {
+            if (data.targetId === uid) {
+              setClearPromptData({
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                initiatorRoleIcon: data.initiatorRoleIcon,
+                clearType: data.clearType,
+                actionName: data.actionName,
+                confirmDesc: data.confirmDesc
+              });
+            }
+            return;
+          }
+
+          if (data.type === 'CLEAR_STATUS_PROMPT_REJECTED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`❌ ${data.rejectorName} 拒絕了治療請求！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
+          if (data.type === 'STATUS_CLEARED_SUCCESS') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`🎉 對方已接受【${data.actionName}】，狀態已清除成功！`);
+              setTimeout(() => setSwapStatusMessage(''), 3000);
+            }
+            if (data.targetId === uid) {
+              setSwapStatusMessage(`✨ 治療完成！已成功清除相關特殊狀態！`);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
             return;
@@ -934,7 +1076,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));[cite: 1]
-      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, resetToHome]);
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeClearStatusOnHost, resetToHome]);
 
       // 冷啟動還原
       useEffect(() => {
@@ -1095,7 +1237,7 @@
             setConnStatus('未連線');[cite: 1]
             alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);[cite: 1]
           }
-        }, 6000);[cite: 1]
+        }, 6000);
 
         tempClient.on('connect', () => {[cite: 1]
           setConnStatus('🟢 已連線');[cite: 1]
@@ -1470,6 +1612,7 @@
         setSelectedScientistTargets([]);
       };
 
+      // 狀態賦予發起與確認
       const handleOpenGrantStatusModal = (config) => {
         setActiveStatusConfig(config);
         setShowGrantStatusModal(true);
@@ -1526,27 +1669,83 @@
         setStatusPromptData(null);
       };
 
-      const handleToggleRole = (roleId) => {
-        if (!isHost) return;
-        setTempRoleCounts(prev => {
-          const isSelected = (prev[roleId] || 0) > 0;
-          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };
+      // 狀態清除發起與確認 (醫療兵 / 心理醫生)
+      const handleOpenClearStatusModal = (config) => {
+        setActiveClearConfig(config);
+        setShowClearStatusModal(true);
+      };
 
-          if (!isSelected) {
-            const currentRole = rolesCatalog.find(r => r.id === roleId);
-            if (currentRole?.pairs) {
-              const pairIds = Array.isArray(currentRole.pairs)
-                ? currentRole.pairs
-                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);
-              pairIds.forEach(pId => { next[pId] = 1; });
+      const handleSendClearStatusRequest = (targetPlayer) => {
+        setShowClearStatusModal(false);
+        if (!activeClearConfig || targetPlayer.id === myPlayerId) return;
+
+        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送【${activeClearConfig.btnLabel}】請求，等待對方確認中...`);
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'CLEAR_STATUS_PROMPT_TARGET',
+          senderId: myPlayerId,
+          initiatorId: myPlayerId,
+          initiatorName: myInfo.name,
+          initiatorRoleName: myInfo.role?.name || '未知角色',
+          initiatorRoleIcon: myInfo.role?.icon || '⭐',
+          targetId: targetPlayer.id,
+          clearType: activeClearConfig.type,
+          actionName: activeClearConfig.btnLabel,
+          confirmDesc: activeClearConfig.confirmDesc
+        });
+      };
+
+      const handleAcceptClearStatus = () => {
+        if (!clearPromptData) return;
+        const { initiatorId, clearType, actionName } = clearPromptData;
+        const targetId = myPlayerId;
+        setClearPromptData(null);
+
+        if (latestStateRef.current.isHost) {
+          executeClearStatusOnHost(targetId, clearType, initiatorId, actionName);
+        } else {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_CLEAR_STATUS',
+            senderId: myPlayerId,
+            initiatorId,
+            targetId,
+            clearType,
+            actionName
+          });
+        }
+      };
+
+      const handleRejectClearStatus = () => {
+        if (!clearPromptData) return;
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'CLEAR_STATUS_PROMPT_REJECTED',
+          senderId: myPlayerId,
+          initiatorId: clearPromptData.initiatorId,
+          rejectorName: myInfo.name
+        });
+        setClearPromptData(null);
+      };
+
+      const handleToggleRole = (roleId) => {
+        if (!isHost) return;[cite: 1]
+        setTempRoleCounts(prev => {
+          const isSelected = (prev[roleId] || 0) > 0;[cite: 1]
+          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };[cite: 1]
+
+          if (!isSelected) {[cite: 1]
+            const currentRole = rolesCatalog.find(r => r.id === roleId);[cite: 1]
+            if (currentRole?.pairs) {[cite: 1]
+              const pairIds = Array.isArray(currentRole.pairs)[cite: 1]
+                ? currentRole.pairs[cite: 1]
+                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);[cite: 1]
+              pairIds.forEach(pId => { next[pId] = 1; });[cite: 1]
             }
           }
-          return next;
+          return next;[cite: 1]
         });
       };
 
       // ==========================================
-      // 5. 畫面渲染樹 (JSX Render Tree)
+      // 5. 畫面渲染樹 (JSX Render Tree)[cite: 1]
       // ==========================================
       return (
         <div className="max-w-4xl mx-auto pb-12">
@@ -1877,7 +2076,7 @@
                         <h2 className="text-3xl font-black font-mono tracking-tight text-white">{formatTime(timeLeft)}</h2>
                       </div>
 
-                      {/* 情況 1：只有在輪次結束歸零時，才顯示換人質交換提示 */}
+                      {/* 情況 1：輪次結束時間到才顯示人質交換 */}
                       {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
                           <div className="text-xs text-amber-300 font-bold">⚠️ 本輪時間到！請選出人質交換</div>
@@ -1891,7 +2090,7 @@
                         </div>
                       )}
 
-                      {/* 情況 2：房長手動暫停時，僅顯示暫停提示 */}
+                      {/* 情況 2：手動暫停提示 */}
                       {roomStatus === 'round_manual_paused' && (
                         <div className="flex-1 bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 text-center sm:text-left">
                           <div className="text-xs text-amber-400 font-bold flex items-center justify-center sm:justify-start gap-1">
@@ -1902,7 +2101,6 @@
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕 */}
                       {isHost && roomStatus !== 'round_paused' && (
                         <button
                           onClick={handleTogglePauseTimer}
@@ -2172,7 +2370,8 @@
                             setShowMadScientistModal(true);
                           },
                           triggerMadScientistSwap: handleTriggerMadScientistSwap,
-                          openGrantStatusModal: handleOpenGrantStatusModal
+                          openGrantStatusModal: handleOpenGrantStatusModal,
+                          openClearStatusModal: handleOpenClearStatusModal
                         });
 
                         if (!action) return null;
@@ -2298,6 +2497,93 @@
                     className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
                   >
                     確認接受
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：狀態清除目標選擇 (醫療兵 / 心理醫生) */}
+          {showClearStatusModal && activeClearConfig && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-cyan-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                  <h3 className="text-base font-bold text-cyan-300 flex items-center gap-1.5">
+                    <span>{activeClearConfig.title}</span>
+                  </h3>
+                  <button onClick={() => setShowClearStatusModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+
+                <p className="text-xs text-zinc-300">
+                  {activeClearConfig.promptText}
+                </p>
+
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {players.filter(p => p.id !== myPlayerId).map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSendClearStatusRequest(p)}
+                      className="w-full text-left p-3 rounded-xl border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 hover:border-cyan-400 transition flex items-center justify-between cursor-pointer active:scale-95"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm text-zinc-100">{p.name}</span>
+                        {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
+                      </div>
+                      <span className="text-xs text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-md border border-cyan-800/60">
+                        {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowClearStatusModal(false)}
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 text-xs transition active:scale-95"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：被治療者的確認請求 (醫療兵 / 心理醫生) */}
+          {clearPromptData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-cyan-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">💊</div>
+                <h3 className="text-lg font-black text-cyan-300">狀態解除治療請求！</h3>
+
+                <div className="bg-zinc-950/70 border border-zinc-700/80 rounded-xl p-3 text-left space-y-1.5">
+                  <div className="text-[11px] text-zinc-400 font-medium">來自玩家發起：</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">{clearPromptData.initiatorName}</span>
+                    <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                      <span>{clearPromptData.initiatorRoleIcon}</span>
+                      <span>{clearPromptData.initiatorRoleName}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  {clearPromptData.confirmDesc}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleRejectClearStatus}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    拒絕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAcceptClearStatus}
+                    className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 hover:opacity-90 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    確認接受治療
                   </button>
                 </div>
               </div>
@@ -2438,7 +2724,7 @@
                 {(victoryStep === 2 || victoryStep === 5) && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
+                      💣 炸彈客 有和 ⚙️️ 工程師<br />進行『卡片分享』嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
