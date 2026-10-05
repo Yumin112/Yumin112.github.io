@@ -121,7 +121,7 @@
     };
 
     // ==========================================
-    // 2. 特殊狀態與自帶狀態映射配置[cite: 1]
+    // 2. 特殊狀態與角色機制映射配置[cite: 1]
     // ==========================================
     const ROLE_DEFAULT_STATUSES = {
       shy_b: [{ id: 'shy', name: '害羞', icon: '🙈' }],
@@ -134,7 +134,6 @@
       fool_r: [{ id: 'foolish', name: '愚蠢', icon: '🤪' }]
     };
 
-    // 狀態賦予型技能角色
     const ROLE_STATUS_ACTIONS = {
       zombie: {
         statusId: 'infected', statusName: '感染 (殭屍病毒)', statusIcon: '🧟',
@@ -186,7 +185,6 @@
       }
     };
 
-    // 狀態清除型技能角色（醫療兵、心理醫生）
     const ROLE_CLEAR_STATUS_ACTIONS = {
       medic_b: {
         type: 'clear_extra',
@@ -288,7 +286,6 @@
         if (!myRole) return null;[cite: 1]
         if (ROLE_PLUGINS[myRole.id]) return ROLE_PLUGINS[myRole.id].getActionButton(context);
 
-        // 檢查狀態賦予技能
         const statusConfig = ROLE_STATUS_ACTIONS[myRole.id];
         if (statusConfig) {
           return {
@@ -299,7 +296,6 @@
           };
         }
 
-        // 檢查狀態清除技能 (醫療兵 / 心理醫生)
         const clearConfig = ROLE_CLEAR_STATUS_ACTIONS[myRole.id];
         if (clearConfig) {
           return {
@@ -364,7 +360,7 @@
           }
           return p;[cite: 1]
         });
-        return { nextPlayers, newBuried: oldRole };
+        return { nextPlayers, newBuried: oldRole };[cite: 1]
       },
       applyGrantStatus(playersList, targetPlayerId, statusObj) {
         return playersList.map(p => {
@@ -380,17 +376,13 @@
         return playersList.map(p => {
           if (p.id === targetPlayerId) {
             const currentStatuses = p.statuses || [];
-
             if (clearType === 'clear_extra') {
-              // 醫療兵：清除額外狀態，僅保留該角色自帶的原始狀態
               const defaultStatuses = (p.role && ROLE_DEFAULT_STATUSES[p.role.id]) || [];
               const defaultIds = defaultStatuses.map(s => s.id);
               const filtered = currentStatuses.filter(s => defaultIds.includes(s.id));
               return { ...p, statuses: filtered };
             }
-
             if (clearType === 'clear_psychological') {
-              // 心理醫生：清除 靦腆(coy)、害羞(shy)、妄想(paranoid)
               const targetsToRemove = ['coy', 'shy', 'paranoid'];
               const filtered = currentStatuses.filter(s => !targetsToRemove.includes(s.id));
               return { ...p, statuses: filtered };
@@ -492,7 +484,6 @@
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];[cite: 1]
 
-      // 房間與連線狀態
       const [gameState, setGameState] = useState('home');[cite: 1]
       const [roomId, setRoomId] = useState('');[cite: 1]
       const [joinRoomInput, setJoinRoomInput] = useState('');[cite: 1]
@@ -502,17 +493,14 @@
       const [connStatus, setConnStatus] = useState('未連線');[cite: 1]
       const [isVerifying, setIsVerifying] = useState(false);[cite: 1]
 
-      // 線上大廳探索
       const [showRoomsModal, setShowRoomsModal] = useState(false);[cite: 1]
       const [onlineRooms, setOnlineRooms] = useState([]);[cite: 1]
       const [isSearchingRooms, setIsSearchingRooms] = useState(false);[cite: 1]
 
-      // 遊戲成員與進度
       const [players, setPlayers] = useState([]);[cite: 1]
       const [roomStatus, setRoomStatus] = useState('waiting');[cite: 1]
       const [buriedCard, setBuriedCard] = useState(null);[cite: 1]
 
-      // 輪次計時
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]);[cite: 1]
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);[cite: 1]
       const [timeLeft, setTimeLeft] = useState(180);[cite: 1]
@@ -520,14 +508,12 @@
       const [isTimerRunning, setIsTimerRunning] = useState(false);[cite: 1]
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);[cite: 1]
 
-      // 牌池設定
       const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });[cite: 1]
       const [showDeckModal, setShowDeckModal] = useState(false);[cite: 1]
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);[cite: 1]
       const [tempRoleCounts, setTempRoleCounts] = useState({});[cite: 1]
       const [deckViewMode, setDeckViewMode] = useState('detailed');[cite: 1]
 
-      // 互動操作
       const [isColorOnly, setIsColorOnly] = useState(false);[cite: 1]
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);[cite: 1]
       const [swapModalConfig, setSwapModalConfig] = useState(null);[cite: 1]
@@ -535,29 +521,24 @@
       const [swapStatusMessage, setSwapStatusMessage] = useState('');[cite: 1]
       const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);[cite: 1]
 
-      // 瘋狂科學家狀態
       const [showMadScientistModal, setShowMadScientistModal] = useState(false);[cite: 1]
       const [madScientistConfig, setMadScientistConfig] = useState(null);[cite: 1]
       const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);[cite: 1]
       const [madScientistPendingData, setMadScientistPendingData] = useState(null);[cite: 1]
 
-      // 特殊狀態賦予模態
       const [showGrantStatusModal, setShowGrantStatusModal] = useState(false);
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
-      // 特殊狀態清除模態 (醫療兵 / 心理醫生)
       const [showClearStatusModal, setShowClearStatusModal] = useState(false);
       const [activeClearConfig, setActiveClearConfig] = useState(null);
       const [clearPromptData, setClearPromptData] = useState(null);
 
-      // 勝負結算
       const [showVictoryModal, setShowVictoryModal] = useState(false);[cite: 1]
       const [victoryStep, setVictoryStep] = useState(1);[cite: 1]
       const [victoryAns, setVictoryAns] = useState({});[cite: 1]
       const [gameResult, setGameResult] = useState(null);[cite: 1]
 
-      // 參照物件
       const clientRef = useRef(null);[cite: 1]
       const discoveryClientRef = useRef(null);[cite: 1]
       const timerIntervalRef = useRef(null);[cite: 1]
@@ -566,7 +547,6 @@
       const debounceBroadcastTimerRef = useRef(null);[cite: 1]
       const madScientistVoteTrackerRef = useRef(null);[cite: 1]
 
-      // 狀態持久化快照
       useEffect(() => {
         const stateSnapshot = {
           players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
@@ -581,7 +561,6 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, roundEndTime, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
 
-      // 衍生狀態 Memo
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
@@ -611,14 +590,12 @@
         return Object.values(groups);[cite: 1]
       }, [rolesCatalog, roleCounts]);[cite: 1]
 
-      // 安全發送 MQTT 封包
       const publishMsg = useCallback((topic, payload, opts = { qos: 1 }) => {
         if (clientRef.current?.connected) {[cite: 1]
           clientRef.current.publish(topic, JSON.stringify(payload), opts);[cite: 1]
         }
       }, []);[cite: 1]
 
-      // 房間同步廣播
       const broadcastLatest = useCallback((override = {}) => {
         const s = { ...latestStateRef.current, ...override };[cite: 1]
         if (!s.roomId) return;[cite: 1]
@@ -728,7 +705,6 @@
         madScientistVoteTrackerRef.current = null;[cite: 1]
       }, []);
 
-      // MQTT 通訊與調度派發
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');[cite: 1]
         const topic = `trb_game_sync_room_${code}`;[cite: 1]
@@ -737,7 +713,7 @@
           try { clientRef.current.end(true); } catch (e) {}[cite: 1]
         }
 
-        const client = mqtt.connect(BROKER_URL, {
+        const client = mqtt.connect(BROKER_URL, {[cite: 1]
           clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,[cite: 1]
           username: MQTT_USER,[cite: 1]
           password: MQTT_PASS,[cite: 1]
@@ -798,7 +774,6 @@
             return;[cite: 1]
           }
 
-          // 房長邏輯
           if (latestStateRef.current.isHost) {[cite: 1]
             if (data.type === 'CHECK_ROOM_REQ') {[cite: 1]
               const currentPlayers = latestStateRef.current.players || [];[cite: 1]
@@ -815,7 +790,7 @@
                   ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)[cite: 1]
                   : [...prev, data.player];[cite: 1]
                 debouncedBroadcastLatest(300);[cite: 1]
-                return next;
+                return next;[cite: 1]
               });
               return;[cite: 1]
             }
@@ -826,7 +801,7 @@
                   const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);[cite: 1]
                   setBuriedCard(newBuried);[cite: 1]
                   setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);[cite: 1]
-                  return nextPlayers;
+                  return nextPlayers;[cite: 1]
                 });
               }
               return;[cite: 1]
@@ -834,7 +809,7 @@
             if (data.type === 'MAD_SCIENTIST_INITIATE') {[cite: 1]
               madScientistVoteTrackerRef.current = {[cite: 1]
                 initiatorId: data.initiatorId, initiatorName: data.initiatorName,[cite: 1]
-                p1Id: data.p1Id, p2Id: data.p2Id, approvals: {}[cite: 1]
+                p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name, approvals: {}[cite: 1]
               };
               publishMsg(topic, {[cite: 1]
                 type: 'MAD_SCIENTIST_PROMPT_TARGETS',[cite: 1]
@@ -877,7 +852,6 @@
             }
           }
 
-          // 玩家接收處理
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {[cite: 1]
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {[cite: 1]
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
@@ -919,7 +893,6 @@
             return;[cite: 1]
           }
 
-          // 賦予狀態請求
           if (data.type === 'STATUS_PROMPT_TARGET') {
             if (data.targetId === uid) {
               setStatusPromptData({
@@ -953,7 +926,6 @@
             return;
           }
 
-          // 清除狀態請求 (醫療兵 / 心理醫生)
           if (data.type === 'CLEAR_STATUS_PROMPT_TARGET') {
             if (data.targetId === uid) {
               setClearPromptData({
@@ -991,7 +963,6 @@
 
           if (data.senderId === uid) return;[cite: 1]
 
-          // 廣播分發
           switch (data.type) {
             case 'PLAYER_PING_SYNC':[cite: 1]
               if (latestStateRef.current.isHost) {[cite: 1]
@@ -1001,7 +972,7 @@
                     ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)[cite: 1]
                     : [...prev, data.player];[cite: 1]
                   debouncedBroadcastLatest(300);[cite: 1]
-                  return next;
+                  return next;[cite: 1]
                 });
               }
               break;
@@ -1009,7 +980,7 @@
               setPlayers(prev => {
                 const next = prev.filter(p => p.id !== data.playerId);[cite: 1]
                 if (latestStateRef.current.isHost) debouncedBroadcastLatest(150);[cite: 1]
-                return next;
+                return next;[cite: 1]
               });
               break;
             case 'SWAP_REQUEST':[cite: 1]
@@ -1078,7 +1049,6 @@
         client.on('error', () => setConnStatus('連線重試中...'));[cite: 1]
       }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeClearStatusOnHost, resetToHome]);
 
-      // 冷啟動還原
       useEffect(() => {
         const storedId = StorageManager.getUid();[cite: 1]
         setMyPlayerId(storedId);[cite: 1]
@@ -1152,7 +1122,6 @@
         }
       }, [setupConnection]);[cite: 1]
 
-      // 計時器排程
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -1189,7 +1158,6 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
 
-      // 大廳操作流程
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';[cite: 1]
         const code = Math.floor(100000 + Math.random() * 900000).toString();[cite: 1]
@@ -1338,8 +1306,8 @@
           const data = safeJsonParse(message.toString());[cite: 1]
           if (data?.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {[cite: 1]
             setOnlineRooms(prev => [
-              ...prev.filter(r => r.roomId !== data.roomId),
-              { roomId: data.roomId, hostName: data.hostName, playerCount: data.playerCount, roomStatus: data.roomStatus, receivedAt: Date.now() }
+              ...prev.filter(r => r.roomId !== data.roomId),[cite: 1]
+              { roomId: data.roomId, hostName: data.hostName, playerCount: data.playerCount, roomStatus: data.roomStatus, receivedAt: Date.now() }[cite: 1]
             ]);
           }
         });
@@ -1357,7 +1325,6 @@
         if (gameState === 'home') setConnStatus('未連線');[cite: 1]
       };
 
-      // 遊戲進行流程
       const handleStartAssignRooms = () => {
         if (players.length < 2) return alert('至少需要 2 位玩家加入才能開始！');
         if (totalCardsInDeck < players.length) return alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
@@ -1381,7 +1348,6 @@
         });
       };
 
-      // 發放卡片並啟動遊戲：在此自動注入「自帶狀態」
       const handleConfirmDealCardsAndStart = () => {
         let deck = [];
         rolesCatalog.forEach(role => {
@@ -1391,7 +1357,6 @@
 
         const assignedWithRoles = players.map((p, idx) => {
           const r = deck[idx];
-          // 檢查角色是否有自帶初始狀態 (例如害羞小子、靦腆少年)
           const defaultStatuses = ROLE_DEFAULT_STATUSES[r.id] || [];
 
           return {
@@ -1423,7 +1388,6 @@
         });
       };
 
-      // 房長控制暫停與恢復倒數
       const handleTogglePauseTimer = () => {
         if (!isHost) return;
         if (isTimerRunning && roomStatus === 'round_active') {
@@ -1472,7 +1436,6 @@
         }
       };
 
-      // 勝負判定推導
       const resolveGameResult = (ans) => {
         const { sameRoom, engineerShared, doctorShared } = ans;
         if (sameRoom) {
@@ -1513,7 +1476,6 @@
         broadcastLatest({ gameResult: result });
       };
 
-      // 互動事件處理
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -1612,7 +1574,6 @@
         setSelectedScientistTargets([]);
       };
 
-      // 狀態賦予發起與確認
       const handleOpenGrantStatusModal = (config) => {
         setActiveStatusConfig(config);
         setShowGrantStatusModal(true);
@@ -1669,7 +1630,6 @@
         setStatusPromptData(null);
       };
 
-      // 狀態清除發起與確認 (醫療兵 / 心理醫生)
       const handleOpenClearStatusModal = (config) => {
         setActiveClearConfig(config);
         setShowClearStatusModal(true);
@@ -1744,12 +1704,8 @@
         });
       };
 
-      // ==========================================
-      // 5. 畫面渲染樹 (JSX Render Tree)[cite: 1]
-      // ==========================================
       return (
         <div className="max-w-4xl mx-auto pb-12">
-          {/* 頂部導覽列 */}
           <Header
             connStatus={connStatus}
             roomId={roomId}
@@ -1758,7 +1714,6 @@
             onLeave={handleLeaveRoom}
           />
 
-          {/* 首頁：建立 / 加入房間 */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6 space-y-4">
               <div>
@@ -1815,7 +1770,6 @@
             </div>
           )}
 
-          {/* 彈窗：查看線上房間列表 */}
           {showRoomsModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[85vh]">
@@ -1893,7 +1847,6 @@
             </div>
           )}
 
-          {/* 等待大廳 */}
           {gameState === 'lobby' && (
             <div className="space-y-6">
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
@@ -1946,7 +1899,6 @@
                 </div>
               </div>
 
-              {/* 回合時間規劃 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱ 回合時間:</span>
@@ -1961,7 +1913,6 @@
                 <div className="text-[11px] text-zinc-500 shrink-0">第一階段先分房就位，確認後才發放身分與計時。</div>
               </div>
 
-              {/* 線上玩家名單 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
                 <h3 className="text-sm font-semibold text-zinc-400 mb-3">線上玩家列表 ({players.length})</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
@@ -1985,15 +1936,12 @@
                 </div>
               </div>
 
-              {/* 本局使用角色池一覽 */}
               <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
 
-          {/* 遊戲進行階段 */}
           {gameState === 'game' && (
             <div className="space-y-6">
-              {/* [階段一] 分房移動就位 */}
               {roomStatus === 'room_assigned' && (
                 <div className="space-y-5">
                   <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-blue-900/40 border border-indigo-500/50 p-5 rounded-2xl text-center shadow-xl space-y-3">
@@ -2060,7 +2008,6 @@
                 </div>
               )}
 
-              {/* [階段二] 進行中與暫停狀態 */}
               {roomStatus !== 'room_assigned' && roomStatus !== 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
@@ -2076,7 +2023,6 @@
                         <h2 className="text-3xl font-black font-mono tracking-tight text-white">{formatTime(timeLeft)}</h2>
                       </div>
 
-                      {/* 情況 1：輪次結束時間到才顯示人質交換 */}
                       {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
                           <div className="text-xs text-amber-300 font-bold">⚠️ 本輪時間到！請選出人質交換</div>
@@ -2090,7 +2036,6 @@
                         </div>
                       )}
 
-                      {/* 情況 2：手動暫停提示 */}
                       {roomStatus === 'round_manual_paused' && (
                         <div className="flex-1 bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 text-center sm:text-left">
                           <div className="text-xs text-amber-400 font-bold flex items-center justify-center sm:justify-start gap-1">
@@ -2141,7 +2086,6 @@
                 </div>
               )}
 
-              {/* [階段三] 遊戲結束面板 */}
               {roomStatus === 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-6 rounded-2xl border-2 text-center shadow-2xl space-y-4 ${
@@ -2183,7 +2127,6 @@
                     )}
                   </div>
 
-                  {/* 全場玩家身分與狀態揭曉 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
                       <div className="flex items-center gap-2">
@@ -2255,7 +2198,6 @@
                     </div>
                   </div>
 
-                  {/* 埋葬卡揭曉 */}
                   {buriedCard && (
                     <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2">
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
@@ -2274,7 +2216,6 @@
                 </div>
               )}
 
-              {/* 初始房間與狀態提示 */}
               <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs text-indigo-300">你的初始房間分配：</span>
                 <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
@@ -2292,7 +2233,6 @@
                 </div>
               )}
 
-              {/* 核心身分卡 */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -2338,7 +2278,6 @@
                         </p>
                       </div>
 
-                      {/* 玩家個人目前擁有的特殊狀態 */}
                       {myInfo.statuses && myInfo.statuses.length > 0 && (
                         <div className="bg-zinc-950/80 border border-purple-500/40 rounded-xl p-2.5 my-2 space-y-1">
                           <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
@@ -2355,7 +2294,6 @@
                         </div>
                       )}
 
-                      {/* 角色機制插槽 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
@@ -2407,7 +2345,6 @@
                 </div>
               </div>
 
-              {/* 進行中角色池一覽 */}
               <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
@@ -2724,7 +2661,7 @@
                 {(victoryStep === 2 || victoryStep === 5) && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙️️ 工程師<br />進行『卡片分享』嗎？
+                      💣 炸彈客 有和 ⚙ 工程師<br />進行『卡片分享』嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -2838,269 +2775,4 @@
                             </span>
                           ) : (
                             <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
-                              {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 彈窗：被動身分交換確認請求 */}
-          {swapRequestData && (
-            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
-              <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
-                <div className="text-4xl animate-bounce">🔄</div>
-                <h3 className="text-lg font-black text-white">身分交換請求！</h3>
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  玩家 <strong className="text-amber-400 font-bold">{swapRequestData.fromName}</strong> 
-                  （持有身分：<strong className="text-emerald-400">{swapRequestData.fromRoleName}</strong>）想要與你交換身分卡。
-                </p>
-                <p className="text-xs text-zinc-400">若同意，你的身分將立刻轉變為對方的身分！</p>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleRejectSwap}
-                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
-                  >
-                    拒絕
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAcceptSwap}
-                    className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
-                  >
-                    確認交換
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 彈窗：輪次與時間長度設定 */}
-          {showRoundConfigModal && (
-            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
-              <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
-                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-                  <h3 className="text-base font-bold text-white">⚙️ 調整回合數與每輪時間</h3>
-                  <button onClick={() => setShowRoundConfigModal(false)} className="text-zinc-400 hover:text-white">✕</button>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-400 mb-2">選擇總輪數 (3 輪 / 5 輪):</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[3, 5].map(cnt => (
-                      <button
-                        key={cnt}
-                        type="button"
-                        onClick={() => {
-                          let newSettings = [...tempRoundSettings];
-                          if (cnt > newSettings.length) {
-                            while (newSettings.length < cnt) newSettings.push(1);
-                          } else {
-                            newSettings = newSettings.slice(0, cnt);
-                          }
-                          setTempRoundSettings(newSettings);
-                        }}
-                        className={`py-2.5 rounded-xl text-sm font-bold border transition ${
-                          tempRoundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
-                        }`}
-                      >
-                        {cnt} 輪
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-zinc-400">設定各輪分鐘數 (分):</label>
-                  {tempRoundSettings.map((min, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-zinc-800/80 px-3 py-2 rounded-xl border border-zinc-700">
-                      <span className="text-xs text-zinc-300 font-semibold">第 {idx + 1} 輪:</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="1"
-                          max="15"
-                          value={min}
-                          onChange={(e) => {
-                            const val = Math.max(1, parseInt(e.target.value) || 1);
-                            const updated = [...tempRoundSettings];
-                            updated[idx] = val;
-                            setTempRoundSettings(updated);
-                          }}
-                          className="w-16 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-center text-sm font-bold text-amber-400"
-                        />
-                        <span className="text-xs text-zinc-400">分鐘</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRoundSettings(tempRoundSettings);
-                    setShowRoundConfigModal(false);
-                    broadcastLatest({ roundSettings: tempRoundSettings });
-                  }}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg active:scale-95"
-                >
-                  確認保存設定
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 彈窗：角色池配置 */}
-          {showDeckModal && (
-            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
-              <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
-                <div className="p-4 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <span>🃏 角色池配置</span>
-                      <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded">
-                        目前: {tempTotalCardsInDeck} 張 / 玩家: {players.length} 人
-                      </span>
-                      {tempTotalCardsInDeck === players.length + 1 && (
-                        <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">
-                          ⚰ 將多出 1 張埋葬卡
-                        </span>
-                      )}
-                    </h3>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {isHost && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const cleared = {};
-                          rolesCatalog.forEach(role => { cleared[role.id] = 0; });
-                          setTempRoleCounts(cleared);
-                        }}
-                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1.5 rounded-lg transition active:scale-95"
-                      >
-                        清空選取
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
-                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
-                    >
-                      {deckViewMode === 'detailed' ? '👁 僅圖示' : '📄 詳細資料'}
-                    </button>
-
-                    <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center hover:text-white">
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-4 overflow-y-auto space-y-3 flex-1">
-                  <div className={`grid gap-2.5 ${deckViewMode === 'iconOnly' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
-                    {rolesCatalog.map(role => {
-                      const isSelected = (tempRoleCounts[role.id] || 0) > 0;
-                      const meta = getTeamMeta(role.team);
-
-                      if (deckViewMode === 'iconOnly') {
-                        return (
-                          <div 
-                            key={role.id} 
-                            onClick={() => handleToggleRole(role.id)}
-                            className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition cursor-pointer select-none ${
-                              isSelected 
-                                ? `${meta.listBg} border-indigo-400 ring-2 ring-indigo-500/40 shadow-md` 
-                                : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 opacity-60'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="text-xl shrink-0">{role.icon}</span>
-                              <div className="truncate">
-                                <div className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
-                                  {role.name}
-                                </div>
-                                <span className={`text-[9px] px-1 py-0.2 rounded font-semibold border inline-block mt-0.5 ${meta.badge}`}>
-                                  {meta.label.split(' ')[0]}
-                                </span>
-                              </div>
-                            </div>
-                            <span className={`text-xs shrink-0 font-bold ${isSelected ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                              {isSelected ? '✔' : '＋'}
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div 
-                          key={role.id} 
-                          onClick={() => handleToggleRole(role.id)}
-                          className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3 transition cursor-pointer select-none ${
-                            isSelected 
-                              ? `${meta.listBg} border-indigo-400 ring-2 ring-indigo-500/40 shadow-lg scale-[1.01]` 
-                              : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 opacity-60'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl shrink-0">{role.icon}</span>
-                              <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-400'}`}>{role.name}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>{meta.label}</span>
-                            </div>
-                            <span className={`text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
-                              isSelected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
-                            }`}>
-                              {isSelected ? '✔ 已啟用' : '未加入'}
-                            </span>
-                          </div>
-
-                          <p className={`text-xs leading-relaxed p-2.5 rounded-lg border break-words ${
-                            isSelected ? 'text-zinc-200 bg-zinc-950/60 border-zinc-800/80' : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
-                          }`}>
-                            {role.desc}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
-                  <span className="text-xs text-zinc-400">
-                    {tempTotalCardsInDeck === players.length + 1 
-                      ? '💡 角色數比人數多 1 張，本局將產生 1 張未分配的【埋葬卡】' 
-                      : '請確認卡牌總數大於或等於玩家人數'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRoleCounts(tempRoleCounts);
-                      setShowDeckModal(false);
-                      broadcastLatest({ roleCounts: tempRoleCounts });
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg active:scale-95"
-                  >
-                    確定保存設定
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);[cite: 1]
-  </script>
-</body>
-</html>
+                              {
