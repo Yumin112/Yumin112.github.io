@@ -37,7 +37,7 @@
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     // ==========================================
-    // 0. 常數與通訊伺服器配置[cite: 1]
+    // 0. 常數與通訊伺服器配置
     // ==========================================
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
     const MQTT_USER = 'yumin112for2r1b!';
@@ -53,7 +53,7 @@
     };
 
     // ==========================================
-    // 1. 本地儲存與輔助工具函式[cite: 1]
+    // 1. 本地儲存與輔助工具函式
     // ==========================================
     const safeJsonParse = (str, fallback = null) => {
       try { return JSON.parse(str); } catch (e) { return fallback; }
@@ -120,7 +120,7 @@
     };
 
     // ==========================================
-    // 2. 特殊狀態與角色機制映射配置[cite: 1]
+    // 2. 特殊狀態與角色機制映射配置
     // ==========================================
     const ROLE_STATUS_ACTIONS = {
       zombie: {
@@ -398,7 +398,7 @@
     );
 
     // ==========================================
-    // 4. 主應用程式組件 (Main App Component)[cite: 1]
+    // 4. 主應用程式組件 (Main App Component)
     // ==========================================
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
@@ -871,7 +871,7 @@
               if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
               if (data.gameResult !== undefined) setGameResult(data.gameResult);
 
-              if (['round_active', 'round_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
+              if (['round_active', 'round_paused', 'round_manual_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
                 setGameState('game');
                 setIsTimerRunning(data.roomStatus === 'round_active');
               } else if (data.roomStatus === 'waiting') {
@@ -1197,14 +1197,14 @@
         });
       };
 
-      // 房長控制暫停與恢復倒數
+      // 房長控制暫停與恢復倒數 (使用專屬的 round_manual_paused 狀態，完全隔離換人質提示)
       const handleTogglePauseTimer = () => {
         if (!isHost) return;
         if (isTimerRunning && roomStatus === 'round_active') {
           setIsTimerRunning(false);
-          setRoomStatus('round_paused');
-          broadcastLatest({ roomStatus: 'round_paused', timeLeft });
-        } else if (!isTimerRunning && roomStatus === 'round_paused' && timeLeft > 0) {
+          setRoomStatus('round_manual_paused');
+          broadcastLatest({ roomStatus: 'round_manual_paused', timeLeft });
+        } else if (!isTimerRunning && roomStatus === 'round_manual_paused') {
           setIsTimerRunning(true);
           setRoomStatus('round_active');
           broadcastLatest({ roomStatus: 'round_active', timeLeft });
@@ -1449,7 +1449,7 @@
       };
 
       // ==========================================
-      // 5. 畫面渲染樹 (JSX Render Tree)[cite: 1]
+      // 5. 畫面渲染樹 (JSX Render Tree)
       // ==========================================
       return (
         <div className="max-w-4xl mx-auto pb-12">
@@ -1764,11 +1764,13 @@
                 </div>
               )}
 
-              {/* [階段二] 進行中與換人質暫停 */}
+              {/* [階段二] 進行中與暫停狀態 */}
               {roomStatus !== 'room_assigned' && roomStatus !== 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
-                    roomStatus === 'round_paused' ? 'bg-amber-950/40 border-amber-500' : 'bg-zinc-900 border-zinc-800'
+                    roomStatus === 'round_paused' ? 'bg-amber-950/40 border-amber-500 animate-pulse' :
+                    roomStatus === 'round_manual_paused' ? 'bg-amber-950/20 border-amber-500/60' :
+                    'bg-zinc-900 border-zinc-800'
                   }`}>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full md:w-auto">
                       <div className="text-center sm:text-left shrink-0">
@@ -1778,8 +1780,8 @@
                         <h2 className="text-3xl font-black font-mono tracking-tight text-white">{formatTime(timeLeft)}</h2>
                       </div>
 
-                      {/* 輪次時間到提示 */}
-                      {roomStatus === 'round_paused' && timeLeft <= 0 && (
+                      {/* 情況 1：只有在輪次結束歸零時，才顯示換人質交換提示 */}
+                      {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
                           <div className="text-xs text-amber-300 font-bold">⚠️ 本輪時間到！請選出人質交換</div>
                           <div className="flex items-center justify-center sm:justify-end gap-1.5 shrink-0">
@@ -1792,8 +1794,8 @@
                         </div>
                       )}
 
-                      {/* 手動暫停狀態提示 */}
-                      {roomStatus === 'round_paused' && timeLeft > 0 && (
+                      {/* 情況 2：房長手動暫停時，僅顯示暫停提示 */}
+                      {roomStatus === 'round_manual_paused' && (
                         <div className="flex-1 bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 text-center sm:text-left">
                           <div className="text-xs text-amber-400 font-bold flex items-center justify-center sm:justify-start gap-1">
                             <span>⏸️ 倒數計時已由房長手動暫停</span>
@@ -1803,8 +1805,8 @@
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕 */}
-                      {isHost && (
+                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕（在非時間到的換人質階段可自由切換） */}
+                      {isHost && roomStatus !== 'round_paused' && (
                         <button
                           onClick={handleTogglePauseTimer}
                           className={`text-xs font-bold px-3.5 py-2 rounded-xl border transition active:scale-95 flex items-center gap-1 ${
@@ -1817,7 +1819,7 @@
                         </button>
                       )}
 
-                      {isHost && roomStatus === 'round_paused' && timeLeft <= 0 && (
+                      {isHost && roomStatus === 'round_paused' && (
                         <button
                           onClick={handleNextRoundConfirm}
                           className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black px-5 py-2.5 rounded-xl shadow-lg transition active:scale-95"
@@ -2611,7 +2613,7 @@
                       onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
                       className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
                     >
-                      {deckViewMode === 'detailed' ? '👁️️ 僅圖示' : '📄 詳細資料'}
+                      {deckViewMode === 'detailed' ? '👁 僅圖示' : '📄 詳細資料'}
                     </button>
 
                     <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center hover:text-white">
