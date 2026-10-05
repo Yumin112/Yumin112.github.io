@@ -114,8 +114,9 @@
     };
 
     const formatTime = (secs) => {
-      const m = Math.floor(secs / 60);
-      const s = secs % 60;
+      const safeSecs = Math.max(0, secs);
+      const m = Math.floor(safeSecs / 60);
+      const s = safeSecs % 60;
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
@@ -423,10 +424,11 @@
       const [roomStatus, setRoomStatus] = useState('waiting');
       const [buriedCard, setBuriedCard] = useState(null);
 
-      // 輪次計時
+      // 輪次計時（包含全域絕對結束時間戳 roundEndTime）
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
+      const [roundEndTime, setRoundEndTime] = useState(0); // 絕對結束時間戳
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
@@ -475,7 +477,7 @@
       useEffect(() => {
         const stateSnapshot = {
           players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
-          timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName,
+          timeLeft, roundEndTime, isTimerRunning, isHost, roomId, myPlayerId, playerName,
           gameState, buriedCard, gameResult
         };
         latestStateRef.current = stateSnapshot;
@@ -484,7 +486,7 @@
           const myProfile = players.find(p => p.id === myPlayerId);
           StorageManager.saveContext({ ...stateSnapshot, myProfile });
         }
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, roundEndTime, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
 
       // 衍生狀態 Memo
       const myInfo = useMemo(() => {
@@ -523,7 +525,7 @@
         }
       }, []);
 
-      // 房間同步廣播
+      // 房間同步廣播（包含 roundEndTime 確保全場秒數校正）
       const broadcastLatest = useCallback((override = {}) => {
         const s = { ...latestStateRef.current, ...override };
         if (!s.roomId) return;
@@ -536,6 +538,7 @@
           roundSettings: s.roundSettings,
           currentRoundIndex: s.currentRoundIndex,
           timeLeft: s.timeLeft,
+          roundEndTime: s.roundEndTime,
           buriedCard: s.buriedCard,
           gameResult: s.gameResult
         });
@@ -605,6 +608,7 @@
         setGameState('home');
         setRoomStatus('waiting');
         setIsTimerRunning(false);
+        setRoundEndTime(0);
         setSwapRequestData(null);
         setMadScientistPendingData(null);
         setShowGrantStatusModal(false);
@@ -645,7 +649,25 @@
           if (asHost) {
             publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });
             setTimeout(() => {
-              broadcastLatest();
+              // 房長重連：先根據絕對時間校正當前秒數再廣播，徹底消除回溯
+              const cur = latestStateRef.current;
+              let nextTime = cur.timeLeft;
+              let nextStatus = cur.roomStatus;
+              let nextRunning = cur.isTimerRunning;
+
+              if (cur.roomStatus === 'round_active' && cur.roundEndTime > 0) {
+                const diff = Math.max(0, Math.floor((cur.roundEndTime - Date.now()) / 1000));
+                nextTime = diff;
+                if (diff <= 0) {
+                  nextStatus = 'round_paused';
+                  nextRunning = false;
+                }
+                setTimeLeft(nextTime);
+                setRoomStatus(nextStatus);
+                setIsTimerRunning(nextRunning);
+              }
+
+              broadcastLatest({ timeLeft: nextTime, roomStatus: nextStatus });
               replyDiscoveryAsHost();
             }, 400);
           } else {
@@ -867,7 +889,17 @@
               if (data.roleCounts) setRoleCounts(data.roleCounts);
               if (data.roundSettings) setRoundSettings(data.roundSettings);
               setCurrentRoundIndex(data.currentRoundIndex);
-              setTimeLeft(data.timeLeft);
+
+              // 絕對時間同步校正，防止接收端秒數被拉回
+              if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
+                setRoundEndTime(data.roundEndTime);
+                const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
+                setTimeLeft(actualRemaining);
+              } else {
+                setTimeLeft(data.timeLeft);
+                if (data.roundEndTime !== undefined) setRoundEndTime(data.roundEndTime);
+              }
+
               if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
               if (data.gameResult !== undefined) setGameResult(data.gameResult);
 
@@ -881,7 +913,14 @@
               break;
             case 'TIME_SYNC':
               if (!latestStateRef.current.isHost) {
-                setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
+                // 如果同步過來的是時間戳，則以真實時間核對；若只是秒數則防跳動
+                if (data.roundEndTime && data.roundEndTime > 0) {
+                  setRoundEndTime(data.roundEndTime);
+                  const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
+                  setTimeLeft(actualRemaining);
+                } else {
+                  setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
+                }
               }
               break;
             default:
@@ -910,7 +949,6 @@
           const savedContext = StorageManager.getContext();
 
           if (savedContext.roomStatus) {
-            setRoomStatus(savedContext.roomStatus);
             setGameState(savedContext.gameState || 'lobby');
 
             if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
@@ -919,16 +957,36 @@
             if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
             if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
 
-            if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
-              const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
-              const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
-              setTimeLeft(remaining);
-              setIsTimerRunning(remaining > 0);
-              if (remaining <= 0) setRoomStatus('round_paused');
-            } else if (savedContext.timeLeft !== undefined) {
-              setTimeLeft(savedContext.timeLeft);
-              if (savedContext.isTimerRunning) setIsTimerRunning(true);
+            // 核心修復：根據絕對目標結束時間或保存時間戳，計算離線經過秒數
+            let restoredStatus = savedContext.roomStatus;
+            let restoredRunning = Boolean(savedContext.isTimerRunning);
+            let restoredTimeLeft = savedContext.timeLeft || 0;
+            let restoredEndTime = savedContext.roundEndTime || 0;
+
+            if (restoredStatus === 'round_active') {
+              if (restoredEndTime > 0) {
+                const diff = Math.max(0, Math.floor((restoredEndTime - Date.now()) / 1000));
+                restoredTimeLeft = diff;
+                if (diff <= 0) {
+                  restoredStatus = 'round_paused';
+                  restoredRunning = false;
+                }
+              } else if (savedContext.savedAt && restoredTimeLeft > 0) {
+                const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
+                restoredTimeLeft = Math.max(0, restoredTimeLeft - elapsedSec);
+                if (restoredTimeLeft <= 0) {
+                  restoredStatus = 'round_paused';
+                  restoredRunning = false;
+                } else {
+                  restoredEndTime = Date.now() + restoredTimeLeft * 1000;
+                }
+              }
             }
+
+            setRoomStatus(restoredStatus);
+            setIsTimerRunning(restoredRunning);
+            setTimeLeft(restoredTimeLeft);
+            setRoundEndTime(restoredEndTime);
 
             if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
               initialList = savedContext.players;
@@ -948,24 +1006,33 @@
         }
       }, [setupConnection]);
 
-      // 計時器排程
+      // 計時器排程（優先採用目標時間戳校對，防止休眠或背景凍結導致秒數偏差）
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
             setTimeLeft(prev => {
-              if (prev <= 1) {
+              const currentEnd = latestStateRef.current.roundEndTime;
+              let nextSec = prev - 1;
+
+              // 若有目標時間戳，直接依據實際時間差進行校準
+              if (currentEnd && currentEnd > 0) {
+                nextSec = Math.max(0, Math.floor((currentEnd - Date.now()) / 1000));
+              }
+
+              if (nextSec <= 0) {
                 clearInterval(timerIntervalRef.current);
                 if (latestStateRef.current.isHost) {
                   setIsTimerRunning(false);
                   setRoomStatus('round_paused');
-                  broadcastLatest({ roomStatus: 'round_paused', timeLeft: 0 });
+                  setRoundEndTime(0);
+                  broadcastLatest({ roomStatus: 'round_paused', timeLeft: 0, roundEndTime: 0 });
                 }
                 return 0;
               }
-              const nextSec = prev - 1;
+
               if (latestStateRef.current.isHost && nextSec % 30 === 0 && clientRef.current) {
                 publishMsg(`trb_game_sync_room_${roomId}`, {
-                  type: 'TIME_SYNC', senderId: myPlayerId, timeLeft: nextSec
+                  type: 'TIME_SYNC', senderId: myPlayerId, timeLeft: nextSec, roundEndTime: currentEnd
                 }, { qos: 0 });
               }
               return nextSec;
@@ -1160,11 +1227,12 @@
         setPlayers(assigned);
         setRoomStatus('room_assigned');
         setIsTimerRunning(false);
+        setRoundEndTime(0);
         setGameState('game');
 
         broadcastLatest({
           players: assigned, roomStatus: 'room_assigned', currentRoundIndex: 0,
-          timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null
+          timeLeft: roundSettings[0] * 60, roundEndTime: 0, buriedCard: null, gameResult: null
         });
       };
 
@@ -1182,32 +1250,45 @@
 
         const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;
         const initialTime = roundSettings[0] * 60;
+        const targetEnd = Date.now() + initialTime * 1000;
 
         setPlayers(assignedWithRoles);
         setBuriedCard(generatedBuried);
         setCurrentRoundIndex(0);
         setTimeLeft(initialTime);
+        setRoundEndTime(targetEnd);
         setRoomStatus('round_active');
         setIsTimerRunning(true);
         setGameResult(null);
 
         broadcastLatest({
           players: assignedWithRoles, roomStatus: 'round_active', currentRoundIndex: 0,
-          timeLeft: initialTime, buriedCard: generatedBuried, gameResult: null
+          timeLeft: initialTime, roundEndTime: targetEnd, buriedCard: generatedBuried, gameResult: null
         });
       };
 
-      // 房長控制暫停與恢復倒數 (使用專屬的 round_manual_paused 狀態，完全隔離換人質提示)
+      // 房長控制暫停與恢復倒數
       const handleTogglePauseTimer = () => {
         if (!isHost) return;
         if (isTimerRunning && roomStatus === 'round_active') {
+          // 暫停：計算當前剩餘秒數，凍結結束時間戳
+          const currentEnd = roundEndTime;
+          const remaining = (currentEnd > 0)
+            ? Math.max(0, Math.floor((currentEnd - Date.now()) / 1000))
+            : timeLeft;
+
+          setTimeLeft(remaining);
+          setRoundEndTime(0);
           setIsTimerRunning(false);
           setRoomStatus('round_manual_paused');
-          broadcastLatest({ roomStatus: 'round_manual_paused', timeLeft });
+          broadcastLatest({ roomStatus: 'round_manual_paused', timeLeft: remaining, roundEndTime: 0 });
         } else if (!isTimerRunning && roomStatus === 'round_manual_paused') {
+          // 恢復：以現存剩餘秒數重新計算目標結束時間戳
+          const newEnd = Date.now() + timeLeft * 1000;
+          setRoundEndTime(newEnd);
           setIsTimerRunning(true);
           setRoomStatus('round_active');
-          broadcastLatest({ roomStatus: 'round_active', timeLeft });
+          broadcastLatest({ roomStatus: 'round_active', timeLeft, roundEndTime: newEnd });
         }
       };
 
@@ -1215,15 +1296,19 @@
         if (currentRoundIndex + 1 < roundSettings.length) {
           const nextIdx = currentRoundIndex + 1;
           const nextTime = roundSettings[nextIdx] * 60;
+          const nextEnd = Date.now() + nextTime * 1000;
+
           setCurrentRoundIndex(nextIdx);
           setTimeLeft(nextTime);
+          setRoundEndTime(nextEnd);
           setRoomStatus('round_active');
           setIsTimerRunning(true);
-          broadcastLatest({ roomStatus: 'round_active', currentRoundIndex: nextIdx, timeLeft: nextTime });
+          broadcastLatest({ roomStatus: 'round_active', currentRoundIndex: nextIdx, timeLeft: nextTime, roundEndTime: nextEnd });
         } else {
           setRoomStatus('ended');
           setIsTimerRunning(false);
-          broadcastLatest({ roomStatus: 'ended', timeLeft: 0 });
+          setRoundEndTime(0);
+          broadcastLatest({ roomStatus: 'ended', timeLeft: 0, roundEndTime: 0 });
 
           if (isHost) {
             setVictoryStep(1);
@@ -1653,7 +1738,7 @@
               {/* 回合時間規劃 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱️ 回合時間:</span>
+                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱️️ 回合時間:</span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {roundSettings.map((min, idx) => (
                       <span key={idx} className="bg-zinc-800 border border-zinc-700 px-2 py-1 rounded-md text-zinc-200 font-medium whitespace-nowrap">
@@ -1805,7 +1890,7 @@
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕（在非時間到的換人質階段可自由切換） */}
+                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕 */}
                       {isHost && roomStatus !== 'round_paused' && (
                         <button
                           onClick={handleTogglePauseTimer}
@@ -1834,7 +1919,7 @@
                             setRoomStatus('waiting');
                             setGameState('lobby');
                             StorageManager.clearSession();
-                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null });
+                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, roundEndTime: 0, buriedCard: null, gameResult: null });
                           }}
                           className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl transition"
                         >
@@ -1878,7 +1963,7 @@
                             setRoomStatus('waiting');
                             setGameState('lobby');
                             StorageManager.clearSession();
-                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null });
+                            broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, roundEndTime: 0, buriedCard: null, gameResult: null });
                           }}
                           className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs px-5 py-2.5 rounded-xl transition active:scale-95"
                         >
