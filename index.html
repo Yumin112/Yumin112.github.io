@@ -36,9 +36,6 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-    // ==========================================
-    // 0. 常數與通訊伺服器配置
-    // ==========================================
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
     const MQTT_USER = 'yumin112for2r1b!';
     const MQTT_PASS = '2r1bweb!';
@@ -52,9 +49,6 @@
       CONTEXT: 'trb_saved_game_context'
     };
 
-    // ==========================================
-    // 1. 本地儲存與輔助工具函式
-    // ==========================================
     const safeJsonParse = (str, fallback = null) => {
       try { return JSON.parse(str); } catch (e) { return fallback; }
     };
@@ -120,9 +114,6 @@
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    // ==========================================
-    // 2. 特殊狀態與角色機制映射配置
-    // ==========================================
     const ROLE_STATUS_ACTIONS = {
       zombie: {
         statusId: 'infected', statusName: '感染 (殭屍病毒)', statusIcon: '🧟',
@@ -183,7 +174,7 @@
         onClick: () => {
           if (ctx.openMadScientistModal) {
             ctx.openMadScientistModal({
-              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，經雙方同意確認後交換角色（本技能限用一次）。',
+              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，發送對調請求。必須經過「雙方均同意」後才會交換角色（限用一次）。',
               onConfirm: (p1Id, p2Id) => ctx.triggerMadScientistSwap(p1Id, p2Id)
             });
           }
@@ -314,9 +305,6 @@
     };
     window.RoleMechanics = RoleMechanics;
 
-    // ==========================================
-    // 3. 模組化子組件 (UI Sub-Components)
-    // ==========================================
     const Header = ({ connStatus, roomId, playersCount, isHost, onLeave }) => (
       <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
         <div className="flex items-center gap-2">
@@ -398,13 +386,9 @@
       </div>
     );
 
-    // ==========================================
-    // 4. 主應用程式組件 (Main App Component)
-    // ==========================================
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      // 房間與連線狀態
       const [gameState, setGameState] = useState('home'); 
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
@@ -414,32 +398,27 @@
       const [connStatus, setConnStatus] = useState('未連線');
       const [isVerifying, setIsVerifying] = useState(false);
 
-      // 線上大廳探索
       const [showRoomsModal, setShowRoomsModal] = useState(false);
       const [onlineRooms, setOnlineRooms] = useState([]);
       const [isSearchingRooms, setIsSearchingRooms] = useState(false);
 
-      // 遊戲成員與進度
       const [players, setPlayers] = useState([]);
       const [roomStatus, setRoomStatus] = useState('waiting');
       const [buriedCard, setBuriedCard] = useState(null);
 
-      // 輪次計時（包含全域絕對結束時間戳 roundEndTime）
       const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
       const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
       const [timeLeft, setTimeLeft] = useState(180);
-      const [roundEndTime, setRoundEndTime] = useState(0); // 絕對結束時間戳
+      const [roundEndTime, setRoundEndTime] = useState(0);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      // 牌池設定
       const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });
       const [showDeckModal, setShowDeckModal] = useState(false);
       const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
       const [tempRoleCounts, setTempRoleCounts] = useState({});
       const [deckViewMode, setDeckViewMode] = useState('detailed');
 
-      // 互動操作
       const [isColorOnly, setIsColorOnly] = useState(false);
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
       const [swapModalConfig, setSwapModalConfig] = useState(null);
@@ -447,24 +426,20 @@
       const [swapStatusMessage, setSwapStatusMessage] = useState('');
       const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
 
-      // 瘋狂科學家狀態
       const [showMadScientistModal, setShowMadScientistModal] = useState(false);
       const [madScientistConfig, setMadScientistConfig] = useState(null);
       const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);
       const [madScientistPendingData, setMadScientistPendingData] = useState(null);
 
-      // 特殊狀態賦予
       const [showGrantStatusModal, setShowGrantStatusModal] = useState(false);
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
-      // 勝負結算
       const [showVictoryModal, setShowVictoryModal] = useState(false);
       const [victoryStep, setVictoryStep] = useState(1);
       const [victoryAns, setVictoryAns] = useState({});
       const [gameResult, setGameResult] = useState(null);
 
-      // 參照物件
       const clientRef = useRef(null);
       const discoveryClientRef = useRef(null);
       const timerIntervalRef = useRef(null);
@@ -473,7 +448,6 @@
       const debounceBroadcastTimerRef = useRef(null);
       const madScientistVoteTrackerRef = useRef(null);
 
-      // 狀態持久化快照
       useEffect(() => {
         const stateSnapshot = {
           players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
@@ -488,7 +462,6 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, roundEndTime, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
 
-      // 衍生狀態 Memo
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
@@ -518,14 +491,12 @@
         return Object.values(groups);
       }, [rolesCatalog, roleCounts]);
 
-      // 安全發送 MQTT 封包
       const publishMsg = useCallback((topic, payload, opts = { qos: 1 }) => {
         if (clientRef.current?.connected) {
           clientRef.current.publish(topic, JSON.stringify(payload), opts);
         }
       }, []);
 
-      // 房間同步廣播（包含 roundEndTime 確保全場秒數校正）
       const broadcastLatest = useCallback((override = {}) => {
         const s = { ...latestStateRef.current, ...override };
         if (!s.roomId) return;
@@ -619,7 +590,6 @@
         madScientistVoteTrackerRef.current = null;
       }, []);
 
-      // MQTT 通訊與調度派發
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const topic = `trb_game_sync_room_${code}`;
@@ -649,7 +619,6 @@
           if (asHost) {
             publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });
             setTimeout(() => {
-              // 房長重連：先根據絕對時間校正當前秒數再廣播，徹底消除回溯
               const cur = latestStateRef.current;
               let nextTime = cur.timeLeft;
               let nextStatus = cur.roomStatus;
@@ -690,7 +659,7 @@
             return;
           }
 
-          // 房長邏輯
+          // === 房長專用邏輯處理 ===
           if (latestStateRef.current.isHost) {
             if (data.type === 'CHECK_ROOM_REQ') {
               const currentPlayers = latestStateRef.current.players || [];
@@ -723,49 +692,79 @@
               }
               return;
             }
+            
+            // 瘋狂科學家發起投票計數
             if (data.type === 'MAD_SCIENTIST_INITIATE') {
               madScientistVoteTrackerRef.current = {
-                initiatorId: data.initiatorId, initiatorName: data.initiatorName,
-                p1Id: data.p1Id, p2Id: data.p2Id, approvals: {}
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                p1Id: data.p1Id,
+                p1Name: data.p1Name,
+                p2Id: data.p2Id,
+                p2Name: data.p2Name,
+                approvals: {}
               };
               publishMsg(topic, {
                 type: 'MAD_SCIENTIST_PROMPT_TARGETS',
-                initiatorId: data.initiatorId, initiatorName: data.initiatorName,
-                p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                p1Id: data.p1Id,
+                p1Name: data.p1Name,
+                p2Id: data.p2Id,
+                p2Name: data.p2Name
               });
               return;
             }
+
+            // 瘋狂科學家收集雙方投票
             if (data.type === 'MAD_SCIENTIST_VOTE') {
               const tracker = madScientistVoteTrackerRef.current;
               if (!tracker) return;
 
               if (data.accepted) {
                 tracker.approvals[data.voterId] = true;
-                if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {
+                const p1Agreed = tracker.approvals[tracker.p1Id] === true;
+                const p2Agreed = tracker.approvals[tracker.p2Id] === true;
+
+                if (p1Agreed && p2Agreed) {
+                  // 雙方皆已同意，正式對調
                   executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);
                   publishMsg(topic, {
                     type: 'MAD_SCIENTIST_SWAP_COMPLETED',
-                    initiatorId: tracker.initiatorId, p1Id: tracker.p1Id, p2Id: tracker.p2Id
+                    initiatorId: tracker.initiatorId,
+                    p1Id: tracker.p1Id,
+                    p2Id: tracker.p2Id
                   });
                   madScientistVoteTrackerRef.current = null;
+                } else {
+                  // 其中一位已同意，廣播等待另一位
+                  publishMsg(topic, {
+                    type: 'MAD_SCIENTIST_WAITING_OTHER',
+                    initiatorId: tracker.initiatorId,
+                    voterName: data.voterName
+                  });
                 }
               } else {
+                // 任一方拒絕，宣告失敗
                 publishMsg(topic, {
                   type: 'MAD_SCIENTIST_REJECTED',
-                  initiatorId: tracker.initiatorId, rejectorName: data.voterName,
-                  p1Id: tracker.p1Id, p2Id: tracker.p2Id
+                  initiatorId: tracker.initiatorId,
+                  rejectorName: data.voterName,
+                  p1Id: tracker.p1Id,
+                  p2Id: tracker.p2Id
                 });
                 madScientistVoteTrackerRef.current = null;
               }
               return;
             }
+
             if (data.type === 'EXECUTE_GRANT_STATUS') {
               executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
               return;
             }
           }
 
-          // 玩家接收處理
+          // === 所有玩家（包含發起者與目標）通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
@@ -774,6 +773,7 @@
             return;
           }
 
+          // 目標玩家接收確認對調彈窗
           if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {
             if (data.p1Id === uid || data.p2Id === uid) {
               setMadScientistPendingData({
@@ -785,24 +785,37 @@
             return;
           }
 
-          if (data.type === 'MAD_SCIENTIST_REJECTED') {
+          // 正在等待另一方同意
+          if (data.type === 'MAD_SCIENTIST_WAITING_OTHER') {
             if (data.initiatorId === uid) {
-              setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);
-              setTimeout(() => setSwapStatusMessage(''), 3500);
+              setSwapStatusMessage(`⏳ ${data.voterName} 已同意，正在等待另一位玩家確認...`);
             }
-            if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);
             return;
           }
 
-          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
+          // 瘋狂科學家對調被拒絕
+          if (data.type === 'MAD_SCIENTIST_REJECTED') {
             if (data.initiatorId === uid) {
-              setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');
-              setTimeout(() => setSwapStatusMessage(''), 3000);
+              setSwapStatusMessage(`❌ 對調失敗：${data.rejectorName} 拒絕了對調請求！`);
+              setTimeout(() => setSwapStatusMessage(''), 4000);
             }
             if (data.p1Id === uid || data.p2Id === uid) {
               setMadScientistPendingData(null);
-              setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');
+              setSwapStatusMessage(`❌ 對調已取消：${data.rejectorName} 拒絕了對調。`);
               setTimeout(() => setSwapStatusMessage(''), 3000);
+            }
+            return;
+          }
+
+          // 瘋狂科學家對調成功完成
+          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
+            setMadScientistPendingData(null);
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage('🎉 雙方均已同意，角色成功對調！');
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            } else if (data.p1Id === uid || data.p2Id === uid) {
+              setSwapStatusMessage('🎉 雙方均已同意，你的角色已被瘋狂科學家對調！');
+              setTimeout(() => setSwapStatusMessage(''), 3500);
             }
             return;
           }
@@ -842,7 +855,6 @@
 
           if (data.senderId === uid) return;
 
-          // 廣播分發
           switch (data.type) {
             case 'PLAYER_PING_SYNC':
               if (latestStateRef.current.isHost) {
@@ -890,7 +902,6 @@
               if (data.roundSettings) setRoundSettings(data.roundSettings);
               setCurrentRoundIndex(data.currentRoundIndex);
 
-              // 絕對時間同步校正，防止接收端秒數被拉回
               if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
                 setRoundEndTime(data.roundEndTime);
                 const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
@@ -913,7 +924,6 @@
               break;
             case 'TIME_SYNC':
               if (!latestStateRef.current.isHost) {
-                // 如果同步過來的是時間戳，則以真實時間核對；若只是秒數則防跳動
                 if (data.roundEndTime && data.roundEndTime > 0) {
                   setRoundEndTime(data.roundEndTime);
                   const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
@@ -957,7 +967,6 @@
             if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
             if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
 
-            // 核心修復：根據絕對目標結束時間或保存時間戳，計算離線經過秒數
             let restoredStatus = savedContext.roomStatus;
             let restoredRunning = Boolean(savedContext.isTimerRunning);
             let restoredTimeLeft = savedContext.timeLeft || 0;
@@ -1006,7 +1015,7 @@
         }
       }, [setupConnection]);
 
-      // 計時器排程（優先採用目標時間戳校對，防止休眠或背景凍結導致秒數偏差）
+      // 計時器排程
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -1014,7 +1023,6 @@
               const currentEnd = latestStateRef.current.roundEndTime;
               let nextSec = prev - 1;
 
-              // 若有目標時間戳，直接依據實際時間差進行校準
               if (currentEnd && currentEnd > 0) {
                 nextSec = Math.max(0, Math.floor((currentEnd - Date.now()) / 1000));
               }
@@ -1044,7 +1052,6 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
 
-      // 大廳操作流程
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1212,7 +1219,6 @@
         if (gameState === 'home') setConnStatus('未連線');
       };
 
-      // 遊戲進行流程
       const handleStartAssignRooms = () => {
         if (players.length < 2) return alert('至少需要 2 位玩家加入才能開始！');
         if (totalCardsInDeck < players.length) return alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
@@ -1267,11 +1273,9 @@
         });
       };
 
-      // 房長控制暫停與恢復倒數
       const handleTogglePauseTimer = () => {
         if (!isHost) return;
         if (isTimerRunning && roomStatus === 'round_active') {
-          // 暫停：計算當前剩餘秒數，凍結結束時間戳
           const currentEnd = roundEndTime;
           const remaining = (currentEnd > 0)
             ? Math.max(0, Math.floor((currentEnd - Date.now()) / 1000))
@@ -1283,7 +1287,6 @@
           setRoomStatus('round_manual_paused');
           broadcastLatest({ roomStatus: 'round_manual_paused', timeLeft: remaining, roundEndTime: 0 });
         } else if (!isTimerRunning && roomStatus === 'round_manual_paused') {
-          // 恢復：以現存剩餘秒數重新計算目標結束時間戳
           const newEnd = Date.now() + timeLeft * 1000;
           setRoundEndTime(newEnd);
           setIsTimerRunning(true);
@@ -1318,7 +1321,6 @@
         }
       };
 
-      // 勝負判定推導
       const resolveGameResult = (ans) => {
         const { sameRoom, engineerShared, doctorShared } = ans;
         if (sameRoom) {
@@ -1359,7 +1361,6 @@
         broadcastLatest({ gameResult: result });
       };
 
-      // 互動事件處理
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -1423,23 +1424,34 @@
         }
       };
 
+      // 瘋狂科學家發起函式：只廣播請求給房長，絕不私自直接對調
       const handleTriggerMadScientistSwap = useCallback((p1Id, p2Id) => {
         const p1 = players.find(p => p.id === p1Id);
         const p2 = players.find(p => p.id === p2Id);
         if (!p1 || !p2) return;
 
         publishMsg(`trb_game_sync_room_${roomId}`, {
-          type: 'MAD_SCIENTIST_INITIATE', senderId: myPlayerId, initiatorId: myPlayerId,
-          initiatorName: myInfo.name, p1Id, p1Name: p1.name, p2Id, p2Name: p2.name
+          type: 'MAD_SCIENTIST_INITIATE',
+          senderId: myPlayerId,
+          initiatorId: myPlayerId,
+          initiatorName: myInfo.name,
+          p1Id,
+          p1Name: p1.name,
+          p2Id,
+          p2Name: p2.name
         });
         setSwapStatusMessage(`已向 ${p1.name} 與 ${p2.name} 發送對調請求，等待雙方同意中...`);
       }, [players, myPlayerId, myInfo.name, roomId, publishMsg]);
 
+      // 被選中玩家點擊同意/拒絕
       const handleMadScientistTargetVote = (accepted) => {
         if (!madScientistPendingData) return;
         publishMsg(`trb_game_sync_room_${roomId}`, {
-          type: 'MAD_SCIENTIST_VOTE', senderId: myPlayerId, voterId: myPlayerId,
-          voterName: myInfo.name, accepted
+          type: 'MAD_SCIENTIST_VOTE',
+          senderId: myPlayerId,
+          voterId: myPlayerId,
+          voterName: myInfo.name,
+          accepted
         });
         setMadScientistPendingData(null);
       };
@@ -1533,12 +1545,8 @@
         });
       };
 
-      // ==========================================
-      // 5. 畫面渲染樹 (JSX Render Tree)
-      // ==========================================
       return (
         <div className="max-w-4xl mx-auto pb-12">
-          {/* 頂部導覽列 */}
           <Header
             connStatus={connStatus}
             roomId={roomId}
@@ -1547,7 +1555,6 @@
             onLeave={handleLeaveRoom}
           />
 
-          {/* 首頁：建立 / 加入房間 */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6 space-y-4">
               <div>
@@ -1604,7 +1611,6 @@
             </div>
           )}
 
-          {/* 彈窗：查看線上房間列表 */}
           {showRoomsModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[85vh]">
@@ -1682,7 +1688,6 @@
             </div>
           )}
 
-          {/* 等待大廳 */}
           {gameState === 'lobby' && (
             <div className="space-y-6">
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
@@ -1735,10 +1740,9 @@
                 </div>
               </div>
 
-              {/* 回合時間規劃 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱️️ 回合時間:</span>
+                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱ 回合時間:</span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {roundSettings.map((min, idx) => (
                       <span key={idx} className="bg-zinc-800 border border-zinc-700 px-2 py-1 rounded-md text-zinc-200 font-medium whitespace-nowrap">
@@ -1750,7 +1754,6 @@
                 <div className="text-[11px] text-zinc-500 shrink-0">第一階段先分房就位，確認後才發放身分與計時。</div>
               </div>
 
-              {/* 線上玩家名單 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
                 <h3 className="text-sm font-semibold text-zinc-400 mb-3">線上玩家列表 ({players.length})</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
@@ -1774,15 +1777,12 @@
                 </div>
               </div>
 
-              {/* 本局使用角色池一覽 */}
               <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
 
-          {/* 遊戲進行階段 */}
           {gameState === 'game' && (
             <div className="space-y-6">
-              {/* [階段一] 分房移動就位 */}
               {roomStatus === 'room_assigned' && (
                 <div className="space-y-5">
                   <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-blue-900/40 border border-indigo-500/50 p-5 rounded-2xl text-center shadow-xl space-y-3">
@@ -1849,7 +1849,6 @@
                 </div>
               )}
 
-              {/* [階段二] 進行中與暫停狀態 */}
               {roomStatus !== 'room_assigned' && roomStatus !== 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
@@ -1865,7 +1864,6 @@
                         <h2 className="text-3xl font-black font-mono tracking-tight text-white">{formatTime(timeLeft)}</h2>
                       </div>
 
-                      {/* 情況 1：只有在輪次結束歸零時，才顯示換人質交換提示 */}
                       {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
                           <div className="text-xs text-amber-300 font-bold">⚠️ 本輪時間到！請選出人質交換</div>
@@ -1879,7 +1877,6 @@
                         </div>
                       )}
 
-                      {/* 情況 2：房長手動暫停時，僅顯示暫停提示 */}
                       {roomStatus === 'round_manual_paused' && (
                         <div className="flex-1 bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 text-center sm:text-left">
                           <div className="text-xs text-amber-400 font-bold flex items-center justify-center sm:justify-start gap-1">
@@ -1890,7 +1887,6 @@
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕 */}
                       {isHost && roomStatus !== 'round_paused' && (
                         <button
                           onClick={handleTogglePauseTimer}
@@ -1931,7 +1927,6 @@
                 </div>
               )}
 
-              {/* [階段三] 遊戲結束面板 */}
               {roomStatus === 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-6 rounded-2xl border-2 text-center shadow-2xl space-y-4 ${
@@ -1973,7 +1968,6 @@
                     )}
                   </div>
 
-                  {/* 全場玩家身分與狀態揭曉 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
                       <div className="flex items-center gap-2">
@@ -2045,7 +2039,6 @@
                     </div>
                   </div>
 
-                  {/* 埋葬卡揭曉 */}
                   {buriedCard && (
                     <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2">
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
@@ -2064,7 +2057,6 @@
                 </div>
               )}
 
-              {/* 初始房間與狀態提示 */}
               <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs text-indigo-300">你的初始房間分配：</span>
                 <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
@@ -2128,7 +2120,6 @@
                         </p>
                       </div>
 
-                      {/* 玩家個人目前擁有的特殊狀態 */}
                       {myInfo.statuses && myInfo.statuses.length > 0 && (
                         <div className="bg-zinc-950/80 border border-purple-500/40 rounded-xl p-2.5 my-2 space-y-1">
                           <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
@@ -2145,7 +2136,6 @@
                         </div>
                       )}
 
-                      {/* 角色機制插槽 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
@@ -2196,7 +2186,6 @@
                 </div>
               </div>
 
-              {/* 進行中角色池一覽 */}
               <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
@@ -2304,7 +2293,7 @@
                 </div>
 
                 <p className="text-xs text-zinc-300">
-                  {madScientistConfig?.ruleDesc || '請在下方點選要交換身分的 2 位玩家（不能選擇自己），發起後需由雙方同意確認：'}
+                  {madScientistConfig?.ruleDesc || '請在下方點選要交換身分的 2 位玩家（不能選擇自己），發起後需由「雙方均確認同意」才會對調：'}
                 </p>
 
                 <div className="text-xs font-bold text-amber-400">
@@ -2366,9 +2355,9 @@
                 <div className="text-4xl animate-bounce">🧪</div>
                 <h3 className="text-lg font-black text-lime-400">瘋狂科學家對調請求！</h3>
                 <p className="text-sm text-zinc-300 leading-relaxed">
-                  瘋狂科學家 <strong className="text-white font-bold">{madScientistPendingData.initiatorName}</strong> 想要將你與玩家 <strong className="text-amber-400 font-bold">{madScientistPendingData.otherName}</strong> 的角色強制對調！
+                  瘋狂科學家 <strong className="text-white font-bold">{madScientistPendingData.initiatorName}</strong> 想要將你與玩家 <strong className="text-amber-400 font-bold">{madScientistPendingData.otherName}</strong> 的角色進行對調！
                 </p>
-                <p className="text-xs text-zinc-400">需經過你與對方「雙方皆同意」後才會正式對調。是否同意？</p>
+                <p className="text-xs text-zinc-400">必須經過你與對方「雙方均同意」後才會正式交換角色。是否同意？</p>
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -2380,7 +2369,7 @@
                   </button>
                   <button
                     type="button"
-                    onClick={handleMadScientistTargetVote(true)}
+                    onClick={() => handleMadScientistTargetVote(true)}
                     className="flex-1 bg-lime-500 hover:bg-lime-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
                   >
                     同意對調
