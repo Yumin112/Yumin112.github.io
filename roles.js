@@ -139,14 +139,14 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'eris', name: '紛爭女神厄里斯 (Eris)', team: 'blue', icon: '⚡', desc: '整場一次，指定兩位玩家憎恨，兩人結算時必須在不同房間才能獲勝。', pairs: 'cupid' },
   { id: 'capitalist', name: '資本家 (Capitalist)', team: 'blue', icon: '💰', desc: '進行『卡片分享』時，強迫對方在下輪前將其手牌換成普通的藍隊成員卡。', pairs: 'socialist' },
   { id: 'socialist', name: '社會主義者 (Socialist)', team: 'red', icon: '🚩', desc: '進行『卡片分享』時，強迫對方在下輪前將其手牌換成普通的紅隊成員卡。', pairs: 'capitalist' },
-  { id: 'firefighter', name: '消防員 (Firefighter)', team: 'blue', icon: '🧯', desc: '與總統進行『卡片分享』賦予「防火」屬性，總統所在的房間免受燃燒波及。', pairs: 'pyrotech' },
-  { id: 'pyrotech', name: '煙火專家 (Pyrotech)', team: 'red', icon: '🎆', desc: '與炸彈客進行『卡片分享』賦予「燃火」屬性；炸彈爆炸時會燃燒另一間房間。', pairs: 'firefighter' },
-  { id: 'xenomorph', name: '異形 (Xenomorph)', team: 'red', icon: '👾', desc: '將卡牌寄生於首位接觸的藍隊身上，終局使該藍隊所在房間全員死亡。', pairs: 'xenohunter' },
-  { id: 'xenohunter', name: '異形獵人 (Xenohunter)', team: 'blue', icon: '🔫', desc: '藍隊公開亮牌時，可將此卡交給對方將其移出遊戲，反制異形寄生。', pairs: 'xenomorph' },
-  { id: 'fugitive', name: '逃犯 (Fugitive)', team: 'red', icon: '🏃', desc: '若與獨臂人完成『卡片分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'marshall,one_armed_man,witness' },
-  { id: 'marshall', name: '法警 (Marshall)', team: 'blue', icon: '⭐', desc: '若與逃犯完成『卡片分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'fugitive,one_armed_man,witness' },
-  { id: 'one_armed_man', name: '獨臂人 (One-Armed Man)', team: 'blue', icon: '🦾', desc: '若與目擊證人完成『卡片分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'marshall,fugitive,witness' },
-  { id: 'witness', name: '目擊證人 (Witness)', team: 'red', icon: '👁️', desc: '若與法警完成『卡片分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'fugitive,marshall,one_armed_man' },
+  { id: 'firefighter', name: '消防員 (Firefighter)', team: 'blue', icon: '🧯', desc: '與總統進行『卡片分享』賦予「防火」屬性，總統所在的房間免受燃燒波及。', pairs: 'pyrotech' }, //加問答
+  { id: 'pyrotech', name: '煙火專家 (Pyrotech)', team: 'red', icon: '🎆', desc: '與炸彈客進行『卡片分享』賦予「燃火」屬性；炸彈爆炸時會燃燒另一間房間。', pairs: 'firefighter' }, //加問答
+  { id: 'xenomorph', name: '異形 (Xenomorph)', team: 'red', icon: '👾', desc: '將你的卡牌寄生於首位進行任何分享的藍隊玩家身上，此舉動會讓你遺失卡牌而無法進行任何分享行為，終局使該藍隊玩家所在房間全員死亡。', pairs: 'xenohunter' }, //可以考慮加機制
+  { id: 'xenohunter', name: '異形獵人 (Xenohunter)', team: 'blue', icon: '🔫', desc: '可以對被異形寄生的藍隊玩家進行卡片分享，將此卡與對方的異形卡牌移出遊戲，此舉動會讓你遺失卡牌而無法進行任何分享行為。', pairs: 'xenomorph' }, //可以考慮加機制
+  { id: 'fugitive', name: '逃犯 (Fugitive)', team: 'red', icon: '🏃', desc: '若與獨臂人完成『卡片分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'marshall,one_armed_man,witness' }, //加機制
+  { id: 'marshall', name: '法警 (Marshall)', team: 'blue', icon: '⭐', desc: '若與逃犯完成『卡片分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'fugitive,one_armed_man,witness' }, //加機制
+  { id: 'one_armed_man', name: '獨臂人 (One-Armed Man)', team: 'blue', icon: '🦾', desc: '若與目擊證人完成『卡片分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'marshall,fugitive,witness' }, //加機制
+  { id: 'witness', name: '目擊證人 (Witness)', team: 'red', icon: '👁️', desc: '若與法警完成『卡片分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'fugitive,marshall,one_armed_man' }, //加機制
 
   // 普通成員
   { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🛡️', desc: '保護總統安全，不要讓『總統』與『炸彈客』在同一個房間！', pairs: 'red_mem' },
@@ -158,8 +158,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'blue_firecracker', name: '藍色爆竹 (Blue Firecracker)', team: 'blue', icon: '🧨', desc: '無人機替補角色。若無人機被埋牌或死亡，接替其所有職責。', pairs: 'red_foot' },
   { id: 'red_foot', name: '紅色鐵足 (Red Foot)', team: 'red', icon: '🦶', desc: '紅色鐵拳替補角色。若紅色鐵拳被埋牌或死亡，接替其所有職責。', pairs: 'blue_firecracker' },
   
-  // 灰隊對應關係 (Grey Team)
-  { id: 'survivor', name: '倖存者 (Survivor)', team: 'grey', icon: '🧗', desc: '遊戲結束時，自己和『炸彈客』不在同一個房間時獲勝。', pairs: 'victim' },
+  // 灰隊房間判定類 (Grey Team)
+  { id: 'survivor', name: '倖存者 (Survivor)', team: 'grey', icon: '🧗', desc: '遊戲結束時，自己和『炸彈客』不在同一個房間時獲勝。', pairs: 'victim' }, //問答 或是加功能:結算問答前房主可先主動給予 灰隊玩家勝利
   { id: 'victim', name: '受害者 (Victim)', team: 'grey', icon: '🎯', desc: '遊戲結束時，自己和『炸彈客』在同一個房間時獲勝。', pairs: 'survivor' },
   { id: 'intern', name: '見習者 (Intern)', team: 'grey', icon: '🎒', desc: '遊戲結束時，自己和『總統』在同一個房間時獲勝。', pairs: 'rival' },
   { id: 'rival', name: '競爭者 (Rival)', team: 'grey', icon: '👔', desc: '遊戲結束時，自己和『總統』不在同一個房間時獲勝。', pairs: 'intern' },
@@ -171,47 +171,49 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'maid', name: '女僕 (Maid)', team: 'grey', icon: '🧹', desc: '遊戲結束時，自己和『總統』以及『管家』在同一個房間時獲勝。', pairs: 'butler' },
   { id: 'romeo', name: '羅密歐 (Romeo)', team: 'grey', icon: '💌', desc: '遊戲結束時，自己和『炸彈客』以及『茱麗葉』在同一個房間時獲勝。', pairs: 'juliet' },
   { id: 'juliet', name: '茱麗葉 (Juliet)', team: 'grey', icon: '🥀', desc: '遊戲結束時，自己和『炸彈客』以及『羅密歐』在同一個房間時獲勝。', pairs: 'romeo' },
-  { id: 'hero', name: '英雄 (Hero)', team: 'grey', icon: '🦸', desc: '終局時若與總統及炸彈客身處同房間則單獨獲勝，紅藍雙方皆落敗。' },
-  { id: 'villain', name: '惡徒 (Villain)', team: 'grey', icon: '🦹', desc: '終局與總統同室且與炸彈客分房則獨贏，奪取總統之位且紅藍皆敗。' },
-  { id: 'queen', name: '女王 (Queen)', team: 'grey', icon: '👸', desc: '遊戲結束時若總統獲得死亡狀態，且自己存活未死亡，則你獲勝。' },
-  { id: 'stunt_double', name: '替身演員 (Stunt Double)', team: 'grey', icon: '🎬', desc: '遊戲結束時若與總統分處不同房間，且自己死於炸彈引爆則獲勝。' },
-  { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『卡片分享』或『顏色分享』者的勝利條件，若無分享則失敗。' },
-  { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『卡片分享』或『顏色分享』的人若失敗則你獲勝，若無分享則失敗。' },
+  { id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨', desc: '首輪指定兩名孩子，終局時這兩名玩家若皆與總統同室則獲勝。', pairs: 'mother' },
+  { id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩', desc: '首輪指定兩名孩子，終局時這兩名玩家皆未死於炸彈引爆則獲勝。', pairs: 'father' },
+  { id: 'hero', name: '英雄 (Hero)', team: 'grey', icon: '🦸', desc: '終局時若與總統及炸彈客身處同房間則單獨獲勝，紅藍雙方皆落敗。', pairs: 'villain' },
+  { id: 'villain', name: '惡徒 (Villain)', team: 'grey', icon: '🦹', desc: '終局與總統同室且與炸彈客分房則獨贏，奪取總統之位且紅藍皆敗。', pairs: 'hero' },
+  { id: 'queen', name: '女王 (Queen)', team: 'grey', icon: '👸', desc: '遊戲結束時若總統及炸彈客身處同房間，且自己存活未死亡，則你獲勝。', pairs: 'stunt_double' },
+  { id: 'stunt_double', name: '替身演員 (Stunt Double)', team: 'grey', icon: '🎬', desc: '遊戲結束時若與總統分處不同房間，且自己死於炸彈引爆則獲勝。', pairs: 'queen' },
+
+  // 灰隊三角關係
+  { id: 'rock', name: '石頭 (Rock)', team: 'grey', icon: '🪨', desc: '終局與剪刀處於同一個房間，且不與布在同一個房間即獲勝。', pairs: 'paper,scissors' }, 
+  { id: 'paper', name: '布 (Paper)', team: 'grey', icon: '📄', desc: '終局與石頭處於同一個房間，且不與剪刀在同一個房間即獲勝。', pairs: 'rock,scissors' }, //問答
+  { id: 'scissors', name: '剪刀 (Scissors)', team: 'grey', icon: '✂️', desc: '終局與布處於同一個房間，且不與石頭在同一個房間即獲勝。', pairs: 'rock,paper' }, //問答
+  { id: 'sniper', name: '狙擊手 (Sniper)', team: 'grey', icon: '🔭', desc: '結算前公開身分並開槍，若擊中『目標』則獲勝。', pairs: 'target,decoy' }, //問答
+  { id: 'target', name: '目標 (Target)', team: 'grey', icon: '🎯', desc: '結算時若狙擊手沒有打中你則獲勝。', pairs: 'sniper,decoy' }, //問答
+  { id: 'decoy', name: '誘餌 (Decoy)', team: 'grey', icon: '🦆', desc: '結算時若狙擊手開槍打中你，則你獲勝！', pairs: 'sniper,target' }, //問答
+
+  //灰隊卡片分享或揭露類
+  { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『卡片分享』或『顏色分享』者的勝利條件，若無人與你分享則你失敗。', pairs: 'robot' },
+  { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『卡片分享』或『顏色分享』的人若失敗則你獲勝，若無人與你分享則你失敗。', pairs: 'clone' },
+  { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '任何人與你進行『卡片分享』或『顏色分享』，必須立即與你交換身分卡繼續遊戲！' },
+  { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '任何人與你進行『卡片分享』或『顏色分享』時，可以扣留他們的卡牌；若無人獲得勝利，則扣牌較多的一隊勝；若一樣多則法官獨贏。' }, //加機制
+  { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '愚蠢屬性不能拒絕分享，結算時若跟總統或炸彈客進行過『卡片分享』則你單獨獲勝，全體失敗！' },
+  { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟『炸彈客』及『總統』都進行過『卡片分享』則獲勝。' },
+  { id: 'illuminati', name: '光明會 (Illuminati)', team: 'grey', icon: '👁️', desc: '『卡片分享』或『顏色分享』傳播會員狀態；若光明會死亡，全體會員一同判負。' },
+  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'grey', icon: '🛐', desc: '『卡片分享』或『顏色分享』傳播信徒狀態；若教主存活，全體信徒一同判負。' },
+  
+  // 灰隊特殊勝利類
   { id: 'frotteur', name: '性騷擾者 (Frotteur)', team: 'grey', icon: '🖐️', desc: '遊戲結束前必須觸碰過全場每一位玩家；若被『保守人士』抓住手腕則直接失敗。', pairs: 'prude' },
   { id: 'prude', name: '保守人士 (Prude)', team: 'grey', icon: '🚫', desc: '抓住『性騷擾者』的手腕直到遊戲結束即獲勝；抓住後兩人將綁定移動。', pairs: 'frotteur' },
-  { id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨', desc: '首輪指定兩名孩子，終局時這兩名玩家若皆與總統同室則獲勝。' },
-  { id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩', desc: '首輪指定兩名孩子，終局時這兩名玩家皆未死於炸彈引爆則獲勝。' },
-  
-  // 灰隊三角關係 (Grey Team)
-  { id: 'sniper', name: '狙擊手 (Sniper)', team: 'grey', icon: '🔭', desc: '結算前公開身分並開槍，若擊中『目標』則獲勝。', pairs: 'target,decoy' },
-  { id: 'target', name: '目標 (Target)', team: 'grey', icon: '🎯', desc: '結算時若狙擊手沒有打中你則獲勝。', pairs: 'sniper,decoy' },
-  { id: 'decoy', name: '誘餌 (Decoy)', team: 'grey', icon: '🦆', desc: '結算時若狙擊手開槍打中你，則你獲勝！', pairs: 'sniper,target' },
-  { id: 'rock', name: '石頭 (Rock)', team: 'grey', icon: '🪨', desc: '終局與剪刀處於同一個房間，且不與布在同一個房間即獲勝。', pairs: 'paper,scissors' },
-  { id: 'paper', name: '布 (Paper)', team: 'grey', icon: '📄', desc: '終局與石頭處於同一個房間，且不與剪刀在同一個房間即獲勝。', pairs: 'rock,scissors' },
-  { id: 'scissors', name: '剪刀 (Scissors)', team: 'grey', icon: '✂️', desc: '終局與布處於同一個房間，且不與石頭在同一個房間即獲勝。', pairs: 'rock,paper' },
-
-  // 灰隊無對應關係 (Grey Team)
-  { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '任何人與你進行『卡片分享』或『顏色分享』，必須立即與你交換身分卡繼續遊戲！' },
-  { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '愚蠢屬性不能拒絕分享，結算時若跟總統或炸彈客進行過『卡片分享』則你單獨獲勝，全體失敗！' },
   { id: 'traveler', name: '旅行家 (Traveler)', team: 'grey', icon: '🧳', desc: '遊戲中被當作人質交換達到指定次數（3輪需交換2次，5輪需交換3次）則獲勝。' },
   { id: 'agoraphobe', name: '懼曠症患者 (Agoraphobe)', team: 'grey', icon: '🏠', desc: '在遊戲結束時，自己從來沒有離開過初始的房間時獲勝。' },
-  { id: 'anarchist', name: '無政府主義者 (Anarchist)', team: 'grey', icon: '🏴', desc: '進行五輪回合需篡位三次，三輪需篡位兩次成功才算獲勝。' },
   { id: 'born_leader', name: '天生領袖 (Born Leader)', team: 'grey', icon: '👑', desc: '遊戲結束時，若你身為所在房間的現任領袖則獲勝。' },
-  { id: 'minion', name: '僕從 (Minion)', team: 'grey', icon: '🙇', desc: '遊戲結束時，與你在同一個房間的領隊從來沒有被篡位過則獲勝。' },
-  { id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '在最後一輪結束前，必須將自己的卡片換為紅隊或藍隊卡並倒戈。' },
-  { id: 'telepath', name: '心靈感應者 (Telepath)', team: 'grey', icon: '🔮', desc: '最後一輪亮牌預測終局進入本房間的人質玩家，猜中即獲勝。' },
+  { id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '在最後一輪結束前，必須將自己的卡片換為紅隊或藍隊卡並倒戈。' }, //需要特殊機制
+  { id: 'telepath', name: '心靈感應者 (Telepath)', team: 'grey', icon: '🔮', desc: '最後一輪亮牌預測終局進入本房間的人質玩家，猜中即獲勝。' }, //需要特殊機制or加問答
   { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個角色，猜對獲勝。' },
-  { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束後公開玩家身分前，依序點名猜測全場每一位玩家的卡牌顏色，全對即獲勝。' },
-  { id: 'mastermind', name: '策劃者 (Mastermind)', team: 'grey', icon: '♟️', desc: '遊戲結束時你是一個房間領隊，且曾做過對面房間領隊則獲勝。' },
-  { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '收繳埋葬卡；若紅藍平手，交牌較多一隊勝；若平局未解則法官獨贏。' },
-  { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟『炸彈客』及『總統』都進行過『卡片分享』則獲勝。' },
-  { id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '遊戲中必須將卡牌隨機換成歡樂牌庫中的一張牌，以新牌目標結算。' },
-  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'grey', icon: '🛐', desc: '『卡片分享』或『顏色分享』傳播信徒狀態；若教主死亡，全體信徒一同判負。' },
-  { id: 'illuminati', name: '光明會 (Illuminati)', team: 'grey', icon: '👁️', desc: '卡面雙面雙色；任何玩家一旦與你進行『卡片分享』，你立刻單獨獲勝。' },
-  { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '遊戲結束前公開自己並預測哪一隊獲勝（紅/藍/無），猜對獲勝。' },
+  { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束後公開玩家身分前，依序點名猜測全場每一位玩家的卡牌顏色，全對即獲勝。' }, //加問答
+  { id: 'anarchist', name: '無政府主義者 (Anarchist)', team: 'grey', icon: '🏴', desc: '進行五輪回合需篡位三次，三輪需篡位兩次成功才算獲勝。', pairs: 'minion,mastermind' },
+  { id: 'minion', name: '僕從 (Minion)', team: 'grey', icon: '🙇', desc: '遊戲結束時，與你在同一個房間的領隊從來沒有被篡位過則獲勝。', pairs: 'anarchist,mastermind' },
+  { id: 'mastermind', name: '策劃者 (Mastermind)', team: 'grey', icon: '♟️', desc: '遊戲結束時你是一個房間領隊，且曾做過對面房間領隊則獲勝。', pairs: 'anarchist,minion' },
+  { id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '遊戲中必須將卡牌隨機換成歡樂牌庫(沒用到的角色)中的一張牌，以新牌目標結算。' },  //需要特殊機制
+  { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '遊戲結束前公開自己並預測哪一隊獲勝（紅/藍/無），猜對獲勝。' }, //需要特殊機制
 
-  // 紫色、粉色、黑色與特殊陣營
-  { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'purple', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' },
+  // 特殊陣營
+  { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'purple', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' }, //加問答
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'purple', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『埋葬卡』互換並繼承其條件。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '開局藏寶特殊角色；若玩家未能在終局前找到寶藏，則你獲勝。' },
   { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獲勝。' },
