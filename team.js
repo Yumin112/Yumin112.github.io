@@ -39,6 +39,24 @@ window.OFFICIAL_TEAM_CONFIG = [
       badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
       listBg: 'bg-yellow-950/20 border-yellow-900/40'
     },
+    orange: {
+      label: '橘隊 (Orange)',
+      cardBg: 'bg-gradient-to-br from-orange-950 via-zinc-900 to-zinc-900 border-orange-500',
+      badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      listBg: 'bg-orange-950/20 border-orange-900/40'
+    },
+    brown: {
+      label: '棕隊 (Brown)',
+      cardBg: 'bg-gradient-to-br from-amber-950/70 via-stone-900 to-zinc-900 border-amber-700',
+      badge: 'bg-amber-800/30 text-amber-300 border-amber-700/40',
+      listBg: 'bg-amber-950/30 border-amber-900/50'
+    },
+    white: {
+      label: '白隊 (White)',
+      cardBg: 'bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-900 border-zinc-200',
+      badge: 'bg-white/20 text-zinc-100 border-white/40',
+      listBg: 'bg-white/10 border-zinc-400/30'
+    },
     black: {
       label: '黑隊 (Black)',
       cardBg: 'bg-gradient-to-br from-black via-zinc-950 to-zinc-900 border-zinc-600',
