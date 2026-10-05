@@ -3,14 +3,14 @@
  */
 window.OFFICIAL_ROLES_CATALOG = [
   // 核心身分
-  { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '避開『炸彈客』直到遊戲結束。', pairs: 'bomb' },
-  { id: 'bomb', name: '炸彈客 (Bomber)', team: 'red', icon: '💣', desc: '跟『總統』在同一個房間，遊戲結束時引爆炸彈，同房間的人獲得『死亡』屬性。', pairs: 'pres' },
-  { id: 'pres_d', name: '總統女兒 (President\'s Daughter)', team: 'blue', icon: '👧', desc: '你是『總統』備選人，若總統被埋葬你必須肩負起總統責任。', pairs: 'martyr' },
-  { id: 'martyr', name: '烈士 (Martyr)', team: 'red', icon: '🔥', desc: '你是『炸彈客』備選人，若炸彈客被埋葬你必須肩負起炸彈客責任。', pairs: 'pres_d' },
+  { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '遠離『炸彈客』！\n\n勝利條件：遊戲結束時，與『炸彈客』在不同房間。', pairs: 'bomb' },
+  { id: 'bomb', name: '炸彈客 (Bomber)', team: 'red', icon: '💣', desc: '遊戲結束時引爆炸彈，同房間的人獲得『死亡』屬性。\n\n勝利條件：遊戲結束時，與『總統』在同個房間。', pairs: 'pres' },
+  { id: 'pres_d', name: '總統女兒 (President\'s Daughter)', team: 'blue', icon: '👧', desc: '妳是『總統』備選人，若『總統』被埋葬或離開遊戲時，妳必須肩負起『總統』的責任。', pairs: 'martyr' },
+  { id: 'martyr', name: '烈士 (Martyr)', team: 'red', icon: '🔥', desc: '你是『炸彈客』備選人，若『炸彈客』被埋葬或離開遊戲你必須肩負起『炸彈客』的責任。', pairs: 'pres_d' },
   { id: 'doctor', name: '醫生 (Doctor)', team: 'blue', icon: '🩺', desc: '遊戲結束前，你必須與『總統』進行過『卡片分享』，否則藍隊失敗。', pairs: 'engineer' },
   { id: 'engineer', name: '工程師 (Engineer)', team: 'red', icon: '⚙️', desc: '遊戲結束前，你必須與『炸彈客』進行過『卡片分享』，否則紅隊失敗。', pairs: 'doctor' },
-  { id: 'nurse', name: '護士 (Nurse)', team: 'blue', icon: '💉', desc: '你是『醫生』備選人，若醫生被埋葬你必須承擔醫生職責。', pairs: 'tinkerer' },
-  { id: 'tinkerer', name: '工匠 (Tinkerer)', team: 'red', icon: '🔨', desc: '你是『工程師』備選人，若工程師被埋葬你必須承擔工程師職責。', pairs: 'nurse' },
+  { id: 'nurse', name: '護士 (Nurse)', team: 'blue', icon: '💉', desc: '你是『醫生』備選人，若『醫生』被埋葬或離開遊戲時，你必須承擔『醫生』的職責。', pairs: 'tinkerer' },
+  { id: 'tinkerer', name: '工匠 (Tinkerer)', team: 'red', icon: '🔨', desc: '你是『工程師』備選人，若『工程師』被埋葬或離開遊戲時，你必須承擔『工程師』的職責。', pairs: 'nurse' },
 
 // 進階陣營角色（分拆紅 / 藍）
   { id: 'spy_r', name: '紅隊間諜 (Red Spy)', team: 'blue', icon: '🕵️‍♀️', desc: '屬於紅隊但卡片底色為藍色；擾亂他人顏色查驗，請對紅隊忠誠！', pairs: 'spy_b' },
