@@ -19,8 +19,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'coy_r', name: '靦腆少年 (Coy Boy)', team: 'red', icon: '😳', desc: '只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'coy_b' },
   { id: 'shy_b', name: '害羞小子 (Shy Guy)', team: 'blue', icon: '🙈', desc: '不能進行任何『角色揭露』或公開揭露行動。', pairs: 'shy_r' },
   { id: 'shy_r', name: '害羞小子 (Shy Guy)', team: 'red', icon: '🙈', desc: '不能進行任何『角色揭露』或公開揭露行動。', pairs: 'shy_b' },
-  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得「害羞」屬性，不能進行任何揭露。', pairs: 'criminal_r' },
-  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得「害羞」屬性，不能進行任何揭露。', pairs: 'criminal_b' },
+  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得"害羞"屬性，不能進行任何揭露。', pairs: 'criminal_r' },
+  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得"害羞"屬性，不能進行任何揭露。', pairs: 'criminal_b' },
   { id: 'thug_b', name: '暴徒 (Thug)', team: 'blue', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得「靦腆」屬性，只能進行『顏色分享』。', pairs: 'thug_r' },
   { id: 'thug_r', name: '暴徒 (Thug)', team: 'red', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得「靦腆」屬性，只能進行『顏色分享』。', pairs: 'thug_b' },
   { id: 'psychologist_b', name: '心理醫生 (Psychologist)', team: 'blue', icon: '🛋️', desc: '進行『角色揭露』給害羞或靦腆玩家時，對方可與你『角色分享』並治癒移除這些屬性。', pairs: 'psychologist_r' },
@@ -89,10 +89,10 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'witness', name: '目擊證人 (Witness)', team: 'red', icon: '👁️', desc: '若與法警完成『角色分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'fugitive,marshall,one_armed_man' }, //加機制
   
   // 藍/紅隊角色行為扮演類
-  { id: 'angel_b', name: '天使 (Angel)', team: 'blue', icon: '👼', desc: '獲得誠實屬性：只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_r' },
-  { id: 'angel_r', name: '天使 (Angel)', team: 'red', icon: '👼', desc: '獲得誠實屬性：只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_b' },
-  { id: 'demon_b', name: '惡魔 (Demon)', team: 'blue', icon: '👿', desc: '獲得撒謊屬性：只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_r' },
-  { id: 'demon_r', name: '惡魔 (Demon)', team: 'red', icon: '😈', desc: '獲得撒謊屬性：只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_b' },
+  { id: 'angel_b', name: '天使 (Angel)', team: 'blue', icon: '👼', desc: '獲得"誠實"屬性：只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_r' },
+  { id: 'angel_r', name: '天使 (Angel)', team: 'red', icon: '👼', desc: '獲得"誠實"屬性：只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_b' },
+  { id: 'demon_b', name: '惡魔 (Demon)', team: 'blue', icon: '👿', desc: '獲得"撒謊"屬性：只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_r' },
+  { id: 'demon_r', name: '惡魔 (Demon)', team: 'red', icon: '😈', desc: '獲得"撒謊"屬性：只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_b' },
   { id: 'mime_b', name: '默劇演員 (Mime)', team: 'blue', icon: '🤐', desc: '你只能用比手畫腳來表演，全場必須盡力保持不發出任何聲音。', pairs: 'mime_r' },
   { id: 'mime_r', name: '默劇演員 (Mime)', team: 'red', icon: '🤐', desc: '你只能用比手畫腳來表演，全場必須盡力保持不發出任何聲音。', pairs: 'mime_b' },
   { id: 'clown_b', name: '小丑 (Clown)', team: 'blue', icon: '🤡', desc: '你是一名帶來歡樂的小丑，在遊戲進行中必須盡全力保持微笑。', pairs: 'clown_r' },
@@ -196,7 +196,6 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '任何人與你進行『角色分享』或『顏色分享』時，可以扣留他們的卡牌；若無人獲得勝利，則扣牌較多的一隊勝；若一樣多則法官獨贏。' }, //加機制
   { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '愚蠢屬性不能拒絕分享，結算時若跟總統或炸彈客進行過『角色分享』則你單獨獲勝，全體失敗！' },
   { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟『炸彈客』及『總統』都進行過『角色分享』則獲勝。' },
-  { id: 'illuminati', name: '光明會 (Illuminati)', team: 'grey', icon: '👁️', desc: '『角色分享』或『顏色分享』傳播會員狀態；若光明會死亡，全體會員一同判負。' },
   
   // 灰隊特殊勝利類
   { id: 'frotteur', name: '性騷擾者 (Frotteur)', team: 'grey', icon: '🖐️', desc: '遊戲結束前必須觸碰過全場每一位玩家；若被『保守人士』抓住手腕則直接失敗。', pairs: 'prude' },
@@ -213,8 +212,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個角色，猜對獲勝。' },
 
   // 特殊陣營
-  { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'purple', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' }, //加問答
-  { id: 'drunk', name: '酒鬼 (Drunk)', team: 'purple', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『埋葬卡』互換並繼承其條件。' },
+  { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' }, //加問答
+  { id: 'drunk', name: '酒鬼 (Drunk)', team: 'brown', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『埋葬卡』互換並繼承其條件。' },
   { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獲勝。' },
   { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'black', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，亮牌逮捕並獲得個人單獨勝利。' },
   { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』或『顏色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
@@ -222,7 +221,9 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'leprechaun', name: '小妖精 (Leprechaun)', team: 'green', icon: '🍀', desc: '你是熱情的小精靈，因此不能拒絕任何人的分享邀請；進行任何分享後必須和對方互換卡片，終局還持有小妖精者也會獲勝。' },
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'green', icon: '👁️‍🗨', desc: '你可以公開揭露你的卡牌，獲得免疫所有角色技能的能力；並開始在兩個房間中四處巡視，一旦看見任何玩家的卡面大聲喊出即可獨自勝利。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '遊戲開始時暫停倒數且所有玩家離開房間，你需要在兩間房間內各藏一個寶物，若所有玩家未能在遊戲結束前找到兩個寶藏，則你獨自獲勝。' },
-  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'grey', icon: '🛐', desc: '『角色分享』或『顏色分享』傳播信徒狀態；若教主死亡，全體信徒一同判負。' },
-  { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'green', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！當邪教教主與你進行『角色分享』或『顏色分享』，你立刻獨自勝利。' }
-  
+  { id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '👁️', desc: '『角色分享』或『顏色分享』傳播會員狀態；若光明會死亡，全體會員一同判負。' },
+  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '可透過『角色分享』或『顏色分享』對玩家傳播"信徒"狀態；若「邪教教主」與「猶格·索托斯」進行過『角色分享』或『顏色分享』，全體信徒勝利。' },
+  { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'purple', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！當你與擁有"信徒"狀態的玩家進行『角色分享』或『顏色分享』，你立刻獨自勝利。' },
+  { id: 'white_paper', name: '白紙 (White Paper)', team: 'white', icon: '📃', desc: ' ' }
+
 ];
