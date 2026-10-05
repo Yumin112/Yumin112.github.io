@@ -37,7 +37,7 @@
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     // ==========================================
-    // 0. 常數與通訊伺服器配置[cite: 1]
+    // 0. 常數與通訊伺服器配置
     // ==========================================
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
     const MQTT_USER = 'yumin112for2r1b!';
@@ -53,7 +53,7 @@
     };
 
     // ==========================================
-    // 1. 本地儲存與輔助工具函式[cite: 1]
+    // 1. 本地儲存與輔助工具函式
     // ==========================================
     const safeJsonParse = (str, fallback = null) => {
       try { return JSON.parse(str); } catch (e) { return fallback; }
@@ -121,19 +121,8 @@
     };
 
     // ==========================================
-    // 2. 特殊狀態與角色機制映射配置[cite: 1]
+    // 2. 特殊狀態與角色機制映射配置
     // ==========================================
-    const ROLE_DEFAULT_STATUSES = {
-      shy_b: [{ id: 'shy', name: '害羞', icon: '🙈' }],
-      shy_r: [{ id: 'shy', name: '害羞', icon: '🙈' }],
-      coy_b: [{ id: 'coy', name: '靦腆', icon: '😳' }],
-      coy_r: [{ id: 'coy', name: '靦腆', icon: '😳' }],
-      paranoid_b: [{ id: 'paranoid', name: '妄想', icon: '👀' }],
-      paranoid_r: [{ id: 'paranoid', name: '妄想', icon: '👀' }],
-      fool_b: [{ id: 'foolish', name: '愚蠢', icon: '🤪' }],
-      fool_r: [{ id: 'foolish', name: '愚蠢', icon: '🤪' }]
-    };
-
     const ROLE_STATUS_ACTIONS = {
       zombie: {
         statusId: 'infected', statusName: '感染 (殭屍病毒)', statusIcon: '🧟',
@@ -185,47 +174,8 @@
       }
     };
 
-    const ROLE_CLEAR_STATUS_ACTIONS = {
-      medic_b: {
-        type: 'clear_extra',
-        btnLabel: '🏥 清除額外狀態',
-        badge: '醫療兵 專屬',
-        style: 'from-teal-600 to-cyan-700 hover:from-teal-500 hover:to-cyan-600 border-cyan-400 text-white',
-        title: '🏥 選擇玩家清除額外狀態',
-        promptText: '選擇一名玩家清除其所有後天獲得的額外狀態（不包含角色原本自帶狀態）。對方需同意。',
-        confirmDesc: '想要為你清除所有「後天額外獲得」的特殊狀態（你角色原本自帶的狀態會保留）。是否同意接受治療？'
-      },
-      medic_r: {
-        type: 'clear_extra',
-        btnLabel: '🏥 清除額外狀態',
-        badge: '醫療兵 專屬',
-        style: 'from-teal-600 to-cyan-700 hover:from-teal-500 hover:to-cyan-600 border-cyan-400 text-white',
-        title: '🏥 選擇玩家清除額外狀態',
-        promptText: '選擇一名玩家清除其所有後天獲得的額外狀態（不包含角色原本自帶狀態）。對方需同意。',
-        confirmDesc: '想要為你清除所有「後天額外獲得」的特殊狀態（你角色原本自帶的狀態會保留）。是否同意接受治療？'
-      },
-      psychologist_b: {
-        type: 'clear_psychological',
-        btnLabel: '🛋️ 心理治療 (解除心理狀態)',
-        badge: '心理醫生 專屬',
-        style: 'from-sky-600 to-indigo-700 hover:from-sky-500 hover:to-indigo-600 border-sky-400 text-white',
-        title: '🛋️ 選擇玩家進行心理治療',
-        promptText: '選擇一名玩家清除其【靦腆】、【害羞】、【妄想】狀態。對方需同意。',
-        confirmDesc: '想要對你進行心理治療，清除你身上的【靦腆】、【害羞】、【妄想】狀態。是否同意接受治療？'
-      },
-      psychologist_r: {
-        type: 'clear_psychological',
-        btnLabel: '🛋️ 心理治療 (解除心理狀態)',
-        badge: '心理醫生 專屬',
-        style: 'from-sky-600 to-indigo-700 hover:from-sky-500 hover:to-indigo-600 border-sky-400 text-white',
-        title: '🛋️ 選擇玩家進行心理治療',
-        promptText: '選擇一名玩家清除其【靦腆】、【害羞】、【妄想】狀態。對方需同意。',
-        confirmDesc: '想要對你進行心理治療，清除你身上的【靦腆】、【害羞】、【妄想】狀態。是否同意接受治療？'
-      }
-    };
-
     const createMadScientistAction = (badgeText) => (ctx) => {
-      if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;[cite: 1]
+      if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
       return {
         label: '🧪 操控角色對調',
         badge: badgeText,
@@ -267,8 +217,8 @@
       },
       drunk: {
         getActionButton: (ctx) => {
-          const isLastRound = ctx.currentRoundIndex === ctx.roundSettings.length - 1;[cite: 1]
-          if (!ctx.buriedCard || !isLastRound) return null;[cite: 1]
+          const isLastRound = ctx.currentRoundIndex === ctx.roundSettings.length - 1;
+          if (!ctx.buriedCard || !isLastRound) return null;
           return {
             label: '🍺 與埋葬卡互換身分',
             badge: '最後一輪專屬',
@@ -277,13 +227,13 @@
           };
         }
       },
-      mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },[cite: 1]
-      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }[cite: 1]
+      mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },
+      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }
     };
 
     const RoleMechanics = {
       getRoleAction(myRole, context) {
-        if (!myRole) return null;[cite: 1]
+        if (!myRole) return null;
         if (ROLE_PLUGINS[myRole.id]) return ROLE_PLUGINS[myRole.id].getActionButton(context);
 
         const statusConfig = ROLE_STATUS_ACTIONS[myRole.id];
@@ -295,72 +245,61 @@
             onClick: () => context.openGrantStatusModal(statusConfig)
           };
         }
-
-        const clearConfig = ROLE_CLEAR_STATUS_ACTIONS[myRole.id];
-        if (clearConfig) {
-          return {
-            label: clearConfig.btnLabel,
-            badge: clearConfig.badge,
-            style: clearConfig.style,
-            onClick: () => context.openClearStatusModal(clearConfig)
-          };
-        }
-
-        return null;[cite: 1]
+        return null;
       },
       applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
-        const p1 = playersList.find(p => p.id === p1Id);[cite: 1]
-        const p2 = playersList.find(p => p.id === p2Id);[cite: 1]
-        if (!p1 || !p2) return playersList;[cite: 1]
+        const p1 = playersList.find(p => p.id === p1Id);
+        const p2 = playersList.find(p => p.id === p2Id);
+        if (!p1 || !p2) return playersList;
 
-        const { role: role1, team: team1 } = p1;[cite: 1]
-        const { role: role2, team: team2 } = p2;[cite: 1]
+        const { role: role1, team: team1 } = p1;
+        const { role: role2, team: team2 } = p2;
 
         return playersList.map(p => {
-          let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;[cite: 1]
-          if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;[cite: 1]
+          let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
+          if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;
 
-          if (p.id === p1Id) {[cite: 1]
+          if (p.id === p1Id) {
             return {
               ...p,
               role: role2,
               team: team2,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),[cite: 1]
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),
               hasUsedMadScientistAbility
             };
           }
-          if (p.id === p2Id) {[cite: 1]
+          if (p.id === p2Id) {
             return {
               ...p,
               role: role1,
               team: team1,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),[cite: 1]
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
               hasUsedMadScientistAbility
             };
           }
-          return { ...p, hasUsedMadScientistAbility };[cite: 1]
+          return { ...p, hasUsedMadScientistAbility };
         });
       },
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
-        if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };[cite: 1]
-        const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);[cite: 1]
-        if (!drunkPlayer) return { nextPlayers: playersList, newBuried: curBuried };[cite: 1]
+        if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };
+        const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);
+        if (!drunkPlayer) return { nextPlayers: playersList, newBuried: curBuried };
 
-        const oldRole = drunkPlayer.role;[cite: 1]
-        const newRole = curBuried;[cite: 1]
+        const oldRole = drunkPlayer.role;
+        const newRole = curBuried;
 
         const nextPlayers = playersList.map(p => {
-          if (p.id === drunkPlayerId) {[cite: 1]
+          if (p.id === drunkPlayerId) {
             return {
               ...p,
               role: newRole,
-              team: newRole.team,[cite: 1]
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')[cite: 1]
+              team: newRole.team,
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')
             };
           }
-          return p;[cite: 1]
+          return p;
         });
-        return { nextPlayers, newBuried: oldRole };[cite: 1]
+        return { nextPlayers, newBuried: oldRole };
       },
       applyGrantStatus(playersList, targetPlayerId, statusObj) {
         return playersList.map(p => {
@@ -371,28 +310,9 @@
           }
           return p;
         });
-      },
-      applyClearStatus(playersList, targetPlayerId, clearType) {
-        return playersList.map(p => {
-          if (p.id === targetPlayerId) {
-            const currentStatuses = p.statuses || [];
-            if (clearType === 'clear_extra') {
-              const defaultStatuses = (p.role && ROLE_DEFAULT_STATUSES[p.role.id]) || [];
-              const defaultIds = defaultStatuses.map(s => s.id);
-              const filtered = currentStatuses.filter(s => defaultIds.includes(s.id));
-              return { ...p, statuses: filtered };
-            }
-            if (clearType === 'clear_psychological') {
-              const targetsToRemove = ['coy', 'shy', 'paranoid'];
-              const filtered = currentStatuses.filter(s => !targetsToRemove.includes(s.id));
-              return { ...p, statuses: filtered };
-            }
-          }
-          return p;
-        });
       }
     };
-    window.RoleMechanics = RoleMechanics;[cite: 1]
+    window.RoleMechanics = RoleMechanics;
 
     // ==========================================
     // 3. 模組化子組件 (UI Sub-Components)
@@ -446,14 +366,14 @@
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {activeRolesInDeck.map(group => {
-            const hasBlue = group.teams.includes('blue');[cite: 1]
-            const hasRed = group.teams.includes('red');[cite: 1]
-            let bgStyle = 'bg-zinc-900/40 border-zinc-800';[cite: 1]
+            const hasBlue = group.teams.includes('blue');
+            const hasRed = group.teams.includes('red');
+            let bgStyle = 'bg-zinc-900/40 border-zinc-800';
 
-            if (hasBlue && hasRed) bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';[cite: 1]
-            else if (hasBlue) bgStyle = getTeamMeta('blue').listBg;[cite: 1]
-            else if (hasRed) bgStyle = getTeamMeta('red').listBg;[cite: 1]
-            else if (group.teams.length > 0) bgStyle = getTeamMeta(group.teams[0]).listBg;[cite: 1]
+            if (hasBlue && hasRed) bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
+            else if (hasBlue) bgStyle = getTeamMeta('blue').listBg;
+            else if (hasRed) bgStyle = getTeamMeta('red').listBg;
+            else if (group.teams.length > 0) bgStyle = getTeamMeta(group.teams[0]).listBg;
 
             return (
               <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
@@ -479,74 +399,81 @@
     );
 
     // ==========================================
-    // 4. 主應用程式組件 (Main App Component)[cite: 1]
+    // 4. 主應用程式組件 (Main App Component)
     // ==========================================
     function App() {
-      const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];[cite: 1]
+      const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      const [gameState, setGameState] = useState('home');[cite: 1]
-      const [roomId, setRoomId] = useState('');[cite: 1]
-      const [joinRoomInput, setJoinRoomInput] = useState('');[cite: 1]
-      const [playerName, setPlayerName] = useState('');[cite: 1]
-      const [myPlayerId, setMyPlayerId] = useState('');[cite: 1]
-      const [isHost, setIsHost] = useState(false);[cite: 1]
-      const [connStatus, setConnStatus] = useState('未連線');[cite: 1]
-      const [isVerifying, setIsVerifying] = useState(false);[cite: 1]
+      // 房間與連線狀態
+      const [gameState, setGameState] = useState('home'); 
+      const [roomId, setRoomId] = useState('');
+      const [joinRoomInput, setJoinRoomInput] = useState('');
+      const [playerName, setPlayerName] = useState('');
+      const [myPlayerId, setMyPlayerId] = useState('');
+      const [isHost, setIsHost] = useState(false);
+      const [connStatus, setConnStatus] = useState('未連線');
+      const [isVerifying, setIsVerifying] = useState(false);
 
-      const [showRoomsModal, setShowRoomsModal] = useState(false);[cite: 1]
-      const [onlineRooms, setOnlineRooms] = useState([]);[cite: 1]
-      const [isSearchingRooms, setIsSearchingRooms] = useState(false);[cite: 1]
+      // 線上大廳探索
+      const [showRoomsModal, setShowRoomsModal] = useState(false);
+      const [onlineRooms, setOnlineRooms] = useState([]);
+      const [isSearchingRooms, setIsSearchingRooms] = useState(false);
 
-      const [players, setPlayers] = useState([]);[cite: 1]
-      const [roomStatus, setRoomStatus] = useState('waiting');[cite: 1]
-      const [buriedCard, setBuriedCard] = useState(null);[cite: 1]
+      // 遊戲成員與進度
+      const [players, setPlayers] = useState([]);
+      const [roomStatus, setRoomStatus] = useState('waiting');
+      const [buriedCard, setBuriedCard] = useState(null);
 
-      const [roundSettings, setRoundSettings] = useState([3, 2, 1]);[cite: 1]
-      const [currentRoundIndex, setCurrentRoundIndex] = useState(0);[cite: 1]
-      const [timeLeft, setTimeLeft] = useState(180);[cite: 1]
-      const [roundEndTime, setRoundEndTime] = useState(0);
-      const [isTimerRunning, setIsTimerRunning] = useState(false);[cite: 1]
-      const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);[cite: 1]
+      // 輪次計時（包含全域絕對結束時間戳 roundEndTime）
+      const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
+      const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
+      const [timeLeft, setTimeLeft] = useState(180);
+      const [roundEndTime, setRoundEndTime] = useState(0); // 絕對結束時間戳
+      const [isTimerRunning, setIsTimerRunning] = useState(false);
+      const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
 
-      const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });[cite: 1]
-      const [showDeckModal, setShowDeckModal] = useState(false);[cite: 1]
-      const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);[cite: 1]
-      const [tempRoleCounts, setTempRoleCounts] = useState({});[cite: 1]
-      const [deckViewMode, setDeckViewMode] = useState('detailed');[cite: 1]
+      // 牌池設定
+      const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });
+      const [showDeckModal, setShowDeckModal] = useState(false);
+      const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
+      const [tempRoleCounts, setTempRoleCounts] = useState({});
+      const [deckViewMode, setDeckViewMode] = useState('detailed');
 
-      const [isColorOnly, setIsColorOnly] = useState(false);[cite: 1]
-      const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);[cite: 1]
-      const [swapModalConfig, setSwapModalConfig] = useState(null);[cite: 1]
-      const [swapRequestData, setSwapRequestData] = useState(null);[cite: 1]
-      const [swapStatusMessage, setSwapStatusMessage] = useState('');[cite: 1]
-      const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);[cite: 1]
+      // 互動操作
+      const [isColorOnly, setIsColorOnly] = useState(false);
+      const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
+      const [swapModalConfig, setSwapModalConfig] = useState(null);
+      const [swapRequestData, setSwapRequestData] = useState(null); 
+      const [swapStatusMessage, setSwapStatusMessage] = useState('');
+      const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
 
-      const [showMadScientistModal, setShowMadScientistModal] = useState(false);[cite: 1]
-      const [madScientistConfig, setMadScientistConfig] = useState(null);[cite: 1]
-      const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);[cite: 1]
-      const [madScientistPendingData, setMadScientistPendingData] = useState(null);[cite: 1]
+      // 瘋狂科學家狀態
+      const [showMadScientistModal, setShowMadScientistModal] = useState(false);
+      const [madScientistConfig, setMadScientistConfig] = useState(null);
+      const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);
+      const [madScientistPendingData, setMadScientistPendingData] = useState(null);
 
+      // 特殊狀態賦予
       const [showGrantStatusModal, setShowGrantStatusModal] = useState(false);
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
-      const [showClearStatusModal, setShowClearStatusModal] = useState(false);
-      const [activeClearConfig, setActiveClearConfig] = useState(null);
-      const [clearPromptData, setClearPromptData] = useState(null);
+      // 勝負結算
+      const [showVictoryModal, setShowVictoryModal] = useState(false);
+      const [victoryStep, setVictoryStep] = useState(1);
+      const [victoryAns, setVictoryAns] = useState({});
+      const [gameResult, setGameResult] = useState(null);
 
-      const [showVictoryModal, setShowVictoryModal] = useState(false);[cite: 1]
-      const [victoryStep, setVictoryStep] = useState(1);[cite: 1]
-      const [victoryAns, setVictoryAns] = useState({});[cite: 1]
-      const [gameResult, setGameResult] = useState(null);[cite: 1]
+      // 參照物件
+      const clientRef = useRef(null);
+      const discoveryClientRef = useRef(null);
+      const timerIntervalRef = useRef(null);
+      const cardRef = useRef(null);
+      const latestStateRef = useRef({});
+      const debounceBroadcastTimerRef = useRef(null);
+      const madScientistVoteTrackerRef = useRef(null);
 
-      const clientRef = useRef(null);[cite: 1]
-      const discoveryClientRef = useRef(null);[cite: 1]
-      const timerIntervalRef = useRef(null);[cite: 1]
-      const cardRef = useRef(null);[cite: 1]
-      const latestStateRef = useRef({});[cite: 1]
-      const debounceBroadcastTimerRef = useRef(null);[cite: 1]
-      const madScientistVoteTrackerRef = useRef(null);[cite: 1]
-
+      // 狀態持久化快照
       useEffect(() => {
         const stateSnapshot = {
           players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
@@ -556,49 +483,52 @@
         latestStateRef.current = stateSnapshot;
 
         if (roomId && myPlayerId) {
-          const myProfile = players.find(p => p.id === myPlayerId);[cite: 1]
-          StorageManager.saveContext({ ...stateSnapshot, myProfile });[cite: 1]
+          const myProfile = players.find(p => p.id === myPlayerId);
+          StorageManager.saveContext({ ...stateSnapshot, myProfile });
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, roundEndTime, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
 
+      // 衍生狀態 Memo
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
-      const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);[cite: 1]
-      const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);[cite: 1]
-      const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);[cite: 1]
-      const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);[cite: 1]
-      const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);[cite: 1]
-      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);[cite: 1]
-      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);[cite: 1]
-      const currentHostageCount = useMemo(() => getHostageCount(players.length, roundSettings.length, currentRoundIndex), [players.length, roundSettings.length, currentRoundIndex]);[cite: 1]
+      const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);
+      const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);
+      const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);
+      const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
+      const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
+      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
+      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
+      const currentHostageCount = useMemo(() => getHostageCount(players.length, roundSettings.length, currentRoundIndex), [players.length, roundSettings.length, currentRoundIndex]);
 
       const activeRolesInDeck = useMemo(() => {
-        const groups = {};[cite: 1]
+        const groups = {};
         rolesCatalog.forEach(role => {
-          if ((roleCounts[role.id] || 0) > 0) {[cite: 1]
-            if (!groups[role.name]) {[cite: 1]
-              groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };[cite: 1]
-            } else if (!groups[role.name].teams.includes(role.team)) {[cite: 1]
-              groups[role.name].teams.push(role.team);[cite: 1]
+          if ((roleCounts[role.id] || 0) > 0) {
+            if (!groups[role.name]) {
+              groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };
+            } else if (!groups[role.name].teams.includes(role.team)) {
+              groups[role.name].teams.push(role.team);
             }
           }
         });
-        return Object.values(groups);[cite: 1]
-      }, [rolesCatalog, roleCounts]);[cite: 1]
+        return Object.values(groups);
+      }, [rolesCatalog, roleCounts]);
 
+      // 安全發送 MQTT 封包
       const publishMsg = useCallback((topic, payload, opts = { qos: 1 }) => {
-        if (clientRef.current?.connected) {[cite: 1]
-          clientRef.current.publish(topic, JSON.stringify(payload), opts);[cite: 1]
+        if (clientRef.current?.connected) {
+          clientRef.current.publish(topic, JSON.stringify(payload), opts);
         }
-      }, []);[cite: 1]
+      }, []);
 
+      // 房間同步廣播（包含 roundEndTime 確保全場秒數校正）
       const broadcastLatest = useCallback((override = {}) => {
-        const s = { ...latestStateRef.current, ...override };[cite: 1]
-        if (!s.roomId) return;[cite: 1]
+        const s = { ...latestStateRef.current, ...override };
+        if (!s.roomId) return;
         publishMsg(`trb_game_sync_room_${s.roomId}`, {
           type: 'FULL_SYNC',
           senderId: s.myPlayerId,
@@ -615,23 +545,23 @@
       }, [publishMsg]);
 
       const debouncedBroadcastLatest = useCallback((delay = 350) => {
-        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);[cite: 1]
+        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
         debounceBroadcastTimerRef.current = setTimeout(() => {
-          broadcastLatest();[cite: 1]
-          debounceBroadcastTimerRef.current = null;[cite: 1]
+          broadcastLatest();
+          debounceBroadcastTimerRef.current = null;
         }, delay);
       }, [broadcastLatest]);
 
       const replyDiscoveryAsHost = useCallback(() => {
-        const s = latestStateRef.current;[cite: 1]
-        if (!s.isHost || !s.roomId) return;[cite: 1]
+        const s = latestStateRef.current;
+        if (!s.isHost || !s.roomId) return;
         publishMsg(DISCOVERY_TOPIC, {
           type: 'DISCOVERY_ROOM_ANNOUNCE',
           roomId: s.roomId,
           hostName: s.playerName || '房長',
           playerCount: s.players.length,
           roomStatus: s.roomStatus
-        }, { qos: 0 });[cite: 1]
+        }, { qos: 0 });
       }, [publishMsg]);
 
       const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
@@ -661,79 +591,65 @@
         });
       }, [publishMsg, broadcastLatest]);
 
-      const executeClearStatusOnHost = useCallback((targetId, clearType, initiatorId = null, actionName = '') => {
-        setPlayers(prev => {
-          const next = window.RoleMechanics.applyClearStatus(prev, targetId, clearType);
-          publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
-            type: 'STATUS_CLEARED_SUCCESS',
-            targetId,
-            initiatorId,
-            actionName
-          });
-          setTimeout(() => broadcastLatest({ players: next }), 50);
-          return next;
-        });
-      }, [publishMsg, broadcastLatest]);
-
       const resetToHome = useCallback(() => {
-        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);[cite: 1]
-        if (clientRef.current) {[cite: 1]
-          try { clientRef.current.end(true); } catch (e) {}[cite: 1]
-          clientRef.current = null;[cite: 1]
+        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
+        if (clientRef.current) {
+          try { clientRef.current.end(true); } catch (e) {}
+          clientRef.current = null;
         }
-        StorageManager.clearSession();[cite: 1]
+        StorageManager.clearSession();
 
-        setRoomId('');[cite: 1]
-        setIsHost(false);[cite: 1]
-        setPlayers([]);[cite: 1]
-        setBuriedCard(null);[cite: 1]
-        setGameResult(null);[cite: 1]
-        setShowVictoryModal(false);[cite: 1]
-        setGameState('home');[cite: 1]
-        setRoomStatus('waiting');[cite: 1]
-        setIsTimerRunning(false);[cite: 1]
+        setRoomId('');
+        setIsHost(false);
+        setPlayers([]);
+        setBuriedCard(null);
+        setGameResult(null);
+        setShowVictoryModal(false);
+        setGameState('home');
+        setRoomStatus('waiting');
+        setIsTimerRunning(false);
         setRoundEndTime(0);
-        setSwapRequestData(null);[cite: 1]
-        setMadScientistPendingData(null);[cite: 1]
+        setSwapRequestData(null);
+        setMadScientistPendingData(null);
         setShowGrantStatusModal(false);
         setStatusPromptData(null);
-        setShowClearStatusModal(false);
-        setClearPromptData(null);
-        setSwapStatusMessage('');[cite: 1]
-        setIsVerifying(false);[cite: 1]
-        setConnStatus('未連線');[cite: 1]
-        madScientistVoteTrackerRef.current = null;[cite: 1]
+        setSwapStatusMessage('');
+        setIsVerifying(false);
+        setConnStatus('未連線');
+        madScientistVoteTrackerRef.current = null;
       }, []);
 
+      // MQTT 通訊與調度派發
       const setupConnection = useCallback((code, asHost, name, uid) => {
-        setConnStatus('連線伺服器中...');[cite: 1]
-        const topic = `trb_game_sync_room_${code}`;[cite: 1]
+        setConnStatus('連線伺服器中...');
+        const topic = `trb_game_sync_room_${code}`;
 
-        if (clientRef.current) {[cite: 1]
-          try { clientRef.current.end(true); } catch (e) {}[cite: 1]
+        if (clientRef.current) {
+          try { clientRef.current.end(true); } catch (e) {}
         }
 
-        const client = mqtt.connect(BROKER_URL, {[cite: 1]
-          clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,[cite: 1]
-          username: MQTT_USER,[cite: 1]
-          password: MQTT_PASS,[cite: 1]
-          clean: true,[cite: 1]
-          reconnectPeriod: 2000[cite: 1]
+        const client = mqtt.connect(BROKER_URL, {
+          clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,
+          username: MQTT_USER,
+          password: MQTT_PASS,
+          clean: true,
+          reconnectPeriod: 2000
         });
-        clientRef.current = client;[cite: 1]
+        clientRef.current = client;
 
         client.on('connect', () => {
-          setConnStatus('🟢 已連線');[cite: 1]
-          client.subscribe(topic, { qos: 1 });[cite: 1]
-          if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });[cite: 1]
+          setConnStatus('🟢 已連線');
+          client.subscribe(topic, { qos: 1 });
+          if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
             id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
           };
 
-          if (asHost) {[cite: 1]
-            publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });[cite: 1]
+          if (asHost) {
+            publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });
             setTimeout(() => {
+              // 房長重連：先根據絕對時間校正當前秒數再廣播，徹底消除回溯
               const cur = latestStateRef.current;
               let nextTime = cur.timeLeft;
               let nextStatus = cur.roomStatus;
@@ -752,145 +668,143 @@
               }
 
               broadcastLatest({ timeLeft: nextTime, roomStatus: nextStatus });
-              replyDiscoveryAsHost();[cite: 1]
+              replyDiscoveryAsHost();
             }, 400);
           } else {
-            publishMsg(topic, { type: 'PLAYER_PING_SYNC', senderId: uid, isHost: false, player: currentProfile });[cite: 1]
+            publishMsg(topic, { type: 'PLAYER_PING_SYNC', senderId: uid, isHost: false, player: currentProfile });
           }
         });
 
         client.on('message', (t, msg) => {
-          const data = safeJsonParse(msg.toString());[cite: 1]
-          if (!data) return;[cite: 1]
+          const data = safeJsonParse(msg.toString());
+          if (!data) return;
 
-          if (t === DISCOVERY_TOPIC) {[cite: 1]
-            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) replyDiscoveryAsHost();[cite: 1]
-            return;[cite: 1]
+          if (t === DISCOVERY_TOPIC) {
+            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) replyDiscoveryAsHost();
+            return;
           }
 
-          if (data.type === 'ROOM_DISBANDED') {[cite: 1]
-            alert('房長已離開，房間已解散！');[cite: 1]
-            resetToHome();[cite: 1]
-            return;[cite: 1]
+          if (data.type === 'ROOM_DISBANDED') {
+            alert('房長已離開，房間已解散！');
+            resetToHome();
+            return;
           }
 
-          if (latestStateRef.current.isHost) {[cite: 1]
-            if (data.type === 'CHECK_ROOM_REQ') {[cite: 1]
-              const currentPlayers = latestStateRef.current.players || [];[cite: 1]
-              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === (data.playerName || '').trim());[cite: 1]
+          // 房長邏輯
+          if (latestStateRef.current.isHost) {
+            if (data.type === 'CHECK_ROOM_REQ') {
+              const currentPlayers = latestStateRef.current.players || [];
+              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === (data.playerName || '').trim());
               publishMsg(topic, isDuplicated
-                ? { type: 'ROOM_JOIN_REJECTED', targetId: data.senderId, reason: 'NAME_DUPLICATED' }[cite: 1]
-                : { type: 'ROOM_VERIFIED', targetId: data.senderId, senderId: uid }[cite: 1]
+                ? { type: 'ROOM_JOIN_REJECTED', targetId: data.senderId, reason: 'NAME_DUPLICATED' }
+                : { type: 'ROOM_VERIFIED', targetId: data.senderId, senderId: uid }
               );
-              return;[cite: 1]
+              return;
             }
-            if (data.type === 'REPORT_PRESENCE') {[cite: 1]
+            if (data.type === 'REPORT_PRESENCE') {
               setPlayers(prev => {
-                const next = prev.some(p => p.id === data.player.id)[cite: 1]
-                  ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)[cite: 1]
-                  : [...prev, data.player];[cite: 1]
-                debouncedBroadcastLatest(300);[cite: 1]
-                return next;[cite: 1]
+                const next = prev.some(p => p.id === data.player.id)
+                  ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
+                  : [...prev, data.player];
+                debouncedBroadcastLatest(300);
+                return next;
               });
-              return;[cite: 1]
+              return;
             }
-            if (data.type === 'EXECUTE_DRUNK_SWAP') {[cite: 1]
-              const curBuried = latestStateRef.current.buriedCard;[cite: 1]
-              if (curBuried) {[cite: 1]
+            if (data.type === 'EXECUTE_DRUNK_SWAP') {
+              const curBuried = latestStateRef.current.buriedCard;
+              if (curBuried) {
                 setPlayers(prev => {
-                  const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);[cite: 1]
-                  setBuriedCard(newBuried);[cite: 1]
-                  setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);[cite: 1]
-                  return nextPlayers;[cite: 1]
+                  const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);
+                  setBuriedCard(newBuried);
+                  setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
+                  return nextPlayers;
                 });
               }
-              return;[cite: 1]
+              return;
             }
-            if (data.type === 'MAD_SCIENTIST_INITIATE') {[cite: 1]
-              madScientistVoteTrackerRef.current = {[cite: 1]
-                initiatorId: data.initiatorId, initiatorName: data.initiatorName,[cite: 1]
-                p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name, approvals: {}[cite: 1]
+            if (data.type === 'MAD_SCIENTIST_INITIATE') {
+              madScientistVoteTrackerRef.current = {
+                initiatorId: data.initiatorId, initiatorName: data.initiatorName,
+                p1Id: data.p1Id, p2Id: data.p2Id, approvals: {}
               };
-              publishMsg(topic, {[cite: 1]
-                type: 'MAD_SCIENTIST_PROMPT_TARGETS',[cite: 1]
-                initiatorId: data.initiatorId, initiatorName: data.initiatorName,[cite: 1]
-                p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name[cite: 1]
+              publishMsg(topic, {
+                type: 'MAD_SCIENTIST_PROMPT_TARGETS',
+                initiatorId: data.initiatorId, initiatorName: data.initiatorName,
+                p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name
               });
-              return;[cite: 1]
+              return;
             }
-            if (data.type === 'MAD_SCIENTIST_VOTE') {[cite: 1]
-              const tracker = madScientistVoteTrackerRef.current;[cite: 1]
-              if (!tracker) return;[cite: 1]
+            if (data.type === 'MAD_SCIENTIST_VOTE') {
+              const tracker = madScientistVoteTrackerRef.current;
+              if (!tracker) return;
 
-              if (data.accepted) {[cite: 1]
-                tracker.approvals[data.voterId] = true;[cite: 1]
-                if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {[cite: 1]
-                  executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);[cite: 1]
-                  publishMsg(topic, {[cite: 1]
-                    type: 'MAD_SCIENTIST_SWAP_COMPLETED',[cite: 1]
-                    initiatorId: tracker.initiatorId, p1Id: tracker.p1Id, p2Id: tracker.p2Id[cite: 1]
+              if (data.accepted) {
+                tracker.approvals[data.voterId] = true;
+                if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {
+                  executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);
+                  publishMsg(topic, {
+                    type: 'MAD_SCIENTIST_SWAP_COMPLETED',
+                    initiatorId: tracker.initiatorId, p1Id: tracker.p1Id, p2Id: tracker.p2Id
                   });
-                  madScientistVoteTrackerRef.current = null;[cite: 1]
+                  madScientistVoteTrackerRef.current = null;
                 }
               } else {
-                publishMsg(topic, {[cite: 1]
-                  type: 'MAD_SCIENTIST_REJECTED',[cite: 1]
-                  initiatorId: tracker.initiatorId, rejectorName: data.voterName,[cite: 1]
-                  p1Id: tracker.p1Id, p2Id: tracker.p2Id[cite: 1]
+                publishMsg(topic, {
+                  type: 'MAD_SCIENTIST_REJECTED',
+                  initiatorId: tracker.initiatorId, rejectorName: data.voterName,
+                  p1Id: tracker.p1Id, p2Id: tracker.p2Id
                 });
-                madScientistVoteTrackerRef.current = null;[cite: 1]
+                madScientistVoteTrackerRef.current = null;
               }
-              return;[cite: 1]
+              return;
             }
             if (data.type === 'EXECUTE_GRANT_STATUS') {
               executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
               return;
             }
-            if (data.type === 'EXECUTE_CLEAR_STATUS') {
-              executeClearStatusOnHost(data.targetId, data.clearType, data.initiatorId, data.actionName);
-              return;
-            }
           }
 
-          if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {[cite: 1]
-            const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {[cite: 1]
+          // 玩家接收處理
+          if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
+            const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             };
-            publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });[cite: 1]
-            return;[cite: 1]
+            publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
+            return;
           }
 
-          if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {[cite: 1]
-            if (data.p1Id === uid || data.p2Id === uid) {[cite: 1]
-              setMadScientistPendingData({[cite: 1]
-                initiatorId: data.initiatorId,[cite: 1]
-                initiatorName: data.initiatorName,[cite: 1]
-                otherName: data.p1Id === uid ? data.p2Name : data.p1Name[cite: 1]
+          if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {
+            if (data.p1Id === uid || data.p2Id === uid) {
+              setMadScientistPendingData({
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                otherName: data.p1Id === uid ? data.p2Name : data.p1Name
               });
             }
-            return;[cite: 1]
+            return;
           }
 
-          if (data.type === 'MAD_SCIENTIST_REJECTED') {[cite: 1]
-            if (data.initiatorId === uid) {[cite: 1]
-              setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);[cite: 1]
-              setTimeout(() => setSwapStatusMessage(''), 3500);[cite: 1]
+          if (data.type === 'MAD_SCIENTIST_REJECTED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
             }
-            if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);[cite: 1]
-            return;[cite: 1]
+            if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);
+            return;
           }
 
-          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {[cite: 1]
-            if (data.initiatorId === uid) {[cite: 1]
-              setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');[cite: 1]
-              setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
+          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');
+              setTimeout(() => setSwapStatusMessage(''), 3000);
             }
-            if (data.p1Id === uid || data.p2Id === uid) {[cite: 1]
-              setMadScientistPendingData(null);[cite: 1]
-              setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');[cite: 1]
-              setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
+            if (data.p1Id === uid || data.p2Id === uid) {
+              setMadScientistPendingData(null);
+              setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');
+              setTimeout(() => setSwapStatusMessage(''), 3000);
             }
-            return;[cite: 1]
+            return;
           }
 
           if (data.type === 'STATUS_PROMPT_TARGET') {
@@ -926,90 +840,57 @@
             return;
           }
 
-          if (data.type === 'CLEAR_STATUS_PROMPT_TARGET') {
-            if (data.targetId === uid) {
-              setClearPromptData({
-                initiatorId: data.initiatorId,
-                initiatorName: data.initiatorName,
-                initiatorRoleName: data.initiatorRoleName,
-                initiatorRoleIcon: data.initiatorRoleIcon,
-                clearType: data.clearType,
-                actionName: data.actionName,
-                confirmDesc: data.confirmDesc
-              });
-            }
-            return;
-          }
+          if (data.senderId === uid) return;
 
-          if (data.type === 'CLEAR_STATUS_PROMPT_REJECTED') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage(`❌ ${data.rejectorName} 拒絕了治療請求！`);
-              setTimeout(() => setSwapStatusMessage(''), 3500);
-            }
-            return;
-          }
-
-          if (data.type === 'STATUS_CLEARED_SUCCESS') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage(`🎉 對方已接受【${data.actionName}】，狀態已清除成功！`);
-              setTimeout(() => setSwapStatusMessage(''), 3000);
-            }
-            if (data.targetId === uid) {
-              setSwapStatusMessage(`✨ 治療完成！已成功清除相關特殊狀態！`);
-              setTimeout(() => setSwapStatusMessage(''), 3500);
-            }
-            return;
-          }
-
-          if (data.senderId === uid) return;[cite: 1]
-
+          // 廣播分發
           switch (data.type) {
-            case 'PLAYER_PING_SYNC':[cite: 1]
-              if (latestStateRef.current.isHost) {[cite: 1]
+            case 'PLAYER_PING_SYNC':
+              if (latestStateRef.current.isHost) {
                 setPlayers(prev => {
-                  const existing = prev.find(p => p.id === data.player.id);[cite: 1]
+                  const existing = prev.find(p => p.id === data.player.id);
                   const next = existing
-                    ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)[cite: 1]
-                    : [...prev, data.player];[cite: 1]
-                  debouncedBroadcastLatest(300);[cite: 1]
-                  return next;[cite: 1]
+                    ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
+                    : [...prev, data.player];
+                  debouncedBroadcastLatest(300);
+                  return next;
                 });
               }
               break;
-            case 'PLAYER_LEFT':[cite: 1]
+            case 'PLAYER_LEFT':
               setPlayers(prev => {
-                const next = prev.filter(p => p.id !== data.playerId);[cite: 1]
-                if (latestStateRef.current.isHost) debouncedBroadcastLatest(150);[cite: 1]
-                return next;[cite: 1]
+                const next = prev.filter(p => p.id !== data.playerId);
+                if (latestStateRef.current.isHost) debouncedBroadcastLatest(150);
+                return next;
               });
               break;
-            case 'SWAP_REQUEST':[cite: 1]
-              if (data.targetId === uid) {[cite: 1]
-                setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });[cite: 1]
+            case 'SWAP_REQUEST':
+              if (data.targetId === uid) {
+                setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });
               }
               break;
-            case 'SWAP_REJECTED':[cite: 1]
-              if (data.fromId === uid) {[cite: 1]
-                setSwapStatusMessage('對方拒絕了身分交換請求！');[cite: 1]
-                setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
+            case 'SWAP_REJECTED':
+              if (data.fromId === uid) {
+                setSwapStatusMessage('對方拒絕了身分交換請求！');
+                setTimeout(() => setSwapStatusMessage(''), 3000);
               }
               break;
-            case 'SWAP_SUCCESS':[cite: 1]
-              if (data.player1Id === uid || data.player2Id === uid) {[cite: 1]
-                setSwapStatusMessage('🎉 身分已成功交換！');[cite: 1]
-                setTimeout(() => setSwapStatusMessage(''), 2500);[cite: 1]
+            case 'SWAP_SUCCESS':
+              if (data.player1Id === uid || data.player2Id === uid) {
+                setSwapStatusMessage('🎉 身分已成功交換！');
+                setTimeout(() => setSwapStatusMessage(''), 2500);
               }
               break;
-            case 'EXECUTE_SWAP':[cite: 1]
+            case 'EXECUTE_SWAP':
               if (latestStateRef.current.isHost) executeSwapOnHost(data.player1Id, data.player2Id);
               break;
-            case 'FULL_SYNC':[cite: 1]
-              setPlayers(data.players);[cite: 1]
-              setRoomStatus(data.roomStatus);[cite: 1]
-              if (data.roleCounts) setRoleCounts(data.roleCounts);[cite: 1]
-              if (data.roundSettings) setRoundSettings(data.roundSettings);[cite: 1]
-              setCurrentRoundIndex(data.currentRoundIndex);[cite: 1]
+            case 'FULL_SYNC':
+              setPlayers(data.players);
+              setRoomStatus(data.roomStatus);
+              if (data.roleCounts) setRoleCounts(data.roleCounts);
+              if (data.roundSettings) setRoundSettings(data.roundSettings);
+              setCurrentRoundIndex(data.currentRoundIndex);
 
+              // 絕對時間同步校正，防止接收端秒數被拉回
               if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
                 setRoundEndTime(data.roundEndTime);
                 const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
@@ -1019,25 +900,26 @@
                 if (data.roundEndTime !== undefined) setRoundEndTime(data.roundEndTime);
               }
 
-              if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);[cite: 1]
-              if (data.gameResult !== undefined) setGameResult(data.gameResult);[cite: 1]
+              if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
+              if (data.gameResult !== undefined) setGameResult(data.gameResult);
 
               if (['round_active', 'round_paused', 'round_manual_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
-                setGameState('game');[cite: 1]
-                setIsTimerRunning(data.roomStatus === 'round_active');[cite: 1]
-              } else if (data.roomStatus === 'waiting') {[cite: 1]
-                setGameState('lobby');[cite: 1]
-                setIsTimerRunning(false);[cite: 1]
+                setGameState('game');
+                setIsTimerRunning(data.roomStatus === 'round_active');
+              } else if (data.roomStatus === 'waiting') {
+                setGameState('lobby');
+                setIsTimerRunning(false);
               }
               break;
-            case 'TIME_SYNC':[cite: 1]
-              if (!latestStateRef.current.isHost) {[cite: 1]
+            case 'TIME_SYNC':
+              if (!latestStateRef.current.isHost) {
+                // 如果同步過來的是時間戳，則以真實時間核對；若只是秒數則防跳動
                 if (data.roundEndTime && data.roundEndTime > 0) {
                   setRoundEndTime(data.roundEndTime);
                   const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
                   setTimeLeft(actualRemaining);
                 } else {
-                  setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));[cite: 1]
+                  setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
                 }
               }
               break;
@@ -1046,34 +928,36 @@
           }
         });
 
-        client.on('error', () => setConnStatus('連線重試中...'));[cite: 1]
-      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeClearStatusOnHost, resetToHome]);
+        client.on('error', () => setConnStatus('連線重試中...'));
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, resetToHome]);
 
+      // 冷啟動還原
       useEffect(() => {
-        const storedId = StorageManager.getUid();[cite: 1]
-        setMyPlayerId(storedId);[cite: 1]
+        const storedId = StorageManager.getUid();
+        setMyPlayerId(storedId);
 
-        const savedRoomId = localStorage.getItem(STORAGE_KEYS.ROOM_ID);[cite: 1]
-        const savedPlayerName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);[cite: 1]
-        const savedIsHost = localStorage.getItem(STORAGE_KEYS.IS_HOST) === 'true';[cite: 1]
+        const savedRoomId = localStorage.getItem(STORAGE_KEYS.ROOM_ID);
+        const savedPlayerName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
+        const savedIsHost = localStorage.getItem(STORAGE_KEYS.IS_HOST) === 'true';
 
-        if (savedRoomId && savedPlayerName) {[cite: 1]
-          setRoomId(savedRoomId);[cite: 1]
-          setPlayerName(savedPlayerName);[cite: 1]
-          setIsHost(savedIsHost);[cite: 1]
+        if (savedRoomId && savedPlayerName) {
+          setRoomId(savedRoomId);
+          setPlayerName(savedPlayerName);
+          setIsHost(savedIsHost);
 
-          let initialList = [];[cite: 1]
-          const savedContext = StorageManager.getContext();[cite: 1]
+          let initialList = [];
+          const savedContext = StorageManager.getContext();
 
-          if (savedContext.roomStatus) {[cite: 1]
-            setGameState(savedContext.gameState || 'lobby');[cite: 1]
+          if (savedContext.roomStatus) {
+            setGameState(savedContext.gameState || 'lobby');
 
-            if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);[cite: 1]
-            if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);[cite: 1]
-            if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);[cite: 1]
-            if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);[cite: 1]
-            if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);[cite: 1]
+            if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
+            if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
+            if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
+            if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
+            if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
 
+            // 核心修復：根據絕對目標結束時間或保存時間戳，計算離線經過秒數
             let restoredStatus = savedContext.roomStatus;
             let restoredRunning = Boolean(savedContext.isTimerRunning);
             let restoredTimeLeft = savedContext.timeLeft || 0;
@@ -1104,24 +988,25 @@
             setTimeLeft(restoredTimeLeft);
             setRoundEndTime(restoredEndTime);
 
-            if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {[cite: 1]
-              initialList = savedContext.players;[cite: 1]
-            } else if (savedContext.myProfile) {[cite: 1]
-              initialList = [savedContext.myProfile];[cite: 1]
+            if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
+              initialList = savedContext.players;
+            } else if (savedContext.myProfile) {
+              initialList = [savedContext.myProfile];
             }
           }
 
-          if (initialList.length === 0) {[cite: 1]
-            initialList = [{[cite: 1]
-              id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,[cite: 1]
+          if (initialList.length === 0) {
+            initialList = [{
+              id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             }];
           }
-          setPlayers(initialList);[cite: 1]
-          setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);[cite: 1]
+          setPlayers(initialList);
+          setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);
         }
-      }, [setupConnection]);[cite: 1]
+      }, [setupConnection]);
 
+      // 計時器排程（優先採用目標時間戳校對，防止休眠或背景凍結導致秒數偏差）
       useEffect(() => {
         if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
           timerIntervalRef.current = setInterval(() => {
@@ -1129,6 +1014,7 @@
               const currentEnd = latestStateRef.current.roundEndTime;
               let nextSec = prev - 1;
 
+              // 若有目標時間戳，直接依據實際時間差進行校準
               if (currentEnd && currentEnd > 0) {
                 nextSec = Math.max(0, Math.floor((currentEnd - Date.now()) / 1000));
               }
@@ -1158,173 +1044,175 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
 
+      // 大廳操作流程
       const handleCreateRoom = () => {
-        const trimmedName = playerName.trim() || '房長';[cite: 1]
-        const code = Math.floor(100000 + Math.random() * 900000).toString();[cite: 1]
+        const trimmedName = playerName.trim() || '房長';
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
           gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
         };
 
-        StorageManager.saveSession(code, trimmedName, true);[cite: 1]
-        setRoomId(code);[cite: 1]
-        setIsHost(true);[cite: 1]
-        setPlayers([me]);[cite: 1]
-        setBuriedCard(null);[cite: 1]
-        setGameResult(null);[cite: 1]
-        setRoomStatus('waiting');[cite: 1]
-        setGameState('lobby');[cite: 1]
+        StorageManager.saveSession(code, trimmedName, true);
+        setRoomId(code);
+        setIsHost(true);
+        setPlayers([me]);
+        setBuriedCard(null);
+        setGameResult(null);
+        setRoomStatus('waiting');
+        setGameState('lobby');
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
       const executeJoinRoom = (targetCode) => {
-        const trimmedName = playerName.trim() || '特工';[cite: 1]
-        const code = (targetCode || joinRoomInput).trim();[cite: 1]
-        if (code.length !== 6) {[cite: 1]
-          alert('請輸入 6 碼數字房號！');[cite: 1]
-          return;[cite: 1]
+        const trimmedName = playerName.trim() || '特工';
+        const code = (targetCode || joinRoomInput).trim();
+        if (code.length !== 6) {
+          alert('請輸入 6 碼數字房號！');
+          return;
         }
 
-        setIsVerifying(true);[cite: 1]
-        setConnStatus('連線伺服器中...');[cite: 1]
+        setIsVerifying(true);
+        setConnStatus('連線伺服器中...');
 
-        const topic = `trb_game_sync_room_${code}`;[cite: 1]
-        const tempClient = mqtt.connect(BROKER_URL, {[cite: 1]
-          clientId: `trb_v_${myPlayerId}_${Math.random().toString(16).slice(2, 8)}`,[cite: 1]
-          username: MQTT_USER,[cite: 1]
-          password: MQTT_PASS,[cite: 1]
-          clean: true,[cite: 1]
-          connectTimeout: 5000[cite: 1]
+        const topic = `trb_game_sync_room_${code}`;
+        const tempClient = mqtt.connect(BROKER_URL, {
+          clientId: `trb_v_${myPlayerId}_${Math.random().toString(16).slice(2, 8)}`,
+          username: MQTT_USER,
+          password: MQTT_PASS,
+          clean: true,
+          connectTimeout: 5000
         });
 
-        let verified = false;[cite: 1]
-        const timeoutTimer = setTimeout(() => {[cite: 1]
-          if (!verified) {[cite: 1]
-            try { tempClient.end(true); } catch (e) {}[cite: 1]
-            setIsVerifying(false);[cite: 1]
-            setConnStatus('未連線');[cite: 1]
-            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);[cite: 1]
+        let verified = false;
+        const timeoutTimer = setTimeout(() => {
+          if (!verified) {
+            try { tempClient.end(true); } catch (e) {}
+            setIsVerifying(false);
+            setConnStatus('未連線');
+            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);
           }
         }, 6000);
 
-        tempClient.on('connect', () => {[cite: 1]
-          setConnStatus('🟢 已連線');[cite: 1]
-          tempClient.subscribe(topic, { qos: 1 }, (err) => {[cite: 1]
-            if (!err) {[cite: 1]
-              tempClient.publish(topic, JSON.stringify({[cite: 1]
-                type: 'CHECK_ROOM_REQ', senderId: myPlayerId, playerName: trimmedName[cite: 1]
-              }), { qos: 1 });[cite: 1]
+        tempClient.on('connect', () => {
+          setConnStatus('🟢 已連線');
+          tempClient.subscribe(topic, { qos: 1 }, (err) => {
+            if (!err) {
+              tempClient.publish(topic, JSON.stringify({
+                type: 'CHECK_ROOM_REQ', senderId: myPlayerId, playerName: trimmedName
+              }), { qos: 1 });
             }
           });
         });
 
-        tempClient.on('message', (t, msg) => {[cite: 1]
-          const data = safeJsonParse(msg.toString());[cite: 1]
-          if (!data) return;[cite: 1]
+        tempClient.on('message', (t, msg) => {
+          const data = safeJsonParse(msg.toString());
+          if (!data) return;
 
-          if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {[cite: 1]
-            verified = true;[cite: 1]
-            clearTimeout(timeoutTimer);[cite: 1]
-            try { tempClient.end(true); } catch (e) {}[cite: 1]
-            setIsVerifying(false);[cite: 1]
-            setConnStatus('未連線');[cite: 1]
-            alert(data.reason === 'NAME_DUPLICATED'[cite: 1]
-              ? `⚠ 加入失敗：房間「${code}」內已存在名為「${trimmedName}」的玩家！\n請更換一個暱稱後再試。`[cite: 1]
-              : '無法加入房間，已被房長拒絕！');[cite: 1]
-            return;[cite: 1]
+          if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
+            verified = true;
+            clearTimeout(timeoutTimer);
+            try { tempClient.end(true); } catch (e) {}
+            setIsVerifying(false);
+            setConnStatus('未連線');
+            alert(data.reason === 'NAME_DUPLICATED'
+              ? `⚠ 加入失敗：房間「${code}」內已存在名為「${trimmedName}」的玩家！\n請更換一個暱稱後再試。`
+              : '無法加入房間，已被房長拒絕！');
+            return;
           }
 
-          if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {[cite: 1]
-            verified = true;[cite: 1]
-            clearTimeout(timeoutTimer);[cite: 1]
-            try { tempClient.end(true); } catch (e) {}[cite: 1]
-            setIsVerifying(false);[cite: 1]
-            setShowRoomsModal(false);[cite: 1]
+          if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {
+            verified = true;
+            clearTimeout(timeoutTimer);
+            try { tempClient.end(true); } catch (e) {}
+            setIsVerifying(false);
+            setShowRoomsModal(false);
 
-            StorageManager.saveSession(code, trimmedName, false);[cite: 1]
-            setRoomId(code);[cite: 1]
-            setIsHost(false);[cite: 1]
-            setGameState('lobby');[cite: 1]
+            StorageManager.saveSession(code, trimmedName, false);
+            setRoomId(code);
+            setIsHost(false);
+            setGameState('lobby');
 
-            const selfPlayer = {[cite: 1]
-              id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,[cite: 1]
+            const selfPlayer = {
+              id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             };
-            setPlayers([selfPlayer]);[cite: 1]
-            setupConnection(code, false, trimmedName, myPlayerId);[cite: 1]
+            setPlayers([selfPlayer]);
+            setupConnection(code, false, trimmedName, myPlayerId);
           }
         });
 
-        tempClient.on('error', () => {[cite: 1]
-          clearTimeout(timeoutTimer);[cite: 1]
-          setIsVerifying(false);[cite: 1]
-          setConnStatus('未連線');[cite: 1]
-          try { tempClient.end(true); } catch (e) {}[cite: 1]
-          alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');[cite: 1]
+        tempClient.on('error', () => {
+          clearTimeout(timeoutTimer);
+          setIsVerifying(false);
+          setConnStatus('未連線');
+          try { tempClient.end(true); } catch (e) {}
+          alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');
         });
       };
 
-      const handleLeaveRoom = () => {[cite: 1]
-        const confirmMsg = isHost ? '您是房長，離開後將會解散房間，確定要離開嗎？' : '確定要離開當前房間嗎？';[cite: 1]
-        if (!window.confirm(confirmMsg)) return;[cite: 1]
+      const handleLeaveRoom = () => {
+        const confirmMsg = isHost ? '您是房長，離開後將會解散房間，確定要離開嗎？' : '確定要離開當前房間嗎？';
+        if (!window.confirm(confirmMsg)) return;
 
-        if (clientRef.current && roomId) {[cite: 1]
-          publishMsg(`trb_game_sync_room_${roomId}`, {[cite: 1]
-            type: isHost ? 'ROOM_DISBANDED' : 'PLAYER_LEFT',[cite: 1]
-            playerId: myPlayerId, senderId: myPlayerId[cite: 1]
+        if (clientRef.current && roomId) {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: isHost ? 'ROOM_DISBANDED' : 'PLAYER_LEFT',
+            playerId: myPlayerId, senderId: myPlayerId
           });
-          setTimeout(resetToHome, 300);[cite: 1]
+          setTimeout(resetToHome, 300);
         } else {
-          resetToHome();[cite: 1]
+          resetToHome();
         }
       };
 
-      const handleOpenRoomsModal = () => {[cite: 1]
-        setShowRoomsModal(true);[cite: 1]
-        setOnlineRooms([]);[cite: 1]
-        setIsSearchingRooms(true);[cite: 1]
-        setConnStatus('連線伺服器中...');[cite: 1]
+      const handleOpenRoomsModal = () => {
+        setShowRoomsModal(true);
+        setOnlineRooms([]);
+        setIsSearchingRooms(true);
+        setConnStatus('連線伺服器中...');
 
-        if (discoveryClientRef.current) {[cite: 1]
-          try { discoveryClientRef.current.end(true); } catch (e) {}[cite: 1]
+        if (discoveryClientRef.current) {
+          try { discoveryClientRef.current.end(true); } catch (e) {}
         }
 
-        const discClient = mqtt.connect(BROKER_URL, {[cite: 1]
-          clientId: `trb_disc_${myPlayerId}_${Math.random().toString(16).slice(2, 6)}`,[cite: 1]
-          username: MQTT_USER, password: MQTT_PASS, clean: true, connectTimeout: 5000[cite: 1]
+        const discClient = mqtt.connect(BROKER_URL, {
+          clientId: `trb_disc_${myPlayerId}_${Math.random().toString(16).slice(2, 6)}`,
+          username: MQTT_USER, password: MQTT_PASS, clean: true, connectTimeout: 5000
         });
-        discoveryClientRef.current = discClient;[cite: 1]
+        discoveryClientRef.current = discClient;
 
-        discClient.on('connect', () => {[cite: 1]
-          setConnStatus('🟢 已連線');[cite: 1]
-          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {[cite: 1]
-            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({ type: 'DISCOVERY_QUERY_ROOMS', senderId: myPlayerId }), { qos: 0 });[cite: 1]
+        discClient.on('connect', () => {
+          setConnStatus('🟢 已連線');
+          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {
+            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({ type: 'DISCOVERY_QUERY_ROOMS', senderId: myPlayerId }), { qos: 0 });
           });
         });
 
-        discClient.on('message', (topic, message) => {[cite: 1]
-          const data = safeJsonParse(message.toString());[cite: 1]
-          if (data?.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {[cite: 1]
+        discClient.on('message', (topic, message) => {
+          const data = safeJsonParse(message.toString());
+          if (data?.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {
             setOnlineRooms(prev => [
-              ...prev.filter(r => r.roomId !== data.roomId),[cite: 1]
-              { roomId: data.roomId, hostName: data.hostName, playerCount: data.playerCount, roomStatus: data.roomStatus, receivedAt: Date.now() }[cite: 1]
+              ...prev.filter(r => r.roomId !== data.roomId),
+              { roomId: data.roomId, hostName: data.hostName, playerCount: data.playerCount, roomStatus: data.roomStatus, receivedAt: Date.now() }
             ]);
           }
         });
 
-        discClient.on('error', () => setConnStatus('連線重試中...'));[cite: 1]
-        setTimeout(() => setIsSearchingRooms(false), 1500);[cite: 1]
+        discClient.on('error', () => setConnStatus('連線重試中...'));
+        setTimeout(() => setIsSearchingRooms(false), 1500);
       };
 
-      const handleCloseRoomsModal = () => {[cite: 1]
-        setShowRoomsModal(false);[cite: 1]
-        if (discoveryClientRef.current) {[cite: 1]
-          try { discoveryClientRef.current.end(true); } catch (e) {}[cite: 1]
-          discoveryClientRef.current = null;[cite: 1]
+      const handleCloseRoomsModal = () => {
+        setShowRoomsModal(false);
+        if (discoveryClientRef.current) {
+          try { discoveryClientRef.current.end(true); } catch (e) {}
+          discoveryClientRef.current = null;
         }
-        if (gameState === 'home') setConnStatus('未連線');[cite: 1]
+        if (gameState === 'home') setConnStatus('未連線');
       };
 
+      // 遊戲進行流程
       const handleStartAssignRooms = () => {
         if (players.length < 2) return alert('至少需要 2 位玩家加入才能開始！');
         if (totalCardsInDeck < players.length) return alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
@@ -1357,16 +1245,7 @@
 
         const assignedWithRoles = players.map((p, idx) => {
           const r = deck[idx];
-          const defaultStatuses = ROLE_DEFAULT_STATUSES[r.id] || [];
-
-          return {
-            ...p,
-            team: r.team,
-            role: r,
-            hasBeenLeprechaun: r.id === 'leprechaun',
-            hasUsedMadScientistAbility: false,
-            statuses: [...defaultStatuses]
-          };
+          return { ...p, team: r.team, role: r, hasBeenLeprechaun: r.id === 'leprechaun', hasUsedMadScientistAbility: false, statuses: [] };
         });
 
         const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;
@@ -1388,9 +1267,11 @@
         });
       };
 
+      // 房長控制暫停與恢復倒數
       const handleTogglePauseTimer = () => {
         if (!isHost) return;
         if (isTimerRunning && roomStatus === 'round_active') {
+          // 暫停：計算當前剩餘秒數，凍結結束時間戳
           const currentEnd = roundEndTime;
           const remaining = (currentEnd > 0)
             ? Math.max(0, Math.floor((currentEnd - Date.now()) / 1000))
@@ -1402,6 +1283,7 @@
           setRoomStatus('round_manual_paused');
           broadcastLatest({ roomStatus: 'round_manual_paused', timeLeft: remaining, roundEndTime: 0 });
         } else if (!isTimerRunning && roomStatus === 'round_manual_paused') {
+          // 恢復：以現存剩餘秒數重新計算目標結束時間戳
           const newEnd = Date.now() + timeLeft * 1000;
           setRoundEndTime(newEnd);
           setIsTimerRunning(true);
@@ -1436,6 +1318,7 @@
         }
       };
 
+      // 勝負判定推導
       const resolveGameResult = (ans) => {
         const { sameRoom, engineerShared, doctorShared } = ans;
         if (sameRoom) {
@@ -1476,6 +1359,7 @@
         broadcastLatest({ gameResult: result });
       };
 
+      // 互動事件處理
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -1630,82 +1514,31 @@
         setStatusPromptData(null);
       };
 
-      const handleOpenClearStatusModal = (config) => {
-        setActiveClearConfig(config);
-        setShowClearStatusModal(true);
-      };
-
-      const handleSendClearStatusRequest = (targetPlayer) => {
-        setShowClearStatusModal(false);
-        if (!activeClearConfig || targetPlayer.id === myPlayerId) return;
-
-        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送【${activeClearConfig.btnLabel}】請求，等待對方確認中...`);
-        publishMsg(`trb_game_sync_room_${roomId}`, {
-          type: 'CLEAR_STATUS_PROMPT_TARGET',
-          senderId: myPlayerId,
-          initiatorId: myPlayerId,
-          initiatorName: myInfo.name,
-          initiatorRoleName: myInfo.role?.name || '未知角色',
-          initiatorRoleIcon: myInfo.role?.icon || '⭐',
-          targetId: targetPlayer.id,
-          clearType: activeClearConfig.type,
-          actionName: activeClearConfig.btnLabel,
-          confirmDesc: activeClearConfig.confirmDesc
-        });
-      };
-
-      const handleAcceptClearStatus = () => {
-        if (!clearPromptData) return;
-        const { initiatorId, clearType, actionName } = clearPromptData;
-        const targetId = myPlayerId;
-        setClearPromptData(null);
-
-        if (latestStateRef.current.isHost) {
-          executeClearStatusOnHost(targetId, clearType, initiatorId, actionName);
-        } else {
-          publishMsg(`trb_game_sync_room_${roomId}`, {
-            type: 'EXECUTE_CLEAR_STATUS',
-            senderId: myPlayerId,
-            initiatorId,
-            targetId,
-            clearType,
-            actionName
-          });
-        }
-      };
-
-      const handleRejectClearStatus = () => {
-        if (!clearPromptData) return;
-        publishMsg(`trb_game_sync_room_${roomId}`, {
-          type: 'CLEAR_STATUS_PROMPT_REJECTED',
-          senderId: myPlayerId,
-          initiatorId: clearPromptData.initiatorId,
-          rejectorName: myInfo.name
-        });
-        setClearPromptData(null);
-      };
-
       const handleToggleRole = (roleId) => {
-        if (!isHost) return;[cite: 1]
+        if (!isHost) return;
         setTempRoleCounts(prev => {
-          const isSelected = (prev[roleId] || 0) > 0;[cite: 1]
-          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };[cite: 1]
+          const isSelected = (prev[roleId] || 0) > 0;
+          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };
 
-          if (!isSelected) {[cite: 1]
-            const currentRole = rolesCatalog.find(r => r.id === roleId);[cite: 1]
-            if (currentRole?.pairs) {[cite: 1]
-              const pairIds = Array.isArray(currentRole.pairs)[cite: 1]
-                ? currentRole.pairs[cite: 1]
-                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);[cite: 1]
-              pairIds.forEach(pId => { next[pId] = 1; });[cite: 1]
+          if (!isSelected) {
+            const currentRole = rolesCatalog.find(r => r.id === roleId);
+            if (currentRole?.pairs) {
+              const pairIds = Array.isArray(currentRole.pairs)
+                ? currentRole.pairs
+                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);
+              pairIds.forEach(pId => { next[pId] = 1; });
             }
           }
-          return next;[cite: 1]
+          return next;
         });
       };
 
+      // ==========================================
+      // 5. 畫面渲染樹 (JSX Render Tree)
+      // ==========================================
       return (
         <div className="max-w-4xl mx-auto pb-12">
+          {/* 頂部導覽列 */}
           <Header
             connStatus={connStatus}
             roomId={roomId}
@@ -1714,6 +1547,7 @@
             onLeave={handleLeaveRoom}
           />
 
+          {/* 首頁：建立 / 加入房間 */}
           {gameState === 'home' && (
             <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6 space-y-4">
               <div>
@@ -1770,6 +1604,7 @@
             </div>
           )}
 
+          {/* 彈窗：查看線上房間列表 */}
           {showRoomsModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
               <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[85vh]">
@@ -1847,6 +1682,7 @@
             </div>
           )}
 
+          {/* 等待大廳 */}
           {gameState === 'lobby' && (
             <div className="space-y-6">
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
@@ -1899,9 +1735,10 @@
                 </div>
               </div>
 
+              {/* 回合時間規劃 */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row gap-3 sm:gap-4 text-xs text-zinc-400 justify-between items-start sm:items-center">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱ 回合時間:</span>
+                  <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">⏱️️ 回合時間:</span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {roundSettings.map((min, idx) => (
                       <span key={idx} className="bg-zinc-800 border border-zinc-700 px-2 py-1 rounded-md text-zinc-200 font-medium whitespace-nowrap">
@@ -1913,6 +1750,7 @@
                 <div className="text-[11px] text-zinc-500 shrink-0">第一階段先分房就位，確認後才發放身分與計時。</div>
               </div>
 
+              {/* 線上玩家名單 */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
                 <h3 className="text-sm font-semibold text-zinc-400 mb-3">線上玩家列表 ({players.length})</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
@@ -1936,12 +1774,15 @@
                 </div>
               </div>
 
+              {/* 本局使用角色池一覽 */}
               <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
 
+          {/* 遊戲進行階段 */}
           {gameState === 'game' && (
             <div className="space-y-6">
+              {/* [階段一] 分房移動就位 */}
               {roomStatus === 'room_assigned' && (
                 <div className="space-y-5">
                   <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-blue-900/40 border border-indigo-500/50 p-5 rounded-2xl text-center shadow-xl space-y-3">
@@ -2008,6 +1849,7 @@
                 </div>
               )}
 
+              {/* [階段二] 進行中與暫停狀態 */}
               {roomStatus !== 'room_assigned' && roomStatus !== 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-center gap-4 ${
@@ -2023,6 +1865,7 @@
                         <h2 className="text-3xl font-black font-mono tracking-tight text-white">{formatTime(timeLeft)}</h2>
                       </div>
 
+                      {/* 情況 1：只有在輪次結束歸零時，才顯示換人質交換提示 */}
                       {roomStatus === 'round_paused' && (
                         <div className="flex-1 bg-amber-500/20 border border-amber-500/80 rounded-xl p-2.5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
                           <div className="text-xs text-amber-300 font-bold">⚠️ 本輪時間到！請選出人質交換</div>
@@ -2036,6 +1879,7 @@
                         </div>
                       )}
 
+                      {/* 情況 2：房長手動暫停時，僅顯示暫停提示 */}
                       {roomStatus === 'round_manual_paused' && (
                         <div className="flex-1 bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 text-center sm:text-left">
                           <div className="text-xs text-amber-400 font-bold flex items-center justify-center sm:justify-start gap-1">
@@ -2046,6 +1890,7 @@
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+                      {/* 房長專屬：手動暫停 / 繼續倒數按鈕 */}
                       {isHost && roomStatus !== 'round_paused' && (
                         <button
                           onClick={handleTogglePauseTimer}
@@ -2086,6 +1931,7 @@
                 </div>
               )}
 
+              {/* [階段三] 遊戲結束面板 */}
               {roomStatus === 'ended' && (
                 <div className="space-y-6">
                   <div className={`p-6 rounded-2xl border-2 text-center shadow-2xl space-y-4 ${
@@ -2127,6 +1973,7 @@
                     )}
                   </div>
 
+                  {/* 全場玩家身分與狀態揭曉 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
                       <div className="flex items-center gap-2">
@@ -2198,6 +2045,7 @@
                     </div>
                   </div>
 
+                  {/* 埋葬卡揭曉 */}
                   {buriedCard && (
                     <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/60 border-2 border-amber-500 p-4 rounded-2xl text-center shadow-2xl space-y-2">
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
@@ -2216,6 +2064,7 @@
                 </div>
               )}
 
+              {/* 初始房間與狀態提示 */}
               <div className="bg-indigo-950/40 border border-indigo-500/40 p-3 rounded-xl flex items-center justify-between">
                 <span className="text-xs text-indigo-300">你的初始房間分配：</span>
                 <span className="text-sm font-black text-indigo-200 bg-indigo-900/60 px-3 py-1 rounded-lg">
@@ -2233,6 +2082,7 @@
                 </div>
               )}
 
+              {/* 核心身分卡 */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -2278,6 +2128,7 @@
                         </p>
                       </div>
 
+                      {/* 玩家個人目前擁有的特殊狀態 */}
                       {myInfo.statuses && myInfo.statuses.length > 0 && (
                         <div className="bg-zinc-950/80 border border-purple-500/40 rounded-xl p-2.5 my-2 space-y-1">
                           <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
@@ -2294,6 +2145,7 @@
                         </div>
                       )}
 
+                      {/* 角色機制插槽 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
@@ -2308,8 +2160,7 @@
                             setShowMadScientistModal(true);
                           },
                           triggerMadScientistSwap: handleTriggerMadScientistSwap,
-                          openGrantStatusModal: handleOpenGrantStatusModal,
-                          openClearStatusModal: handleOpenClearStatusModal
+                          openGrantStatusModal: handleOpenGrantStatusModal
                         });
 
                         if (!action) return null;
@@ -2345,6 +2196,7 @@
                 </div>
               </div>
 
+              {/* 進行中角色池一覽 */}
               <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
@@ -2434,93 +2286,6 @@
                     className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
                   >
                     確認接受
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 彈窗：狀態清除目標選擇 (醫療兵 / 心理醫生) */}
-          {showClearStatusModal && activeClearConfig && (
-            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-              <div className="bg-zinc-900 border-2 border-cyan-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
-                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
-                  <h3 className="text-base font-bold text-cyan-300 flex items-center gap-1.5">
-                    <span>{activeClearConfig.title}</span>
-                  </h3>
-                  <button onClick={() => setShowClearStatusModal(false)} className="text-zinc-400 hover:text-white">✕</button>
-                </div>
-
-                <p className="text-xs text-zinc-300">
-                  {activeClearConfig.promptText}
-                </p>
-
-                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                  {players.filter(p => p.id !== myPlayerId).map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSendClearStatusRequest(p)}
-                      className="w-full text-left p-3 rounded-xl border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 hover:border-cyan-400 transition flex items-center justify-between cursor-pointer active:scale-95"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-sm text-zinc-100">{p.name}</span>
-                        {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
-                      </div>
-                      <span className="text-xs text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-md border border-cyan-800/60">
-                        {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowClearStatusModal(false)}
-                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 text-xs transition active:scale-95"
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 彈窗：被治療者的確認請求 (醫療兵 / 心理醫生) */}
-          {clearPromptData && (
-            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
-              <div className="bg-zinc-900 border-2 border-cyan-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
-                <div className="text-4xl animate-bounce">💊</div>
-                <h3 className="text-lg font-black text-cyan-300">狀態解除治療請求！</h3>
-
-                <div className="bg-zinc-950/70 border border-zinc-700/80 rounded-xl p-3 text-left space-y-1.5">
-                  <div className="text-[11px] text-zinc-400 font-medium">來自玩家發起：</div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-white">{clearPromptData.initiatorName}</span>
-                    <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
-                      <span>{clearPromptData.initiatorRoleIcon}</span>
-                      <span>{clearPromptData.initiatorRoleName}</span>
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-zinc-300 leading-relaxed">
-                  {clearPromptData.confirmDesc}
-                </p>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleRejectClearStatus}
-                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
-                  >
-                    拒絕
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAcceptClearStatus}
-                    className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 hover:opacity-90 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
-                  >
-                    確認接受治療
                   </button>
                 </div>
               </div>
@@ -2661,7 +2426,7 @@
                 {(victoryStep === 2 || victoryStep === 5) && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙ 工程師<br />進行『卡片分享』嗎？
+                      💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
                     </p>
                     <div className="flex gap-3">
                       <button
@@ -2775,4 +2540,269 @@
                             </span>
                           ) : (
                             <span className="text-xs text-indigo-400 bg-indigo-950/60 px-2 py-1 rounded-md border border-indigo-900/60">
-                              {
+                              {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：被動身分交換確認請求 */}
+          {swapRequestData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🔄</div>
+                <h3 className="text-lg font-black text-white">身分交換請求！</h3>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  玩家 <strong className="text-amber-400 font-bold">{swapRequestData.fromName}</strong> 
+                  （持有身分：<strong className="text-emerald-400">{swapRequestData.fromRoleName}</strong>）想要與你交換身分卡。
+                </p>
+                <p className="text-xs text-zinc-400">若同意，你的身分將立刻轉變為對方的身分！</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleRejectSwap}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    拒絕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAcceptSwap}
+                    className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    確認交換
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：輪次與時間長度設定 */}
+          {showRoundConfigModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
+              <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                  <h3 className="text-base font-bold text-white">⚙️ 調整回合數與每輪時間</h3>
+                  <button onClick={() => setShowRoundConfigModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 mb-2">選擇總輪數 (3 輪 / 5 輪):</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[3, 5].map(cnt => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => {
+                          let newSettings = [...tempRoundSettings];
+                          if (cnt > newSettings.length) {
+                            while (newSettings.length < cnt) newSettings.push(1);
+                          } else {
+                            newSettings = newSettings.slice(0, cnt);
+                          }
+                          setTempRoundSettings(newSettings);
+                        }}
+                        className={`py-2.5 rounded-xl text-sm font-bold border transition ${
+                          tempRoundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                        }`}
+                      >
+                        {cnt} 輪
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-zinc-400">設定各輪分鐘數 (分):</label>
+                  {tempRoundSettings.map((min, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-zinc-800/80 px-3 py-2 rounded-xl border border-zinc-700">
+                      <span className="text-xs text-zinc-300 font-semibold">第 {idx + 1} 輪:</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="15"
+                          value={min}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            const updated = [...tempRoundSettings];
+                            updated[idx] = val;
+                            setTempRoundSettings(updated);
+                          }}
+                          className="w-16 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-center text-sm font-bold text-amber-400"
+                        />
+                        <span className="text-xs text-zinc-400">分鐘</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoundSettings(tempRoundSettings);
+                    setShowRoundConfigModal(false);
+                    broadcastLatest({ roundSettings: tempRoundSettings });
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg active:scale-95"
+                >
+                  確認保存設定
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：角色池配置 */}
+          {showDeckModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3">
+              <div className="bg-zinc-900 border border-zinc-700 w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl">
+                <div className="p-4 border-b border-zinc-800 flex flex-wrap justify-between items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <span>🃏 角色池配置</span>
+                      <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded">
+                        目前: {tempTotalCardsInDeck} 張 / 玩家: {players.length} 人
+                      </span>
+                      {tempTotalCardsInDeck === players.length + 1 && (
+                        <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">
+                          ⚰ 將多出 1 張埋葬卡
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isHost && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cleared = {};
+                          rolesCatalog.forEach(role => { cleared[role.id] = 0; });
+                          setTempRoleCounts(cleared);
+                        }}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1.5 rounded-lg transition active:scale-95"
+                      >
+                        清空選取
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setDeckViewMode(prev => prev === 'detailed' ? 'iconOnly' : 'detailed')}
+                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
+                    >
+                      {deckViewMode === 'detailed' ? '👁 僅圖示' : '📄 詳細資料'}
+                    </button>
+
+                    <button onClick={() => setShowDeckModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center hover:text-white">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 overflow-y-auto space-y-3 flex-1">
+                  <div className={`grid gap-2.5 ${deckViewMode === 'iconOnly' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+                    {rolesCatalog.map(role => {
+                      const isSelected = (tempRoleCounts[role.id] || 0) > 0;
+                      const meta = getTeamMeta(role.team);
+
+                      if (deckViewMode === 'iconOnly') {
+                        return (
+                          <div 
+                            key={role.id} 
+                            onClick={() => handleToggleRole(role.id)}
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition cursor-pointer select-none ${
+                              isSelected 
+                                ? `${meta.listBg} border-indigo-400 ring-2 ring-indigo-500/40 shadow-md` 
+                                : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 opacity-60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="text-xl shrink-0">{role.icon}</span>
+                              <div className="truncate">
+                                <div className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
+                                  {role.name}
+                                </div>
+                                <span className={`text-[9px] px-1 py-0.2 rounded font-semibold border inline-block mt-0.5 ${meta.badge}`}>
+                                  {meta.label.split(' ')[0]}
+                                </span>
+                              </div>
+                            </div>
+                            <span className={`text-xs shrink-0 font-bold ${isSelected ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                              {isSelected ? '✔' : '＋'}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div 
+                          key={role.id} 
+                          onClick={() => handleToggleRole(role.id)}
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between gap-3 transition cursor-pointer select-none ${
+                            isSelected 
+                              ? `${meta.listBg} border-indigo-400 ring-2 ring-indigo-500/40 shadow-lg scale-[1.01]` 
+                              : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl shrink-0">{role.icon}</span>
+                              <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-400'}`}>{role.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>{meta.label}</span>
+                            </div>
+                            <span className={`text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition ${
+                              isSelected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
+                            }`}>
+                              {isSelected ? '✔ 已啟用' : '未加入'}
+                            </span>
+                          </div>
+
+                          <p className={`text-xs leading-relaxed p-2.5 rounded-lg border break-words ${
+                            isSelected ? 'text-zinc-200 bg-zinc-950/60 border-zinc-800/80' : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
+                          }`}>
+                            {role.desc}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-950/40">
+                  <span className="text-xs text-zinc-400">
+                    {tempTotalCardsInDeck === players.length + 1 
+                      ? '💡 角色數比人數多 1 張，本局將產生 1 張未分配的【埋葬卡】' 
+                      : '請確認卡牌總數大於或等於玩家人數'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoleCounts(tempRoleCounts);
+                      setShowDeckModal(false);
+                      broadcastLatest({ roleCounts: tempRoleCounts });
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg active:scale-95"
+                  >
+                    確定保存設定
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
