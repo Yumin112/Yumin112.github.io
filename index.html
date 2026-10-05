@@ -202,7 +202,7 @@
     // 3. 角色專屬機制外掛 (Role Mechanics)
     // ==========================================
     const createMadScientistAction = (badgeText) => (ctx) => {
-      if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
+      if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;[cite: 1]
 
       return {
         label: '🧪 操控角色對調',
@@ -249,8 +249,8 @@
       },
       drunk: {
         getActionButton: (ctx) => {
-          const isLastRound = ctx.currentRoundIndex === ctx.roundSettings.length - 1;
-          if (!ctx.buriedCard || !isLastRound) return null;
+          const isLastRound = ctx.currentRoundIndex === ctx.roundSettings.length - 1;[cite: 1]
+          if (!ctx.buriedCard || !isLastRound) return null;[cite: 1]
 
           return {
             label: '🍺 與埋葬卡互換身分',
@@ -260,20 +260,18 @@
           };
         }
       },
-      mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },
-      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }
+      mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },[cite: 1]
+      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }[cite: 1]
     };
 
     const RoleMechanics = {
       getRoleAction(myRole, context) {
-        if (!myRole) return null;
+        if (!myRole) return null;[cite: 1]
 
-        // 優先檢查角色專屬外掛
         if (ROLE_PLUGINS[myRole.id]) {
           return ROLE_PLUGINS[myRole.id].getActionButton(context);
         }
 
-        // 檢查是否具有狀態賦予技能
         const statusConfig = ROLE_STATUS_ACTIONS[myRole.id];
         if (statusConfig) {
           return {
@@ -286,68 +284,68 @@
           };
         }
 
-        return null;
+        return null;[cite: 1]
       },
       applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
-        const p1 = playersList.find(p => p.id === p1Id);
-        const p2 = playersList.find(p => p.id === p2Id);
-        if (!p1 || !p2) return playersList;
+        const p1 = playersList.find(p => p.id === p1Id);[cite: 1]
+        const p2 = playersList.find(p => p.id === p2Id);[cite: 1]
+        if (!p1 || !p2) return playersList;[cite: 1]
 
-        const role1 = p1.role;
-        const team1 = p1.team;
-        const role2 = p2.role;
-        const team2 = p2.team;
+        const role1 = p1.role;[cite: 1]
+        const team1 = p1.team;[cite: 1]
+        const role2 = p2.role;[cite: 1]
+        const team2 = p2.team;[cite: 1]
 
         return playersList.map(p => {
-          let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
-          if (initiatorId && p.id === initiatorId) {
-            hasUsedMadScientistAbility = true;
+          let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;[cite: 1]
+          if (initiatorId && p.id === initiatorId) {[cite: 1]
+            hasUsedMadScientistAbility = true;[cite: 1]
           }
 
-          if (p.id === p1Id) {
+          if (p.id === p1Id) {[cite: 1]
             return {
               ...p,
               role: role2,
               team: team2,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),[cite: 1]
               hasUsedMadScientistAbility
             };
           }
-          if (p.id === p2Id) {
+          if (p.id === p2Id) {[cite: 1]
             return {
               ...p,
               role: role1,
               team: team1,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),[cite: 1]
               hasUsedMadScientistAbility
             };
           }
-          return { ...p, hasUsedMadScientistAbility };
+          return { ...p, hasUsedMadScientistAbility };[cite: 1]
         });
       },
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
-        if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };
+        if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };[cite: 1]
 
-        const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);
-        if (!drunkPlayer) return { nextPlayers: playersList, newBuried: curBuried };
+        const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);[cite: 1]
+        if (!drunkPlayer) return { nextPlayers: playersList, newBuried: curBuried };[cite: 1]
 
-        const oldRole = drunkPlayer.role;
-        const newRole = curBuried;
-        const newBuried = oldRole;
+        const oldRole = drunkPlayer.role;[cite: 1]
+        const newRole = curBuried;[cite: 1]
+        const newBuried = oldRole;[cite: 1]
 
         const nextPlayers = playersList.map(p => {
-          if (p.id === drunkPlayerId) {
+          if (p.id === drunkPlayerId) {[cite: 1]
             return {
               ...p,
               role: newRole,
-              team: newRole.team,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')
+              team: newRole.team,[cite: 1]
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')[cite: 1]
             };
           }
-          return p;
+          return p;[cite: 1]
         });
 
-        return { nextPlayers, newBuried };
+        return { nextPlayers, newBuried };[cite: 1]
       },
       applyGrantStatus(playersList, targetPlayerId, statusObj) {
         return playersList.map(p => {
@@ -363,81 +361,81 @@
         });
       }
     };
-    window.RoleMechanics = RoleMechanics;
+    window.RoleMechanics = RoleMechanics;[cite: 1]
 
     // ==========================================
     // 4. 主應用程式組件 (Main App Component)
     // ==========================================
     function App() {
-      const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
+      const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];[cite: 1]
 
       // 房間與網路狀態
-      const [gameState, setGameState] = useState('home'); 
-      const [roomId, setRoomId] = useState('');
-      const [joinRoomInput, setJoinRoomInput] = useState('');
-      const [playerName, setPlayerName] = useState('');
-      const [myPlayerId, setMyPlayerId] = useState('');
-      const [isHost, setIsHost] = useState(false);
-      const [connStatus, setConnStatus] = useState('未連線');
-      const [isVerifying, setIsVerifying] = useState(false);
+      const [gameState, setGameState] = useState('home'); [cite: 1]
+      const [roomId, setRoomId] = useState('');[cite: 1]
+      const [joinRoomInput, setJoinRoomInput] = useState('');[cite: 1]
+      const [playerName, setPlayerName] = useState('');[cite: 1]
+      const [myPlayerId, setMyPlayerId] = useState('');[cite: 1]
+      const [isHost, setIsHost] = useState(false);[cite: 1]
+      const [connStatus, setConnStatus] = useState('未連線');[cite: 1]
+      const [isVerifying, setIsVerifying] = useState(false);[cite: 1]
 
       // 線上大廳探索
-      const [showRoomsModal, setShowRoomsModal] = useState(false);
-      const [onlineRooms, setOnlineRooms] = useState([]);
-      const [isSearchingRooms, setIsSearchingRooms] = useState(false);
+      const [showRoomsModal, setShowRoomsModal] = useState(false);[cite: 1]
+      const [onlineRooms, setOnlineRooms] = useState([]);[cite: 1]
+      const [isSearchingRooms, setIsSearchingRooms] = useState(false);[cite: 1]
 
       // 遊戲成員與進度
-      const [players, setPlayers] = useState([]);
-      const [roomStatus, setRoomStatus] = useState('waiting');
-      const [buriedCard, setBuriedCard] = useState(null);
+      const [players, setPlayers] = useState([]);[cite: 1]
+      const [roomStatus, setRoomStatus] = useState('waiting');[cite: 1]
+      const [buriedCard, setBuriedCard] = useState(null);[cite: 1]
 
       // 輪次計時
-      const [roundSettings, setRoundSettings] = useState([3, 2, 1]); 
-      const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
-      const [timeLeft, setTimeLeft] = useState(180);
-      const [isTimerRunning, setIsTimerRunning] = useState(false);
-      const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);
+      const [roundSettings, setRoundSettings] = useState([3, 2, 1]); [cite: 1]
+      const [currentRoundIndex, setCurrentRoundIndex] = useState(0);[cite: 1]
+      const [timeLeft, setTimeLeft] = useState(180);[cite: 1]
+      const [isTimerRunning, setIsTimerRunning] = useState(false);[cite: 1]
+      const [showRoundConfigModal, setShowRoundConfigModal] = useState(false);[cite: 1]
 
       // 牌池設定
-      const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });
-      const [showDeckModal, setShowDeckModal] = useState(false);
-      const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);
-      const [tempRoleCounts, setTempRoleCounts] = useState({});
-      const [deckViewMode, setDeckViewMode] = useState('detailed');
+      const [roleCounts, setRoleCounts] = useState({ pres: 1, bomb: 1, doctor: 1, engineer: 1 });[cite: 1]
+      const [showDeckModal, setShowDeckModal] = useState(false);[cite: 1]
+      const [tempRoundSettings, setTempRoundSettings] = useState([3, 2, 1]);[cite: 1]
+      const [tempRoleCounts, setTempRoleCounts] = useState({});[cite: 1]
+      const [deckViewMode, setDeckViewMode] = useState('detailed');[cite: 1]
 
       // 互動操作
-      const [isColorOnly, setIsColorOnly] = useState(false);
-      const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
-      const [swapModalConfig, setSwapModalConfig] = useState(null);
-      const [swapRequestData, setSwapRequestData] = useState(null); 
-      const [swapStatusMessage, setSwapStatusMessage] = useState('');
-      const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);
+      const [isColorOnly, setIsColorOnly] = useState(false);[cite: 1]
+      const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);[cite: 1]
+      const [swapModalConfig, setSwapModalConfig] = useState(null);[cite: 1]
+      const [swapRequestData, setSwapRequestData] = useState(null); [cite: 1]
+      const [swapStatusMessage, setSwapStatusMessage] = useState('');[cite: 1]
+      const [showDrunkConfirmModal, setShowDrunkConfirmModal] = useState(false);[cite: 1]
 
       // 瘋狂科學家狀態
-      const [showMadScientistModal, setShowMadScientistModal] = useState(false);
-      const [madScientistConfig, setMadScientistConfig] = useState(null);
-      const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);
-      const [madScientistPendingData, setMadScientistPendingData] = useState(null);
+      const [showMadScientistModal, setShowMadScientistModal] = useState(false);[cite: 1]
+      const [madScientistConfig, setMadScientistConfig] = useState(null);[cite: 1]
+      const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);[cite: 1]
+      const [madScientistPendingData, setMadScientistPendingData] = useState(null);[cite: 1]
 
       // 特殊狀態賦予 (Status Mechanics State)
       const [showGrantStatusModal, setShowGrantStatusModal] = useState(false);
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
-      const [statusPromptData, setStatusPromptData] = useState(null); // 被賦予者收到的確認彈窗
+      const [statusPromptData, setStatusPromptData] = useState(null);
 
       // 勝負結算
-      const [showVictoryModal, setShowVictoryModal] = useState(false);
-      const [victoryStep, setVictoryStep] = useState(1);
-      const [victoryAns, setVictoryAns] = useState({});
-      const [gameResult, setGameResult] = useState(null);
+      const [showVictoryModal, setShowVictoryModal] = useState(false);[cite: 1]
+      const [victoryStep, setVictoryStep] = useState(1);[cite: 1]
+      const [victoryAns, setVictoryAns] = useState({});[cite: 1]
+      const [gameResult, setGameResult] = useState(null);[cite: 1]
 
       // 參照物件
-      const clientRef = useRef(null);
-      const discoveryClientRef = useRef(null);
-      const timerIntervalRef = useRef(null);
-      const cardRef = useRef(null);
-      const latestStateRef = useRef({});
-      const debounceBroadcastTimerRef = useRef(null);
-      const madScientistVoteTrackerRef = useRef(null);
+      const clientRef = useRef(null);[cite: 1]
+      const discoveryClientRef = useRef(null);[cite: 1]
+      const timerIntervalRef = useRef(null);[cite: 1]
+      const cardRef = useRef(null);[cite: 1]
+      const latestStateRef = useRef({});[cite: 1]
+      const debounceBroadcastTimerRef = useRef(null);[cite: 1]
+      const madScientistVoteTrackerRef = useRef(null);[cite: 1]
 
       // 狀態快照更新與持久化
       useEffect(() => {
@@ -445,14 +443,14 @@
           players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
           timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName,
           gameState, buriedCard, gameResult
-        };
-        latestStateRef.current = stateSnapshot;
+        };[cite: 1]
+        latestStateRef.current = stateSnapshot;[cite: 1]
 
-        if (roomId && myPlayerId) {
-          const myProfile = players.find(p => p.id === myPlayerId);
-          StorageManager.saveContext({ ...stateSnapshot, myProfile });
+        if (roomId && myPlayerId) {[cite: 1]
+          const myProfile = players.find(p => p.id === myPlayerId);[cite: 1]
+          StorageManager.saveContext({ ...stateSnapshot, myProfile });[cite: 1]
         }
-      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
+      }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);[cite: 1]
 
       // 記憶化衍生狀態
       const myInfo = useMemo(() => {
@@ -461,40 +459,40 @@
         };
       }, [players, myPlayerId, playerName]);
 
-      const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);
-      const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);
-      const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);
-      const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
-      const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
-      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
-      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
-      const currentHostageCount = useMemo(() => getHostageCount(players.length, roundSettings.length, currentRoundIndex), [players.length, roundSettings.length, currentRoundIndex]);
+      const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);[cite: 1]
+      const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);[cite: 1]
+      const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);[cite: 1]
+      const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);[cite: 1]
+      const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);[cite: 1]
+      const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);[cite: 1]
+      const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);[cite: 1]
+      const currentHostageCount = useMemo(() => getHostageCount(players.length, roundSettings.length, currentRoundIndex), [players.length, roundSettings.length, currentRoundIndex]);[cite: 1]
 
       const activeRolesInDeck = useMemo(() => {
-        const groups = {};
+        const groups = {};[cite: 1]
         rolesCatalog.forEach(role => {
-          if ((roleCounts[role.id] || 0) > 0) {
-            if (!groups[role.name]) {
-              groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };
-            } else if (!groups[role.name].teams.includes(role.team)) {
-              groups[role.name].teams.push(role.team);
+          if ((roleCounts[role.id] || 0) > 0) {[cite: 1]
+            if (!groups[role.name]) {[cite: 1]
+              groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };[cite: 1]
+            } else if (!groups[role.name].teams.includes(role.team)) {[cite: 1]
+              groups[role.name].teams.push(role.team);[cite: 1]
             }
           }
         });
-        return Object.values(groups);
-      }, [rolesCatalog, roleCounts]);
+        return Object.values(groups);[cite: 1]
+      }, [rolesCatalog, roleCounts]);[cite: 1]
 
       // 封裝安全發送封包
       const publishMsg = useCallback((topic, payload, opts = { qos: 1 }) => {
-        if (clientRef.current?.connected) {
-          clientRef.current.publish(topic, JSON.stringify(payload), opts);
+        if (clientRef.current?.connected) {[cite: 1]
+          clientRef.current.publish(topic, JSON.stringify(payload), opts);[cite: 1]
         }
-      }, []);
+      }, []);[cite: 1]
 
       // 全場廣播狀態更新
       const broadcastLatest = useCallback((override = {}) => {
-        const s = { ...latestStateRef.current, ...override };
-        if (!s.roomId) return;
+        const s = { ...latestStateRef.current, ...override };[cite: 1]
+        if (!s.roomId) return;[cite: 1]
         publishMsg(`trb_game_sync_room_${s.roomId}`, {
           type: 'FULL_SYNC',
           senderId: s.myPlayerId,
@@ -507,43 +505,43 @@
           buriedCard: s.buriedCard,
           gameResult: s.gameResult
         });
-      }, [publishMsg]);
+      }, [publishMsg]);[cite: 1]
 
       const debouncedBroadcastLatest = useCallback((delay = 350) => {
-        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
+        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);[cite: 1]
         debounceBroadcastTimerRef.current = setTimeout(() => {
-          broadcastLatest();
-          debounceBroadcastTimerRef.current = null;
+          broadcastLatest();[cite: 1]
+          debounceBroadcastTimerRef.current = null;[cite: 1]
         }, delay);
-      }, [broadcastLatest]);
+      }, [broadcastLatest]);[cite: 1]
 
       const replyDiscoveryAsHost = useCallback(() => {
-        const s = latestStateRef.current;
-        if (!s.isHost || !s.roomId) return;
+        const s = latestStateRef.current;[cite: 1]
+        if (!s.isHost || !s.roomId) return;[cite: 1]
         publishMsg(DISCOVERY_TOPIC, {
           type: 'DISCOVERY_ROOM_ANNOUNCE',
           roomId: s.roomId,
           hostName: s.playerName || '房長',
           playerCount: s.players.length,
           roomStatus: s.roomStatus
-        }, { qos: 0 });
-      }, [publishMsg]);
+        }, { qos: 0 });[cite: 1]
+      }, [publishMsg]);[cite: 1]
 
       // 房長端交換業務
       const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
         setPlayers(prev => {
-          const next = window.RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);
+          const next = window.RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);[cite: 1]
           publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
             type: 'SWAP_SUCCESS',
             player1Id: id1,
             player2Id: id2
-          });
-          setTimeout(() => broadcastLatest({ players: next }), 50);
-          return next;
+          });[cite: 1]
+          setTimeout(() => broadcastLatest({ players: next }), 50);[cite: 1]
+          return next;[cite: 1]
         });
-      }, [publishMsg, broadcastLatest]);
+      }, [publishMsg, broadcastLatest]);[cite: 1]
 
-      // 房長端賦予狀態
+      // 房長端賦予狀態業務
       const executeGrantStatusOnHost = useCallback((targetId, statusObj, initiatorId = null) => {
         setPlayers(prev => {
           const next = window.RoleMechanics.applyGrantStatus(prev, targetId, statusObj);
@@ -560,39 +558,39 @@
 
       // 重置所有遊戲狀態返回首頁
       const resetToHome = useCallback(() => {
-        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
-        if (clientRef.current) {
-          try { clientRef.current.end(true); } catch (e) {}
-          clientRef.current = null;
+        if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);[cite: 1]
+        if (clientRef.current) {[cite: 1]
+          try { clientRef.current.end(true); } catch (e) {}[cite: 1]
+          clientRef.current = null;[cite: 1]
         }
-        StorageManager.clearSession();
+        StorageManager.clearSession();[cite: 1]
 
-        setRoomId('');
-        setIsHost(false);
-        setPlayers([]);
-        setBuriedCard(null);
-        setGameResult(null);
-        setShowVictoryModal(false);
-        setGameState('home');
-        setRoomStatus('waiting');
-        setIsTimerRunning(false);
-        setSwapRequestData(null);
-        setMadScientistPendingData(null);
+        setRoomId('');[cite: 1]
+        setIsHost(false);[cite: 1]
+        setPlayers([]);[cite: 1]
+        setBuriedCard(null);[cite: 1]
+        setGameResult(null);[cite: 1]
+        setShowVictoryModal(false);[cite: 1]
+        setGameState('home');[cite: 1]
+        setRoomStatus('waiting');[cite: 1]
+        setIsTimerRunning(false);[cite: 1]
+        setSwapRequestData(null);[cite: 1]
+        setMadScientistPendingData(null);[cite: 1]
         setShowGrantStatusModal(false);
         setStatusPromptData(null);
-        setSwapStatusMessage('');
-        setIsVerifying(false);
-        setConnStatus('未連線');
-        madScientistVoteTrackerRef.current = null;
-      }, []);
+        setSwapStatusMessage('');[cite: 1]
+        setIsVerifying(false);[cite: 1]
+        setConnStatus('未連線');[cite: 1]
+        madScientistVoteTrackerRef.current = null;[cite: 1]
+      }, []);[cite: 1]
 
       // 建立 MQTT 雙向連線
       const setupConnection = useCallback((code, asHost, name, uid) => {
-        setConnStatus('連線伺服器中...');
-        const topic = `trb_game_sync_room_${code}`;
+        setConnStatus('連線伺服器中...');[cite: 1]
+        const topic = `trb_game_sync_room_${code}`;[cite: 1]
 
-        if (clientRef.current) {
-          try { clientRef.current.end(true); } catch (e) {}
+        if (clientRef.current) {[cite: 1]
+          try { clientRef.current.end(true); } catch (e) {}[cite: 1]
         }
 
         const client = mqtt.connect(BROKER_URL, {
@@ -601,124 +599,124 @@
           password: MQTT_PASS,
           clean: true,
           reconnectPeriod: 2000
-        });
+        });[cite: 1]
 
-        clientRef.current = client;
+        clientRef.current = client;[cite: 1]
 
         client.on('connect', () => {
-          setConnStatus('🟢 已連線');
-          client.subscribe(topic, { qos: 1 });
-          if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
+          setConnStatus('🟢 已連線');[cite: 1]
+          client.subscribe(topic, { qos: 1 });[cite: 1]
+          if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });[cite: 1]
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
             id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
           };
 
-          if (asHost) {
-            publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });
+          if (asHost) {[cite: 1]
+            publishMsg(topic, { type: 'HOST_RECONNECTED', senderId: uid });[cite: 1]
             setTimeout(() => {
-              broadcastLatest();
-              replyDiscoveryAsHost();
+              broadcastLatest();[cite: 1]
+              replyDiscoveryAsHost();[cite: 1]
             }, 400);
           } else {
-            publishMsg(topic, { type: 'PLAYER_PING_SYNC', senderId: uid, isHost: false, player: currentProfile });
+            publishMsg(topic, { type: 'PLAYER_PING_SYNC', senderId: uid, isHost: false, player: currentProfile });[cite: 1]
           }
         });
 
         // 訊息調度派發器 (Message Dispatcher)
         client.on('message', (t, msg) => {
-          const data = safeJsonParse(msg.toString());
-          if (!data) return;
+          const data = safeJsonParse(msg.toString());[cite: 1]
+          if (!data) return;[cite: 1]
 
           // 處理公共大廳探索
-          if (t === DISCOVERY_TOPIC) {
-            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {
-              replyDiscoveryAsHost();
+          if (t === DISCOVERY_TOPIC) {[cite: 1]
+            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {[cite: 1]
+              replyDiscoveryAsHost();[cite: 1]
             }
-            return;
+            return;[cite: 1]
           }
 
           // 處理房間解散
-          if (data.type === 'ROOM_DISBANDED') {
-            alert('房長已離開，房間已解散！');
-            resetToHome();
-            return;
+          if (data.type === 'ROOM_DISBANDED') {[cite: 1]
+            alert('房長已離開，房間已解散！');[cite: 1]
+            resetToHome();[cite: 1]
+            return;[cite: 1]
           }
 
           // 房長專屬邏輯 (Host Dispatcher)
-          if (latestStateRef.current.isHost) {
-            if (data.type === 'CHECK_ROOM_REQ') {
-              const currentPlayers = latestStateRef.current.players || [];
-              const targetName = (data.playerName || '').trim();
-              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);
+          if (latestStateRef.current.isHost) {[cite: 1]
+            if (data.type === 'CHECK_ROOM_REQ') {[cite: 1]
+              const currentPlayers = latestStateRef.current.players || [];[cite: 1]
+              const targetName = (data.playerName || '').trim();[cite: 1]
+              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);[cite: 1]
 
               publishMsg(topic, isDuplicated
                 ? { type: 'ROOM_JOIN_REJECTED', targetId: data.senderId, reason: 'NAME_DUPLICATED' }
                 : { type: 'ROOM_VERIFIED', targetId: data.senderId, senderId: uid }
-              );
-              return;
+              );[cite: 1]
+              return;[cite: 1]
             }
 
-            if (data.type === 'REPORT_PRESENCE') {
+            if (data.type === 'REPORT_PRESENCE') {[cite: 1]
               setPlayers(prev => {
-                const next = prev.some(p => p.id === data.player.id)
-                  ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
-                  : [...prev, data.player];
-                debouncedBroadcastLatest(300);
-                return next;
+                const next = prev.some(p => p.id === data.player.id)[cite: 1]
+                  ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)[cite: 1]
+                  : [...prev, data.player];[cite: 1]
+                debouncedBroadcastLatest(300);[cite: 1]
+                return next;[cite: 1]
               });
-              return;
+              return;[cite: 1]
             }
 
-            if (data.type === 'EXECUTE_DRUNK_SWAP') {
-              const curBuried = latestStateRef.current.buriedCard;
-              if (curBuried) {
+            if (data.type === 'EXECUTE_DRUNK_SWAP') {[cite: 1]
+              const curBuried = latestStateRef.current.buriedCard;[cite: 1]
+              if (curBuried) {[cite: 1]
                 setPlayers(prev => {
-                  const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);
-                  setBuriedCard(newBuried);
-                  setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
-                  return nextPlayers;
+                  const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);[cite: 1]
+                  setBuriedCard(newBuried);[cite: 1]
+                  setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);[cite: 1]
+                  return nextPlayers;[cite: 1]
                 });
               }
-              return;
+              return;[cite: 1]
             }
 
-            if (data.type === 'MAD_SCIENTIST_INITIATE') {
+            if (data.type === 'MAD_SCIENTIST_INITIATE') {[cite: 1]
               madScientistVoteTrackerRef.current = {
                 initiatorId: data.initiatorId, initiatorName: data.initiatorName,
                 p1Id: data.p1Id, p2Id: data.p2Id, approvals: {}
-              };
+              };[cite: 1]
               publishMsg(topic, {
                 type: 'MAD_SCIENTIST_PROMPT_TARGETS',
                 initiatorId: data.initiatorId, initiatorName: data.initiatorName,
                 p1Id: data.p1Id, p1Name: data.p1Name, p2Id: data.p2Id, p2Name: data.p2Name
-              });
-              return;
+              });[cite: 1]
+              return;[cite: 1]
             }
 
-            if (data.type === 'MAD_SCIENTIST_VOTE') {
-              const tracker = madScientistVoteTrackerRef.current;
-              if (!tracker) return;
+            if (data.type === 'MAD_SCIENTIST_VOTE') {[cite: 1]
+              const tracker = madScientistVoteTrackerRef.current;[cite: 1]
+              if (!tracker) return;[cite: 1]
 
-              if (data.accepted) {
-                tracker.approvals[data.voterId] = true;
-                if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {
-                  executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);
+              if (data.accepted) {[cite: 1]
+                tracker.approvals[data.voterId] = true;[cite: 1]
+                if (tracker.approvals[tracker.p1Id] && tracker.approvals[tracker.p2Id]) {[cite: 1]
+                  executeSwapOnHost(tracker.p1Id, tracker.p2Id, tracker.initiatorId);[cite: 1]
                   publishMsg(topic, {
                     type: 'MAD_SCIENTIST_SWAP_COMPLETED',
                     initiatorId: tracker.initiatorId, p1Id: tracker.p1Id, p2Id: tracker.p2Id
-                  });
-                  madScientistVoteTrackerRef.current = null;
+                  });[cite: 1]
+                  madScientistVoteTrackerRef.current = null;[cite: 1]
                 }
               } else {
                 publishMsg(topic, {
                   type: 'MAD_SCIENTIST_REJECTED',
                   initiatorId: tracker.initiatorId, rejectorName: data.voterName,
                   p1Id: tracker.p1Id, p2Id: tracker.p2Id
-                });
-                madScientistVoteTrackerRef.current = null;
+                });[cite: 1]
+                madScientistVoteTrackerRef.current = null;[cite: 1]
               }
-              return;
+              return;[cite: 1]
             }
 
             // 狀態賦予確認通過，房長寫入資料並同步
@@ -729,53 +727,55 @@
           }
 
           // 玩家專屬邏輯 (Player Dispatcher)
-          if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
+          if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {[cite: 1]
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             };
-            publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
-            return;
+            publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });[cite: 1]
+            return;[cite: 1]
           }
 
-          if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {
-            if (data.p1Id === uid || data.p2Id === uid) {
+          if (data.type === 'MAD_SCIENTIST_PROMPT_TARGETS') {[cite: 1]
+            if (data.p1Id === uid || data.p2Id === uid) {[cite: 1]
               setMadScientistPendingData({
                 initiatorId: data.initiatorId,
                 initiatorName: data.initiatorName,
                 otherName: data.p1Id === uid ? data.p2Name : data.p1Name
-              });
+              });[cite: 1]
             }
-            return;
+            return;[cite: 1]
           }
 
-          if (data.type === 'MAD_SCIENTIST_REJECTED') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);
-              setTimeout(() => setSwapStatusMessage(''), 3500);
+          if (data.type === 'MAD_SCIENTIST_REJECTED') {[cite: 1]
+            if (data.initiatorId === uid) {[cite: 1]
+              setSwapStatusMessage(`❌ 交換失敗：${data.rejectorName} 拒絕了角色對調！`);[cite: 1]
+              setTimeout(() => setSwapStatusMessage(''), 3500);[cite: 1]
             }
-            if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);
-            return;
+            if (data.p1Id === uid || data.p2Id === uid) setMadScientistPendingData(null);[cite: 1]
+            return;[cite: 1]
           }
 
-          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');
-              setTimeout(() => setSwapStatusMessage(''), 3000);
+          if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {[cite: 1]
+            if (data.initiatorId === uid) {[cite: 1]
+              setSwapStatusMessage('🎉 雙方均已同意，角色對調成功完成！');[cite: 1]
+              setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
             }
-            if (data.p1Id === uid || data.p2Id === uid) {
-              setMadScientistPendingData(null);
-              setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');
-              setTimeout(() => setSwapStatusMessage(''), 3000);
+            if (data.p1Id === uid || data.p2Id === uid) {[cite: 1]
+              setMadScientistPendingData(null);[cite: 1]
+              setSwapStatusMessage('🎉 雙方同意，你的角色已被瘋狂科學家對調！');[cite: 1]
+              setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
             }
-            return;
+            return;[cite: 1]
           }
 
-          // 狀態賦予：目標玩家收到賦予請求提示
+          // 狀態賦予：目標玩家收到賦予請求提示（含發起者暱稱與角色資訊）
           if (data.type === 'STATUS_PROMPT_TARGET') {
             if (data.targetId === uid) {
               setStatusPromptData({
                 initiatorId: data.initiatorId,
                 initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                initiatorRoleIcon: data.initiatorRoleIcon,
                 statusObj: data.statusObj
               });
             }
@@ -805,79 +805,79 @@
           }
 
           // 忽視自己的廣播
-          if (data.senderId === uid) return;
+          if (data.senderId === uid) return;[cite: 1]
 
           // 一般通用廣播處理
           switch (data.type) {
             case 'PLAYER_PING_SYNC':
-              if (latestStateRef.current.isHost) {
+              if (latestStateRef.current.isHost) {[cite: 1]
                 setPlayers(prev => {
-                  const existing = prev.find(p => p.id === data.player.id);
+                  const existing = prev.find(p => p.id === data.player.id);[cite: 1]
                   const next = existing
-                    ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
-                    : [...prev, data.player];
-                  debouncedBroadcastLatest(300);
-                  return next;
+                    ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)[cite: 1]
+                    : [...prev, data.player];[cite: 1]
+                  debouncedBroadcastLatest(300);[cite: 1]
+                  return next;[cite: 1]
                 });
               }
               break;
 
             case 'PLAYER_LEFT':
               setPlayers(prev => {
-                const next = prev.filter(p => p.id !== data.playerId);
-                if (latestStateRef.current.isHost) debouncedBroadcastLatest(150);
-                return next;
+                const next = prev.filter(p => p.id !== data.playerId);[cite: 1]
+                if (latestStateRef.current.isHost) debouncedBroadcastLatest(150);[cite: 1]
+                return next;[cite: 1]
               });
               break;
 
             case 'SWAP_REQUEST':
-              if (data.targetId === uid) {
-                setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });
+              if (data.targetId === uid) {[cite: 1]
+                setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });[cite: 1]
               }
               break;
 
             case 'SWAP_REJECTED':
-              if (data.fromId === uid) {
-                setSwapStatusMessage('對方拒絕了身分交換請求！');
-                setTimeout(() => setSwapStatusMessage(''), 3000);
+              if (data.fromId === uid) {[cite: 1]
+                setSwapStatusMessage('對方拒絕了身分交換請求！');[cite: 1]
+                setTimeout(() => setSwapStatusMessage(''), 3000);[cite: 1]
               }
               break;
 
             case 'SWAP_SUCCESS':
-              if (data.player1Id === uid || data.player2Id === uid) {
-                setSwapStatusMessage('🎉 身分已成功交換！');
-                setTimeout(() => setSwapStatusMessage(''), 2500);
+              if (data.player1Id === uid || data.player2Id === uid) {[cite: 1]
+                setSwapStatusMessage('🎉 身分已成功交換！');[cite: 1]
+                setTimeout(() => setSwapStatusMessage(''), 2500);[cite: 1]
               }
               break;
 
             case 'EXECUTE_SWAP':
-              if (latestStateRef.current.isHost) {
-                executeSwapOnHost(data.player1Id, data.player2Id);
+              if (latestStateRef.current.isHost) {[cite: 1]
+                executeSwapOnHost(data.player1Id, data.player2Id);[cite: 1]
               }
               break;
 
             case 'FULL_SYNC':
-              setPlayers(data.players);
-              setRoomStatus(data.roomStatus);
-              if (data.roleCounts) setRoleCounts(data.roleCounts);
-              if (data.roundSettings) setRoundSettings(data.roundSettings);
-              setCurrentRoundIndex(data.currentRoundIndex);
-              setTimeLeft(data.timeLeft);
-              if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
-              if (data.gameResult !== undefined) setGameResult(data.gameResult);
+              setPlayers(data.players);[cite: 1]
+              setRoomStatus(data.roomStatus);[cite: 1]
+              if (data.roleCounts) setRoleCounts(data.roleCounts);[cite: 1]
+              if (data.roundSettings) setRoundSettings(data.roundSettings);[cite: 1]
+              setCurrentRoundIndex(data.currentRoundIndex);[cite: 1]
+              setTimeLeft(data.timeLeft);[cite: 1]
+              if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);[cite: 1]
+              if (data.gameResult !== undefined) setGameResult(data.gameResult);[cite: 1]
 
-              if (['round_active', 'round_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
-                setGameState('game');
-                setIsTimerRunning(data.roomStatus === 'round_active');
-              } else if (data.roomStatus === 'waiting') {
-                setGameState('lobby');
-                setIsTimerRunning(false);
+              if (['round_active', 'round_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {[cite: 1]
+                setGameState('game');[cite: 1]
+                setIsTimerRunning(data.roomStatus === 'round_active');[cite: 1]
+              } else if (data.roomStatus === 'waiting') {[cite: 1]
+                setGameState('lobby');[cite: 1]
+                setIsTimerRunning(false);[cite: 1]
               }
               break;
 
             case 'TIME_SYNC':
-              if (!latestStateRef.current.isHost) {
-                setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
+              if (!latestStateRef.current.isHost) {[cite: 1]
+                setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));[cite: 1]
               }
               break;
 
@@ -886,491 +886,491 @@
           }
         });
 
-        client.on('error', () => setConnStatus('連線重試中...'));
-      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, resetToHome]);
+        client.on('error', () => setConnStatus('連線重試中...'));[cite: 1]
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, resetToHome]);[cite: 1]
 
       // 初始化冷啟動狀態
       useEffect(() => {
-        const storedId = StorageManager.getUid();
-        setMyPlayerId(storedId);
+        const storedId = StorageManager.getUid();[cite: 1]
+        setMyPlayerId(storedId);[cite: 1]
 
-        const savedRoomId = localStorage.getItem(STORAGE_KEYS.ROOM_ID);
-        const savedPlayerName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);
-        const savedIsHost = localStorage.getItem(STORAGE_KEYS.IS_HOST) === 'true';
+        const savedRoomId = localStorage.getItem(STORAGE_KEYS.ROOM_ID);[cite: 1]
+        const savedPlayerName = localStorage.getItem(STORAGE_KEYS.PLAYER_NAME);[cite: 1]
+        const savedIsHost = localStorage.getItem(STORAGE_KEYS.IS_HOST) === 'true';[cite: 1]
 
-        if (savedRoomId && savedPlayerName) {
-          setRoomId(savedRoomId);
-          setPlayerName(savedPlayerName);
-          setIsHost(savedIsHost);
+        if (savedRoomId && savedPlayerName) {[cite: 1]
+          setRoomId(savedRoomId);[cite: 1]
+          setPlayerName(savedPlayerName);[cite: 1]
+          setIsHost(savedIsHost);[cite: 1]
 
-          let initialList = [];
-          const savedContext = StorageManager.getContext();
+          let initialList = [];[cite: 1]
+          const savedContext = StorageManager.getContext();[cite: 1]
 
-          if (savedContext.roomStatus) {
-            setRoomStatus(savedContext.roomStatus);
-            setGameState(savedContext.gameState || 'lobby');
+          if (savedContext.roomStatus) {[cite: 1]
+            setRoomStatus(savedContext.roomStatus);[cite: 1]
+            setGameState(savedContext.gameState || 'lobby');[cite: 1]
 
-            if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);
-            if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);
-            if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);
-            if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);
-            if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);
+            if (savedContext.roundSettings) setRoundSettings(savedContext.roundSettings);[cite: 1]
+            if (savedContext.roleCounts) setRoleCounts(savedContext.roleCounts);[cite: 1]
+            if (savedContext.currentRoundIndex !== undefined) setCurrentRoundIndex(savedContext.currentRoundIndex);[cite: 1]
+            if (savedContext.buriedCard !== undefined) setBuriedCard(savedContext.buriedCard);[cite: 1]
+            if (savedContext.gameResult !== undefined) setGameResult(savedContext.gameResult);[cite: 1]
 
-            if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {
-              const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);
-              const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);
-              setTimeLeft(remaining);
-              setIsTimerRunning(remaining > 0);
-              if (remaining <= 0) setRoomStatus('round_paused');
-            } else if (savedContext.timeLeft !== undefined) {
-              setTimeLeft(savedContext.timeLeft);
-              if (savedContext.isTimerRunning) setIsTimerRunning(true);
+            if (savedIsHost && savedContext.isTimerRunning && savedContext.savedAt && savedContext.timeLeft > 0) {[cite: 1]
+              const elapsedSec = Math.floor((Date.now() - savedContext.savedAt) / 1000);[cite: 1]
+              const remaining = Math.max(0, savedContext.timeLeft - elapsedSec);[cite: 1]
+              setTimeLeft(remaining);[cite: 1]
+              setIsTimerRunning(remaining > 0);[cite: 1]
+              if (remaining <= 0) setRoomStatus('round_paused');[cite: 1]
+            } else if (savedContext.timeLeft !== undefined) {[cite: 1]
+              setTimeLeft(savedContext.timeLeft);[cite: 1]
+              if (savedContext.isTimerRunning) setIsTimerRunning(true);[cite: 1]
             }
 
-            if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {
-              initialList = savedContext.players;
-            } else if (savedContext.myProfile) {
-              initialList = [savedContext.myProfile];
+            if (Array.isArray(savedContext.players) && savedContext.players.length > 0) {[cite: 1]
+              initialList = savedContext.players;[cite: 1]
+            } else if (savedContext.myProfile) {[cite: 1]
+              initialList = [savedContext.myProfile];[cite: 1]
             }
           }
 
-          if (initialList.length === 0) {
+          if (initialList.length === 0) {[cite: 1]
             initialList = [{
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             }];
           }
-          setPlayers(initialList);
-          setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);
+          setPlayers(initialList);[cite: 1]
+          setupConnection(savedRoomId, savedIsHost, savedPlayerName, storedId);[cite: 1]
         }
-      }, [setupConnection]);
+      }, [setupConnection]);[cite: 1]
 
       // 計時器排程
       useEffect(() => {
-        if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {
+        if (isTimerRunning && roomStatus === 'round_active' && timeLeft > 0) {[cite: 1]
           timerIntervalRef.current = setInterval(() => {
             setTimeLeft(prev => {
-              if (prev <= 1) {
-                clearInterval(timerIntervalRef.current);
-                if (latestStateRef.current.isHost) {
-                  setIsTimerRunning(false);
-                  setRoomStatus('round_paused');
-                  broadcastLatest({ roomStatus: 'round_paused', timeLeft: 0 });
+              if (prev <= 1) {[cite: 1]
+                clearInterval(timerIntervalRef.current);[cite: 1]
+                if (latestStateRef.current.isHost) {[cite: 1]
+                  setIsTimerRunning(false);[cite: 1]
+                  setRoomStatus('round_paused');[cite: 1]
+                  broadcastLatest({ roomStatus: 'round_paused', timeLeft: 0 });[cite: 1]
                 }
-                return 0;
+                return 0;[cite: 1]
               }
-              const nextSec = prev - 1;
-              if (latestStateRef.current.isHost && nextSec % 30 === 0 && clientRef.current) {
+              const nextSec = prev - 1;[cite: 1]
+              if (latestStateRef.current.isHost && nextSec % 30 === 0 && clientRef.current) {[cite: 1]
                 publishMsg(`trb_game_sync_room_${roomId}`, {
                   type: 'TIME_SYNC', senderId: myPlayerId, timeLeft: nextSec
-                }, { qos: 0 });
+                }, { qos: 0 });[cite: 1]
               }
-              return nextSec;
+              return nextSec;[cite: 1]
             });
-          }, 1000);
+          }, 1000);[cite: 1]
         } else {
-          clearInterval(timerIntervalRef.current);
+          clearInterval(timerIntervalRef.current);[cite: 1]
         }
-        return () => clearInterval(timerIntervalRef.current);
-      }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
+        return () => clearInterval(timerIntervalRef.current);[cite: 1]
+      }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);[cite: 1]
 
       // 房間管理操作
       const handleCreateRoom = () => {
-        const trimmedName = playerName.trim() || '房長';
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const trimmedName = playerName.trim() || '房長';[cite: 1]
+        const code = Math.floor(100000 + Math.random() * 900000).toString();[cite: 1]
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
           gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
         };
 
-        StorageManager.saveSession(code, trimmedName, true);
-        setRoomId(code);
-        setIsHost(true);
-        setPlayers([me]);
-        setBuriedCard(null);
-        setGameResult(null);
-        setRoomStatus('waiting');
-        setGameState('lobby');
+        StorageManager.saveSession(code, trimmedName, true);[cite: 1]
+        setRoomId(code);[cite: 1]
+        setIsHost(true);[cite: 1]
+        setPlayers([me]);[cite: 1]
+        setBuriedCard(null);[cite: 1]
+        setGameResult(null);[cite: 1]
+        setRoomStatus('waiting');[cite: 1]
+        setGameState('lobby');[cite: 1]
 
-        setupConnection(code, true, trimmedName, myPlayerId);
+        setupConnection(code, true, trimmedName, myPlayerId);[cite: 1]
       };
 
       const executeJoinRoom = (targetCode) => {
-        const trimmedName = playerName.trim() || '特工';
-        const code = (targetCode || joinRoomInput).trim();
-        if (code.length !== 6) {
-          alert('請輸入 6 碼數字房號！');
-          return;
+        const trimmedName = playerName.trim() || '特工';[cite: 1]
+        const code = (targetCode || joinRoomInput).trim();[cite: 1]
+        if (code.length !== 6) {[cite: 1]
+          alert('請輸入 6 碼數字房號！');[cite: 1]
+          return;[cite: 1]
         }
 
-        setIsVerifying(true);
-        setConnStatus('連線伺服器中...');
+        setIsVerifying(true);[cite: 1]
+        setConnStatus('連線伺服器中...');[cite: 1]
 
-        const topic = `trb_game_sync_room_${code}`;
+        const topic = `trb_game_sync_room_${code}`;[cite: 1]
         const tempClient = mqtt.connect(BROKER_URL, {
           clientId: `trb_v_${myPlayerId}_${Math.random().toString(16).slice(2, 8)}`,
           username: MQTT_USER,
           password: MQTT_PASS,
           clean: true,
           connectTimeout: 5000
-        });
+        });[cite: 1]
 
-        let verified = false;
+        let verified = false;[cite: 1]
         const timeoutTimer = setTimeout(() => {
-          if (!verified) {
-            try { tempClient.end(true); } catch (e) {}
-            setIsVerifying(false);
-            setConnStatus('未連線');
-            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);
+          if (!verified) {[cite: 1]
+            try { tempClient.end(true); } catch (e) {}[cite: 1]
+            setIsVerifying(false);[cite: 1]
+            setConnStatus('未連線');[cite: 1]
+            alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);[cite: 1]
           }
-        }, 6000);
+        }, 6000);[cite: 1]
 
         tempClient.on('connect', () => {
-          setConnStatus('🟢 已連線');
-          tempClient.subscribe(topic, { qos: 1 }, (err) => {
-            if (!err) {
+          setConnStatus('🟢 已連線');[cite: 1]
+          tempClient.subscribe(topic, { qos: 1 }, (err) => {[cite: 1]
+            if (!err) {[cite: 1]
               tempClient.publish(topic, JSON.stringify({
                 type: 'CHECK_ROOM_REQ', senderId: myPlayerId, playerName: trimmedName
-              }), { qos: 1 });
+              }), { qos: 1 });[cite: 1]
             }
           });
         });
 
         tempClient.on('message', (t, msg) => {
-          const data = safeJsonParse(msg.toString());
-          if (!data) return;
+          const data = safeJsonParse(msg.toString());[cite: 1]
+          if (!data) return;[cite: 1]
 
-          if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
-            verified = true;
-            clearTimeout(timeoutTimer);
-            try { tempClient.end(true); } catch (e) {}
-            setIsVerifying(false);
-            setConnStatus('未連線');
+          if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {[cite: 1]
+            verified = true;[cite: 1]
+            clearTimeout(timeoutTimer);[cite: 1]
+            try { tempClient.end(true); } catch (e) {}[cite: 1]
+            setIsVerifying(false);[cite: 1]
+            setConnStatus('未連線');[cite: 1]
             alert(data.reason === 'NAME_DUPLICATED'
               ? `⚠ 加入失敗：房間「${code}」內已存在名為「${trimmedName}」的玩家！\n請更換一個暱稱後再試。`
-              : '無法加入房間，已被房長拒絕！');
-            return;
+              : '無法加入房間，已被房長拒絕！');[cite: 1]
+            return;[cite: 1]
           }
 
-          if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {
-            verified = true;
-            clearTimeout(timeoutTimer);
-            try { tempClient.end(true); } catch (e) {}
-            setIsVerifying(false);
-            setShowRoomsModal(false);
+          if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {[cite: 1]
+            verified = true;[cite: 1]
+            clearTimeout(timeoutTimer);[cite: 1]
+            try { tempClient.end(true); } catch (e) {}[cite: 1]
+            setIsVerifying(false);[cite: 1]
+            setShowRoomsModal(false);[cite: 1]
 
-            StorageManager.saveSession(code, trimmedName, false);
-            setRoomId(code);
-            setIsHost(false);
-            setGameState('lobby');
+            StorageManager.saveSession(code, trimmedName, false);[cite: 1]
+            setRoomId(code);[cite: 1]
+            setIsHost(false);[cite: 1]
+            setGameState('lobby');[cite: 1]
 
             const selfPlayer = {
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
             };
-            setPlayers([selfPlayer]);
-            setupConnection(code, false, trimmedName, myPlayerId);
+            setPlayers([selfPlayer]);[cite: 1]
+            setupConnection(code, false, trimmedName, myPlayerId);[cite: 1]
           }
         });
 
         tempClient.on('error', () => {
-          clearTimeout(timeoutTimer);
-          setIsVerifying(false);
-          setConnStatus('未連線');
-          try { tempClient.end(true); } catch (e) {}
-          alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');
+          clearTimeout(timeoutTimer);[cite: 1]
+          setIsVerifying(false);[cite: 1]
+          setConnStatus('未連線');[cite: 1]
+          try { tempClient.end(true); } catch (e) {}[cite: 1]
+          alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');[cite: 1]
         });
       };
 
       const handleLeaveRoom = () => {
-        const confirmMsg = isHost ? '您是房長，離開後將會解散房間，確定要離開嗎？' : '確定要離開當前房間嗎？';
-        if (!window.confirm(confirmMsg)) return;
+        const confirmMsg = isHost ? '您是房長，離開後將會解散房間，確定要離開嗎？' : '確定要離開當前房間嗎？';[cite: 1]
+        if (!window.confirm(confirmMsg)) return;[cite: 1]
 
-        if (clientRef.current && roomId) {
+        if (clientRef.current && roomId) {[cite: 1]
           publishMsg(`trb_game_sync_room_${roomId}`, {
             type: isHost ? 'ROOM_DISBANDED' : 'PLAYER_LEFT',
             playerId: myPlayerId, senderId: myPlayerId
-          });
-          setTimeout(resetToHome, 300);
+          });[cite: 1]
+          setTimeout(resetToHome, 300);[cite: 1]
         } else {
-          resetToHome();
+          resetToHome();[cite: 1]
         }
       };
 
       // 大廳線上房間探尋
       const handleOpenRoomsModal = () => {
-        setShowRoomsModal(true);
-        setOnlineRooms([]);
-        setIsSearchingRooms(true);
-        setConnStatus('連線伺服器中...');
+        setShowRoomsModal(true);[cite: 1]
+        setOnlineRooms([]);[cite: 1]
+        setIsSearchingRooms(true);[cite: 1]
+        setConnStatus('連線伺服器中...');[cite: 1]
 
-        if (discoveryClientRef.current) {
-          try { discoveryClientRef.current.end(true); } catch (e) {}
+        if (discoveryClientRef.current) {[cite: 1]
+          try { discoveryClientRef.current.end(true); } catch (e) {}[cite: 1]
         }
 
         const discClient = mqtt.connect(BROKER_URL, {
           clientId: `trb_disc_${myPlayerId}_${Math.random().toString(16).slice(2, 6)}`,
           username: MQTT_USER, password: MQTT_PASS, clean: true, connectTimeout: 5000
-        });
-        discoveryClientRef.current = discClient;
+        });[cite: 1]
+        discoveryClientRef.current = discClient;[cite: 1]
 
         discClient.on('connect', () => {
-          setConnStatus('🟢 已連線');
-          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {
-            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({ type: 'DISCOVERY_QUERY_ROOMS', senderId: myPlayerId }), { qos: 0 });
+          setConnStatus('🟢 已連線');[cite: 1]
+          discClient.subscribe(DISCOVERY_TOPIC, { qos: 0 }, () => {[cite: 1]
+            discClient.publish(DISCOVERY_TOPIC, JSON.stringify({ type: 'DISCOVERY_QUERY_ROOMS', senderId: myPlayerId }), { qos: 0 });[cite: 1]
           });
         });
 
         discClient.on('message', (topic, message) => {
-          const data = safeJsonParse(message.toString());
-          if (data?.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {
+          const data = safeJsonParse(message.toString());[cite: 1]
+          if (data?.type === 'DISCOVERY_ROOM_ANNOUNCE' && data.roomId) {[cite: 1]
             setOnlineRooms(prev => [
               ...prev.filter(r => r.roomId !== data.roomId),
               { roomId: data.roomId, hostName: data.hostName, playerCount: data.playerCount, roomStatus: data.roomStatus, receivedAt: Date.now() }
-            ]);
+            ]);[cite: 1]
           }
         });
 
-        discClient.on('error', () => setConnStatus('連線重試中...'));
-        setTimeout(() => setIsSearchingRooms(false), 1500);
+        discClient.on('error', () => setConnStatus('連線重試中...'));[cite: 1]
+        setTimeout(() => setIsSearchingRooms(false), 1500);[cite: 1]
       };
 
       const handleCloseRoomsModal = () => {
-        setShowRoomsModal(false);
-        if (discoveryClientRef.current) {
-          try { discoveryClientRef.current.end(true); } catch (e) {}
-          discoveryClientRef.current = null;
+        setShowRoomsModal(false);[cite: 1]
+        if (discoveryClientRef.current) {[cite: 1]
+          try { discoveryClientRef.current.end(true); } catch (e) {}[cite: 1]
+          discoveryClientRef.current = null;[cite: 1]
         }
-        if (gameState === 'home') setConnStatus('未連線');
+        if (gameState === 'home') setConnStatus('未連線');[cite: 1]
       };
 
       // 遊戲流程推進
       const handleStartAssignRooms = () => {
-        if (players.length < 2) {
-          alert('至少需要 2 位玩家加入才能開始！');
-          return;
+        if (players.length < 2) {[cite: 1]
+          alert('至少需要 2 位玩家加入才能開始！');[cite: 1]
+          return;[cite: 1]
         }
-        if (totalCardsInDeck < players.length) {
-          alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
-          return;
+        if (totalCardsInDeck < players.length) {[cite: 1]
+          alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);[cite: 1]
+          return;[cite: 1]
         }
 
-        const shuffled = [...players].sort(() => Math.random() - 0.5);
-        const half = Math.ceil(shuffled.length / 2);
+        const shuffled = [...players].sort(() => Math.random() - 0.5);[cite: 1]
+        const half = Math.ceil(shuffled.length / 2);[cite: 1]
         const assigned = shuffled.map((p, idx) => ({
           ...p, team: null, role: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: [],
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
-        }));
+        }));[cite: 1]
 
-        setPlayers(assigned);
-        setRoomStatus('room_assigned');
-        setIsTimerRunning(false);
-        setGameState('game');
+        setPlayers(assigned);[cite: 1]
+        setRoomStatus('room_assigned');[cite: 1]
+        setIsTimerRunning(false);[cite: 1]
+        setGameState('game');[cite: 1]
 
         broadcastLatest({
           players: assigned, roomStatus: 'room_assigned', currentRoundIndex: 0,
           timeLeft: roundSettings[0] * 60, buriedCard: null, gameResult: null
-        });
+        });[cite: 1]
       };
 
       const handleConfirmDealCardsAndStart = () => {
-        let deck = [];
+        let deck = [];[cite: 1]
         rolesCatalog.forEach(role => {
-          for (let i = 0; i < (roleCounts[role.id] || 0); i++) deck.push({ ...role });
+          for (let i = 0; i < (roleCounts[role.id] || 0); i++) deck.push({ ...role });[cite: 1]
         });
-        deck.sort(() => Math.random() - 0.5);
+        deck.sort(() => Math.random() - 0.5);[cite: 1]
 
         const assignedWithRoles = players.map((p, idx) => {
-          const r = deck[idx];
-          return { ...p, team: r.team, role: r, hasBeenLeprechaun: r.id === 'leprechaun', hasUsedMadScientistAbility: false, statuses: [] };
+          const r = deck[idx];[cite: 1]
+          return { ...p, team: r.team, role: r, hasBeenLeprechaun: r.id === 'leprechaun', hasUsedMadScientistAbility: false, statuses: [] };[cite: 1]
         });
 
-        const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;
-        const initialTime = roundSettings[0] * 60;
+        const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;[cite: 1]
+        const initialTime = roundSettings[0] * 60;[cite: 1]
 
-        setPlayers(assignedWithRoles);
-        setBuriedCard(generatedBuried);
-        setCurrentRoundIndex(0);
-        setTimeLeft(initialTime);
-        setRoomStatus('round_active');
-        setIsTimerRunning(true);
-        setGameResult(null);
+        setPlayers(assignedWithRoles);[cite: 1]
+        setBuriedCard(generatedBuried);[cite: 1]
+        setCurrentRoundIndex(0);[cite: 1]
+        setTimeLeft(initialTime);[cite: 1]
+        setRoomStatus('round_active');[cite: 1]
+        setIsTimerRunning(true);[cite: 1]
+        setGameResult(null);[cite: 1]
 
         broadcastLatest({
           players: assignedWithRoles, roomStatus: 'round_active', currentRoundIndex: 0,
           timeLeft: initialTime, buriedCard: generatedBuried, gameResult: null
-        });
+        });[cite: 1]
       };
 
       const handleNextRoundConfirm = () => {
-        if (currentRoundIndex + 1 < roundSettings.length) {
-          const nextIdx = currentRoundIndex + 1;
-          const nextTime = roundSettings[nextIdx] * 60;
-          setCurrentRoundIndex(nextIdx);
-          setTimeLeft(nextTime);
-          setRoomStatus('round_active');
-          setIsTimerRunning(true);
-          broadcastLatest({ roomStatus: 'round_active', currentRoundIndex: nextIdx, timeLeft: nextTime });
+        if (currentRoundIndex + 1 < roundSettings.length) {[cite: 1]
+          const nextIdx = currentRoundIndex + 1;[cite: 1]
+          const nextTime = roundSettings[nextIdx] * 60;[cite: 1]
+          setCurrentRoundIndex(nextIdx);[cite: 1]
+          setTimeLeft(nextTime);[cite: 1]
+          setRoomStatus('round_active');[cite: 1]
+          setIsTimerRunning(true);[cite: 1]
+          broadcastLatest({ roomStatus: 'round_active', currentRoundIndex: nextIdx, timeLeft: nextTime });[cite: 1]
         } else {
-          setRoomStatus('ended');
-          setIsTimerRunning(false);
-          broadcastLatest({ roomStatus: 'ended', timeLeft: 0 });
+          setRoomStatus('ended');[cite: 1]
+          setIsTimerRunning(false);[cite: 1]
+          broadcastLatest({ roomStatus: 'ended', timeLeft: 0 });[cite: 1]
 
-          if (isHost) {
-            setVictoryStep(1);
-            setVictoryAns({});
-            setShowVictoryModal(true);
+          if (isHost) {[cite: 1]
+            setVictoryStep(1);[cite: 1]
+            setVictoryAns({});[cite: 1]
+            setShowVictoryModal(true);[cite: 1]
           }
         }
       };
 
       // 勝負判定邏輯
       const resolveGameResult = (ans) => {
-        const { sameRoom, engineerShared, doctorShared } = ans;
-        if (sameRoom) {
-          if (hasEngineerInGame) {
-            if (engineerShared) return '紅隊獲勝';
-            return hasDoctorInGame && doctorShared ? '藍隊獲勝' : '沒有隊伍獲勝';
+        const { sameRoom, engineerShared, doctorShared } = ans;[cite: 1]
+        if (sameRoom) {[cite: 1]
+          if (hasEngineerInGame) {[cite: 1]
+            if (engineerShared) return '紅隊獲勝';[cite: 1]
+            return hasDoctorInGame && doctorShared ? '藍隊獲勝' : '沒有隊伍獲勝';[cite: 1]
           }
-          return '紅隊獲勝';
+          return '紅隊獲勝';[cite: 1]
         } else {
-          if (hasDoctorInGame) {
-            if (doctorShared) return '藍隊獲勝';
-            return hasEngineerInGame && engineerShared ? '紅隊獲勝' : '沒有隊伍獲勝';
+          if (hasDoctorInGame) {[cite: 1]
+            if (doctorShared) return '藍隊獲勝';[cite: 1]
+            return hasEngineerInGame && engineerShared ? '紅隊獲勝' : '沒有隊伍獲勝';[cite: 1]
           }
-          return '藍隊獲勝';
+          return '藍隊獲勝';[cite: 1]
         }
       };
 
       const handleVictoryAnswer = (key, val) => {
-        const updatedAns = { ...victoryAns, [key]: val };
-        setVictoryAns(updatedAns);
+        const updatedAns = { ...victoryAns, [key]: val };[cite: 1]
+        setVictoryAns(updatedAns);[cite: 1]
 
-        if (key === 'sameRoom') {
-          if (val === true) {
-            hasEngineerInGame ? setVictoryStep(2) : finalizeVictory(updatedAns);
+        if (key === 'sameRoom') {[cite: 1]
+          if (val === true) {[cite: 1]
+            hasEngineerInGame ? setVictoryStep(2) : finalizeVictory(updatedAns);[cite: 1]
           } else {
-            hasDoctorInGame ? setVictoryStep(3) : finalizeVictory(updatedAns);
+            hasDoctorInGame ? setVictoryStep(3) : finalizeVictory(updatedAns);[cite: 1]
           }
-        } else if (key === 'engineerShared') {
-          if (victoryAns.sameRoom === true && val === false && hasDoctorInGame) {
-            setVictoryStep(4);
+        } else if (key === 'engineerShared') {[cite: 1]
+          if (victoryAns.sameRoom === true && val === false && hasDoctorInGame) {[cite: 1]
+            setVictoryStep(4);[cite: 1]
           } else {
-            finalizeVictory(updatedAns);
+            finalizeVictory(updatedAns);[cite: 1]
           }
-        } else if (key === 'doctorShared') {
-          if (victoryAns.sameRoom === false && val === false && hasEngineerInGame) {
-            setVictoryStep(5);
+        } else if (key === 'doctorShared') {[cite: 1]
+          if (victoryAns.sameRoom === false && val === false && hasEngineerInGame) {[cite: 1]
+            setVictoryStep(5);[cite: 1]
           } else {
-            finalizeVictory(updatedAns);
+            finalizeVictory(updatedAns);[cite: 1]
           }
         }
       };
 
       const finalizeVictory = (finalAns) => {
-        const result = resolveGameResult(finalAns);
-        setGameResult(result);
-        setShowVictoryModal(false);
-        broadcastLatest({ gameResult: result });
+        const result = resolveGameResult(finalAns);[cite: 1]
+        setGameResult(result);[cite: 1]
+        setShowVictoryModal(false);[cite: 1]
+        broadcastLatest({ gameResult: result });[cite: 1]
       };
 
       // 互動與技能交換
       const handleTouchMove = (e) => {
-        if (!isColorOnly || !cardRef.current) return;
-        const touch = e.touches[0];
-        if (!touch) return;
-        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (!targetElement || !cardRef.current.contains(targetElement)) {
-          setIsColorOnly(false);
+        if (!isColorOnly || !cardRef.current) return;[cite: 1]
+        const touch = e.touches[0];[cite: 1]
+        if (!touch) return;[cite: 1]
+        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);[cite: 1]
+        if (!targetElement || !cardRef.current.contains(targetElement)) {[cite: 1]
+          setIsColorOnly(false);[cite: 1]
         }
       };
 
       const handleSendSwapRequest = (targetPlayer) => {
-        setShowSwapTargetModal(false);
-        if (targetPlayer.id === myPlayerId) return;
+        setShowSwapTargetModal(false);[cite: 1]
+        if (targetPlayer.id === myPlayerId) return;[cite: 1]
 
-        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);
+        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);[cite: 1]
         publishMsg(`trb_game_sync_room_${roomId}`, {
           type: 'SWAP_REQUEST', senderId: myPlayerId, fromId: myPlayerId,
           fromName: myInfo.name, fromRoleName: myInfo.role?.name, targetId: targetPlayer.id
-        });
+        });[cite: 1]
       };
 
       const handleAcceptSwap = () => {
-        if (!swapRequestData) return;
-        const { fromId: p1Id } = swapRequestData;
-        const p2Id = myPlayerId;
-        setSwapRequestData(null);
+        if (!swapRequestData) return;[cite: 1]
+        const { fromId: p1Id } = swapRequestData;[cite: 1]
+        const p2Id = myPlayerId;[cite: 1]
+        setSwapRequestData(null);[cite: 1]
 
-        if (latestStateRef.current.isHost) {
-          executeSwapOnHost(p1Id, p2Id);
+        if (latestStateRef.current.isHost) {[cite: 1]
+          executeSwapOnHost(p1Id, p2Id);[cite: 1]
         } else {
           publishMsg(`trb_game_sync_room_${roomId}`, {
             type: 'EXECUTE_SWAP', senderId: myPlayerId, player1Id: p1Id, player2Id: p2Id
-          });
+          });[cite: 1]
         }
       };
 
       const handleRejectSwap = () => {
-        if (!swapRequestData) return;
+        if (!swapRequestData) return;[cite: 1]
         publishMsg(`trb_game_sync_room_${roomId}`, {
           type: 'SWAP_REJECTED', senderId: myPlayerId, fromId: swapRequestData.fromId
-        });
-        setSwapRequestData(null);
+        });[cite: 1]
+        setSwapRequestData(null);[cite: 1]
       };
 
       const handleConfirmDrunkSwap = () => {
-        setShowDrunkConfirmModal(false);
-        if (!buriedCard) return;
+        setShowDrunkConfirmModal(false);[cite: 1]
+        if (!buriedCard) return;[cite: 1]
 
-        if (latestStateRef.current.isHost) {
-          const curBuried = latestStateRef.current.buriedCard;
+        if (latestStateRef.current.isHost) {[cite: 1]
+          const curBuried = latestStateRef.current.buriedCard;[cite: 1]
           setPlayers(prev => {
-            const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, myPlayerId);
-            setBuriedCard(newBuried);
-            setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
-            return nextPlayers;
+            const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, myPlayerId);[cite: 1]
+            setBuriedCard(newBuried);[cite: 1]
+            setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);[cite: 1]
+            return nextPlayers;[cite: 1]
           });
         } else {
           publishMsg(`trb_game_sync_room_${roomId}`, {
             type: 'EXECUTE_DRUNK_SWAP', senderId: myPlayerId, playerId: myPlayerId
-          });
+          });[cite: 1]
         }
       };
 
       const handleTriggerMadScientistSwap = useCallback((p1Id, p2Id) => {
-        const p1 = players.find(p => p.id === p1Id);
-        const p2 = players.find(p => p.id === p2Id);
-        if (!p1 || !p2) return;
+        const p1 = players.find(p => p.id === p1Id);[cite: 1]
+        const p2 = players.find(p => p.id === p2Id);[cite: 1]
+        if (!p1 || !p2) return;[cite: 1]
 
         publishMsg(`trb_game_sync_room_${roomId}`, {
           type: 'MAD_SCIENTIST_INITIATE', senderId: myPlayerId, initiatorId: myPlayerId,
           initiatorName: myInfo.name, p1Id, p1Name: p1.name, p2Id, p2Name: p2.name
-        });
-        setSwapStatusMessage(`已向 ${p1.name} 與 ${p2.name} 發送對調請求，等待雙方同意中...`);
-      }, [players, myPlayerId, myInfo.name, roomId, publishMsg]);
+        });[cite: 1]
+        setSwapStatusMessage(`已向 ${p1.name} 與 ${p2.name} 發送對調請求，等待雙方同意中...`);[cite: 1]
+      }, [players, myPlayerId, myInfo.name, roomId, publishMsg]);[cite: 1]
 
       const handleMadScientistTargetVote = (accepted) => {
-        if (!madScientistPendingData) return;
+        if (!madScientistPendingData) return;[cite: 1]
         publishMsg(`trb_game_sync_room_${roomId}`, {
           type: 'MAD_SCIENTIST_VOTE', senderId: myPlayerId, voterId: myPlayerId,
           voterName: myInfo.name, accepted
-        });
-        setMadScientistPendingData(null);
+        });[cite: 1]
+        setMadScientistPendingData(null);[cite: 1]
       };
 
       const handleToggleScientistTarget = (pid) => {
         setSelectedScientistTargets(prev => {
-          if (prev.includes(pid)) return prev.filter(id => id !== pid);
-          return prev.length >= 2 ? [prev[1], pid] : [...prev, pid];
+          if (prev.includes(pid)) return prev.filter(id => id !== pid);[cite: 1]
+          return prev.length >= 2 ? [prev[1], pid] : [...prev, pid];[cite: 1]
         });
       };
 
       const handleConfirmScientistSwap = () => {
-        if (selectedScientistTargets.length !== 2) return;
-        madScientistConfig?.onConfirm(selectedScientistTargets[0], selectedScientistTargets[1]);
-        setShowMadScientistModal(false);
-        setSelectedScientistTargets([]);
+        if (selectedScientistTargets.length !== 2) return;[cite: 1]
+        madScientistConfig?.onConfirm(selectedScientistTargets[0], selectedScientistTargets[1]);[cite: 1]
+        setShowMadScientistModal(false);[cite: 1]
+        setSelectedScientistTargets([]);[cite: 1]
       };
 
       // 狀態賦予發起與確認處理
@@ -1389,6 +1389,8 @@
           senderId: myPlayerId,
           initiatorId: myPlayerId,
           initiatorName: myInfo.name,
+          initiatorRoleName: myInfo.role?.name || '未知角色',
+          initiatorRoleIcon: myInfo.role?.icon || '⭐',
           targetId: targetPlayer.id,
           statusObj: {
             id: activeStatusConfig.statusId,
@@ -1429,21 +1431,21 @@
       };
 
       const handleToggleRole = (roleId) => {
-        if (!isHost) return;
+        if (!isHost) return;[cite: 1]
         setTempRoleCounts(prev => {
-          const isSelected = (prev[roleId] || 0) > 0;
-          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };
+          const isSelected = (prev[roleId] || 0) > 0;[cite: 1]
+          const next = { ...prev, [roleId]: isSelected ? 0 : 1 };[cite: 1]
 
-          if (!isSelected) {
-            const currentRole = rolesCatalog.find(r => r.id === roleId);
-            if (currentRole?.pairs) {
-              const pairIds = Array.isArray(currentRole.pairs)
-                ? currentRole.pairs
-                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);
-              pairIds.forEach(pId => { next[pId] = 1; });
+          if (!isSelected) {[cite: 1]
+            const currentRole = rolesCatalog.find(r => r.id === roleId);[cite: 1]
+            if (currentRole?.pairs) {[cite: 1]
+              const pairIds = Array.isArray(currentRole.pairs)[cite: 1]
+                ? currentRole.pairs[cite: 1]
+                : currentRole.pairs.split(',').map(s => s.trim()).filter(Boolean);[cite: 1]
+              pairIds.forEach(pId => { next[pId] = 1; });[cite: 1]
             }
           }
-          return next;
+          return next;[cite: 1]
         });
       };
 
@@ -1729,18 +1731,18 @@
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeRolesInDeck.map(group => {
-                    const hasBlue = group.teams.includes('blue');
-                    const hasRed = group.teams.includes('red');
-                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+                    const hasBlue = group.teams.includes('blue');[cite: 1]
+                    const hasRed = group.teams.includes('red');[cite: 1]
+                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';[cite: 1]
 
-                    if (hasBlue && hasRed) {
-                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
-                    } else if (hasBlue) {
-                      bgStyle = getTeamMeta('blue').listBg;
-                    } else if (hasRed) {
-                      bgStyle = getTeamMeta('red').listBg;
-                    } else if (group.teams.length > 0) {
-                      bgStyle = getTeamMeta(group.teams[0]).listBg;
+                    if (hasBlue && hasRed) {[cite: 1]
+                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';[cite: 1]
+                    } else if (hasBlue) {[cite: 1]
+                      bgStyle = getTeamMeta('blue').listBg;[cite: 1]
+                    } else if (hasRed) {[cite: 1]
+                      bgStyle = getTeamMeta('red').listBg;[cite: 1]
+                    } else if (group.teams.length > 0) {[cite: 1]
+                      bgStyle = getTeamMeta(group.teams[0]).listBg;[cite: 1]
                     }
 
                     return (
@@ -1949,10 +1951,10 @@
 
                     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
                       {players.map(p => {
-                        const meta = getTeamMeta(p.team);
-                        const isRedWinner = gameResult === '紅隊獲勝' && p.team === 'red';
-                        const isBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';
-                        const isWinner = isRedWinner || isBlueWinner;
+                        const meta = getTeamMeta(p.team);[cite: 1]
+                        const isRedWinner = gameResult === '紅隊獲勝' && p.team === 'red';[cite: 1]
+                        const isBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';[cite: 1]
+                        const isWinner = isRedWinner || isBlueWinner;[cite: 1]
 
                         return (
                           <div
@@ -2173,18 +2175,18 @@
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activeRolesInDeck.map(group => {
-                    const hasBlue = group.teams.includes('blue');
-                    const hasRed = group.teams.includes('red');
-                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+                    const hasBlue = group.teams.includes('blue');[cite: 1]
+                    const hasRed = group.teams.includes('red');[cite: 1]
+                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';[cite: 1]
 
-                    if (hasBlue && hasRed) {
-                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
-                    } else if (hasBlue) {
-                      bgStyle = getTeamMeta('blue').listBg;
-                    } else if (hasRed) {
-                      bgStyle = getTeamMeta('red').listBg;
-                    } else if (group.teams.length > 0) {
-                      bgStyle = getTeamMeta(group.teams[0]).listBg;
+                    if (hasBlue && hasRed) {[cite: 1]
+                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';[cite: 1]
+                    } else if (hasBlue) {[cite: 1]
+                      bgStyle = getTeamMeta('blue').listBg;[cite: 1]
+                    } else if (hasRed) {[cite: 1]
+                      bgStyle = getTeamMeta('red').listBg;[cite: 1]
+                    } else if (group.teams.length > 0) {[cite: 1]
+                      bgStyle = getTeamMeta(group.teams[0]).listBg;[cite: 1]
                     }
 
                     return (
@@ -2256,14 +2258,27 @@
             </div>
           )}
 
-          {/* 彈窗：被賦予狀態者的確認請求 */}
+          {/* 彈窗：被賦予狀態者的確認請求（顯示發起者暱稱與角色資訊） */}
           {statusPromptData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
                 <div className="text-4xl animate-bounce">{statusPromptData.statusObj.icon}</div>
                 <h3 className="text-lg font-black text-purple-300">特殊狀態賦予請求！</h3>
+
+                {/* 發起者資訊小卡 */}
+                <div className="bg-zinc-950/70 border border-zinc-700/80 rounded-xl p-3 text-left space-y-1.5">
+                  <div className="text-[11px] text-zinc-400 font-medium">來自玩家發起：</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">{statusPromptData.initiatorName}</span>
+                    <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                      <span>{statusPromptData.initiatorRoleIcon}</span>
+                      <span>{statusPromptData.initiatorRoleName}</span>
+                    </span>
+                  </div>
+                </div>
+
                 <p className="text-sm text-zinc-300 leading-relaxed">
-                  玩家 <strong className="text-white font-bold">{statusPromptData.initiatorName}</strong> 想要賦予你特殊狀態：
+                  想要賦予你特殊狀態：
                   <span className="block mt-1 text-base font-black text-purple-400">
                     【{statusPromptData.statusObj.name}】
                   </span>
@@ -2312,7 +2327,7 @@
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                   {players.filter(p => p.id !== myPlayerId).map(p => {
-                    const isSelected = selectedScientistTargets.includes(p.id);
+                    const isSelected = selectedScientistTargets.includes(p.id);[cite: 1]
                     return (
                       <button
                         key={p.id}
@@ -2558,7 +2573,7 @@
 
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                   {players.filter(p => p.id !== myPlayerId).map(p => {
-                    const isDisabled = swapModalConfig?.isTargetDisabled ? swapModalConfig.isTargetDisabled(p) : false;
+                    const isDisabled = swapModalConfig?.isTargetDisabled ? swapModalConfig.isTargetDisabled(p) : false;[cite: 1]
                     return (
                       <button
                         key={p.id}
@@ -2643,13 +2658,13 @@
                         key={cnt}
                         type="button"
                         onClick={() => {
-                          let newSettings = [...tempRoundSettings];
-                          if (cnt > newSettings.length) {
-                            while (newSettings.length < cnt) newSettings.push(1);
+                          let newSettings = [...tempRoundSettings];[cite: 1]
+                          if (cnt > newSettings.length) {[cite: 1]
+                            while (newSettings.length < cnt) newSettings.push(1);[cite: 1]
                           } else {
-                            newSettings = newSettings.slice(0, cnt);
+                            newSettings = newSettings.slice(0, cnt);[cite: 1]
                           }
-                          setTempRoundSettings(newSettings);
+                          setTempRoundSettings(newSettings);[cite: 1]
                         }}
                         className={`py-2.5 rounded-xl text-sm font-bold border transition ${
                           tempRoundSettings.length === cnt ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
@@ -2673,10 +2688,10 @@
                           max="15"
                           value={min}
                           onChange={(e) => {
-                            const val = Math.max(1, parseInt(e.target.value) || 1);
-                            const updated = [...tempRoundSettings];
-                            updated[idx] = val;
-                            setTempRoundSettings(updated);
+                            const val = Math.max(1, parseInt(e.target.value) || 1);[cite: 1]
+                            const updated = [...tempRoundSettings];[cite: 1]
+                            updated[idx] = val;[cite: 1]
+                            setTempRoundSettings(updated);[cite: 1]
                           }}
                           className="w-16 bg-zinc-900 border border-zinc-600 rounded-lg px-2 py-1 text-center text-sm font-bold text-amber-400"
                         />
@@ -2689,9 +2704,9 @@
                 <button
                   type="button"
                   onClick={() => {
-                    setRoundSettings(tempRoundSettings);
-                    setShowRoundConfigModal(false);
-                    broadcastLatest({ roundSettings: tempRoundSettings });
+                    setRoundSettings(tempRoundSettings);[cite: 1]
+                    setShowRoundConfigModal(false);[cite: 1]
+                    broadcastLatest({ roundSettings: tempRoundSettings });[cite: 1]
                   }}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg active:scale-95"
                 >
@@ -2725,9 +2740,9 @@
                       <button
                         type="button"
                         onClick={() => {
-                          const cleared = {};
-                          rolesCatalog.forEach(role => { cleared[role.id] = 0; });
-                          setTempRoleCounts(cleared);
+                          const cleared = {};[cite: 1]
+                          rolesCatalog.forEach(role => { cleared[role.id] = 0; });[cite: 1]
+                          setTempRoleCounts(cleared);[cite: 1]
                         }}
                         className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1.5 rounded-lg transition active:scale-95"
                       >
@@ -2752,8 +2767,8 @@
                 <div className="p-4 overflow-y-auto space-y-3 flex-1">
                   <div className={`grid gap-2.5 ${deckViewMode === 'iconOnly' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
                     {rolesCatalog.map(role => {
-                      const isSelected = (tempRoleCounts[role.id] || 0) > 0;
-                      const meta = getTeamMeta(role.team);
+                      const isSelected = (tempRoleCounts[role.id] || 0) > 0;[cite: 1]
+                      const meta = getTeamMeta(role.team);[cite: 1]
 
                       if (deckViewMode === 'iconOnly') {
                         return (
@@ -2827,9 +2842,9 @@
                   <button
                     type="button"
                     onClick={() => {
-                      setRoleCounts(tempRoleCounts);
-                      setShowDeckModal(false);
-                      broadcastLatest({ roleCounts: tempRoleCounts });
+                      setRoleCounts(tempRoleCounts);[cite: 1]
+                      setShowDeckModal(false);[cite: 1]
+                      broadcastLatest({ roleCounts: tempRoleCounts });[cite: 1]
                     }}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg active:scale-95"
                   >
@@ -2844,7 +2859,7 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);[cite: 1]
   </script>
 </body>
 </html>
