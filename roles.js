@@ -2,67 +2,115 @@
  * 遊戲角色/描述 (Roles & desc) 清單
  */
 window.OFFICIAL_ROLES_CATALOG = [
-  // 核心身分
+  // 藍/紅隊核心角色
   { id: 'pres', name: '總統 (President)', team: 'blue', icon: '👔', desc: '遠離『炸彈客』！\n\n勝利條件：遊戲結束時，與『炸彈客』在不同房間。', pairs: 'bomb' },
   { id: 'bomb', name: '炸彈客 (Bomber)', team: 'red', icon: '💣', desc: '遊戲結束時引爆炸彈，同房間的人獲得『死亡』屬性。\n\n勝利條件：遊戲結束時，與『總統』在同個房間。', pairs: 'pres' },
   { id: 'pres_d', name: '總統女兒 (President\'s Daughter)', team: 'blue', icon: '👧', desc: '妳是『總統』備選人，若『總統』被埋葬或離開遊戲時，妳必須肩負起『總統』的責任。', pairs: 'martyr' },
   { id: 'martyr', name: '烈士 (Martyr)', team: 'red', icon: '🔥', desc: '你是『炸彈客』備選人，若『炸彈客』被埋葬或離開遊戲你必須肩負起『炸彈客』的責任。', pairs: 'pres_d' },
-  { id: 'doctor', name: '醫生 (Doctor)', team: 'blue', icon: '🩺', desc: '遊戲結束前，你必須與『總統』進行過『卡片分享』，否則藍隊失敗。', pairs: 'engineer' },
-  { id: 'engineer', name: '工程師 (Engineer)', team: 'red', icon: '⚙️', desc: '遊戲結束前，你必須與『炸彈客』進行過『卡片分享』，否則紅隊失敗。', pairs: 'doctor' },
+  { id: 'doctor', name: '醫生 (Doctor)', team: 'blue', icon: '🩺', desc: '遊戲結束前，你必須與『總統』進行過『角色分享』，否則藍隊失敗。', pairs: 'engineer' },
+  { id: 'engineer', name: '工程師 (Engineer)', team: 'red', icon: '⚙️', desc: '遊戲結束前，你必須與『炸彈客』進行過『角色分享』，否則紅隊失敗。', pairs: 'doctor' },
   { id: 'nurse', name: '護士 (Nurse)', team: 'blue', icon: '💉', desc: '你是『醫生』備選人，若『醫生』被埋葬或離開遊戲時，你必須承擔『醫生』的職責。', pairs: 'tinkerer' },
   { id: 'tinkerer', name: '工匠 (Tinkerer)', team: 'red', icon: '🔨', desc: '你是『工程師』備選人，若『工程師』被埋葬或離開遊戲時，你必須承擔『工程師』的職責。', pairs: 'nurse' },
-
-// 進階陣營角色（分拆紅 / 藍）
   { id: 'spy_r', name: '紅隊間諜 (Red Spy)', team: 'blue', icon: '🕵️‍♀️', desc: '屬於紅隊但卡片底色為藍色；擾亂他人顏色查驗，請對紅隊忠誠！', pairs: 'spy_b' },
   { id: 'spy_b', name: '藍隊間諜 (Blue Spy)', team: 'red', icon: '🕵️‍♂️', desc: '屬於藍隊但卡片底色為紅色；擾亂他人顏色查驗，請對藍隊忠誠！', pairs: 'spy_r' },
+  
+  // 藍/紅隊分享或揭露類
+  { id: 'coy_b', name: '靦腆少年 (Coy Boy)', team: 'blue', icon: '😳', desc: '只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'coy_r' },
+  { id: 'coy_r', name: '靦腆少年 (Coy Boy)', team: 'red', icon: '😳', desc: '只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'coy_b' },
+  { id: 'shy_b', name: '害羞小子 (Shy Guy)', team: 'blue', icon: '🙈', desc: '不能進行任何『角色揭露』或公開揭露行動。', pairs: 'shy_r' },
+  { id: 'shy_r', name: '害羞小子 (Shy Guy)', team: 'red', icon: '🙈', desc: '不能進行任何『角色揭露』或公開揭露行動。', pairs: 'shy_b' },
+  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得「害羞」屬性，不能進行任何揭露。', pairs: 'criminal_r' },
+  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得「害羞」屬性，不能進行任何揭露。', pairs: 'criminal_b' },
+  { id: 'thug_b', name: '暴徒 (Thug)', team: 'blue', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得「靦腆」屬性，只能進行『顏色分享』。', pairs: 'thug_r' },
+  { id: 'thug_r', name: '暴徒 (Thug)', team: 'red', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得「靦腆」屬性，只能進行『顏色分享』。', pairs: 'thug_b' },
+  { id: 'psychologist_b', name: '心理醫生 (Psychologist)', team: 'blue', icon: '🛋️', desc: '進行『角色揭露』給害羞或靦腆玩家時，對方可與你『角色分享』並治癒移除這些屬性。', pairs: 'psychologist_r' },
+  { id: 'psychologist_r', name: '心理醫生 (Psychologist)', team: 'red', icon: '🛋️', desc: '進行『角色揭露』給害羞或靦腆玩家時，對方可與你『角色分享』並治癒移除這些屬性。', pairs: 'psychologist_b' },
+  { id: 'negotiator_b', name: '談判專家 (Negotiator)', team: 'blue', icon: '🤝', desc: '自帶悟性屬性：只能進行『角色分享』，禁止『顏色分享』或任何揭露行為。', pairs: 'negotiator_r' },
+  { id: 'negotiator_r', name: '談判專家 (Negotiator)', team: 'red', icon: '🤝', desc: '自帶悟性屬性：只能進行『角色分享』，禁止『顏色分享』或任何揭露行為。', pairs: 'negotiator_b' },
+  { id: 'dealer_b', name: '荷官 (Dealer)', team: 'blue', icon: '🃏', desc: '與你進行『角色分享』的玩家獲得「愚蠢」屬性，不能拒絕任何分享。', pairs: 'dealer_r' },
+  { id: 'dealer_r', name: '荷官 (Dealer)', team: 'red', icon: '🃏', desc: '與你進行『角色分享』的玩家獲得「愚蠢」屬性，不能拒絕任何分享。', pairs: 'dealer_b' },
+  { id: 'fool_b', name: '傻瓜 (Fool)', team: 'blue', icon: '🤪', desc: '自帶「愚蠢」屬性，不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'fool_r' },
+  { id: 'fool_r', name: '傻瓜 (Fool)', team: 'red', icon: '🤪', desc: '自帶「愚蠢」屬性，不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'fool_b' },
+  { id: 'paranoid_b', name: '妄想者 (Paranoid)', team: 'blue', icon: '👀', desc: '自帶妄想屬性，整場遊戲只能進行一次『角色分享』；可被心理醫生治癒。', pairs: 'paranoid_r' },
+  { id: 'paranoid_r', name: '妄想者 (Paranoid)', team: 'red', icon: '👀', desc: '自帶妄想屬性，整場遊戲只能進行一次『角色分享』；可被心理醫生治癒。', pairs: 'paranoid_b' },
+  { id: 'professor_b', name: '教授 (Professor)', team: 'blue', icon: '🎓', desc: '任何與你進行『角色分享』者獲得「精明」屬性，之後只能『角色分享』且不可拒絕。', pairs: 'professor_r' },
+  { id: 'professor_r', name: '教授 (Professor)', team: 'red', icon: '🎓', desc: '任何與你進行『角色分享』者獲得「精明」屬性，之後只能『角色分享』且不可拒絕。', pairs: 'professor_b' },
+  { id: 'bully_b', name: '惡霸 (Bully)', team: 'blue', icon: '🤬', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_r' },
+  { id: 'bully_r', name: '惡霸 (Bully)', team: 'red', icon: '🤬', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_b' },
+  { id: 'interrogator_b', name: '審訊官 (Interrogator)', team: 'blue', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_r' },
+  { id: 'interrogator_r', name: '審訊官 (Interrogator)', team: 'red', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_b' },
+  { id: 'enforcer_b', name: '執法者 (Enforcer)', team: 'blue', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_r' },
+  { id: 'enforcer_r', name: '執法者 (Enforcer)', team: 'red', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_b' },
+  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
+  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
+  { id: 'exhibitionist_b', name: '露體狂 (Exhibitionist)', team: 'blue', icon: '🥼', desc: '自帶「裸露」屬性，全場只能進行公開展示，禁止『角色揭露』或『角色分享』。', pairs: 'exhibitionist_r' },
+  { id: 'exhibitionist_r', name: '露體狂 (Exhibitionist)', team: 'red', icon: '🥼', desc: '自帶「裸露」屬性，全場只能進行公開展示，禁止『角色揭露』或『角色分享』。', pairs: 'exhibitionist_b' },
+  { id: 'werewolf_b', name: '狼人 (Werewolf)', team: 'blue', icon: '🐺', desc: '進行『角色分享』或『顏色分享』會施加「咬傷」，被咬者必須如實回答狼人問題。', pairs: 'werewolf_r' },
+  { id: 'werewolf_r', name: '狼人 (Werewolf)', team: 'red', icon: '🐺', desc: '進行『角色分享』或『顏色分享』會施加「咬傷」，被咬者必須如實回答狼人問題。', pairs: 'werewolf_b' },
+  { id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
+  { id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
+  { id: 'gorgon_b', name: '蛇髮女妖 (Gorgon)', team: 'blue', icon: '🐍', desc: '進行『角色分享』時賦予對方「石化」屬性，使其雙臂垂下並喪失所有投票權。', pairs: 'gorgon_r' },
+  { id: 'gorgon_r', name: '蛇髮女妖 (Gorgon)', team: 'red', icon: '🐍', desc: '進行『角色分享』時賦予對方「石化」屬性，使其雙臂垂下並喪失所有投票權。', pairs: 'gorgon_b' },
+  { id: 'centipede_b', name: '人形蜈蚣 (Centipede)', team: 'blue', icon: '🐛', desc: '與你進行『角色分享』者獲得「連結」屬性；一旦與你分處不同房間則撕裂並永久公開亮牌。', pairs: 'centipede_r' },
+  { id: 'centipede_r', name: '人形蜈蚣 (Centipede)', team: 'red', icon: '🐛', desc: '與你進行『角色分享』者獲得「連結」屬性；一旦與你分處不同房間則撕裂並永久公開亮牌。', pairs: 'centipede_b' },
+  { id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '👤', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
+  { id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '👤', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
+  { id: 'conspirator_b', name: '共謀者 (Conspirator)', team: 'blue', icon: '🗡️', desc: '與紅隊進行『角色分享』時對其施加「叛徒」屬性，使其獲勝目標倒戈向藍隊。', pairs: 'conspirator_r' },
+  { id: 'conspirator_r', name: '共謀者 (Conspirator)', team: 'red', icon: '🗡️', desc: '與藍隊進行『角色分享』時對其施加「叛徒」屬性，使其獲勝目標倒戈向紅隊。', pairs: 'conspirator_b' },
+  { id: 'piper_b', name: '吹笛人 (Piper)', team: 'blue', icon: '🪈', desc: '與你進行『角色分享』者獲得「被引誘」屬性，遊戲結束時若未與你在同一個房間則直接判負。', pairs: 'piper_r' },
+  { id: 'piper_r', name: '吹笛人 (Piper)', team: 'red', icon: '🪈', desc: '與你進行『角色分享』者獲得「被引誘」屬性，遊戲結束時若未與你在同一個房間則直接判負。', pairs: 'piper_b' },
+  { id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌與身分，並將自帶害羞的竊賊卡塞給對方。', pairs: 'identity_thief_r' },
+  { id: 'identity_thief_r', name: '身分竊賊 (Identity Thief)', team: 'red', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌與身分，並將自帶害羞的竊賊卡塞給對方。', pairs: 'identity_thief_b' },
+  { id: 'vampire_b', name: '吸血鬼 (Vampire)', team: 'blue', icon: '🧛', desc: '與不同顏色玩家進行『角色分享』時賦予「誘惑」屬性，對方必須服從你的指示來使用角色技能與領袖投票。', pairs: 'vampire_r' },
+  { id: 'vampire_r', name: '吸血鬼 (Vampire)', team: 'red', icon: '🧛', desc: '與不同顏色玩家進行『角色分享』時賦予「誘惑」屬性，對方必須服從你的指示與投票。', pairs: 'vampire_b' },
+  { id: 'hypnotist_b', name: '催眠師 (Hypnotist)', team: 'blue', icon: '🌀', desc: '進行『角色分享』時對其施加催眠，強制對方在行為上必須扮演你指定的角色(盲人、小丑、默劇演員)。', pairs: 'hypnotist_r' },
+  { id: 'hypnotist_r', name: '催眠師 (Hypnotist)', team: 'red', icon: '🌀', desc: '進行『角色分享』時對其施加催眠，強制對方在行為上必須扮演你指定的角色(盲人、小丑、默劇演員)。', pairs: 'hypnotist_b' },
+  { id: 'capitalist', name: '資本家 (Capitalist)', team: 'blue', icon: '💰', desc: '進行『角色分享』時，強迫對方在下輪前將其手牌換成普通的藍隊成員卡。', pairs: 'socialist' },
+  { id: 'socialist', name: '社會主義者 (Socialist)', team: 'red', icon: '🚩', desc: '進行『角色分享』時，強迫對方在下輪前將其手牌換成普通的紅隊成員卡。', pairs: 'capitalist' },
+  { id: 'hunter_b', name: '獵人 (Hunter)', team: 'blue', icon: '🏹', desc: '若有人對你使用『角色分享』類的技能，你沒收其角色卡且不受其技能影響。', pairs: 'hunter_r' },
+  { id: 'hunter_r', name: '獵人 (Hunter)', team: 'red', icon: '🏹', desc: '若有人對你使用『角色分享』類的技能，你沒收其角色卡且不受其技能影響。', pairs: 'hunter_b' },
+  { id: 'informer_b', name: '告密者 (Informer)', team: 'blue', icon: '✉️', desc: '紅隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_r' },
+  { id: 'informer_r', name: '告密者 (Informer)', team: 'red', icon: '✉️', desc: '藍隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_b' },
+  { id: 'loyalist_b', name: '效忠者 (Loyalist)', team: 'blue', icon: '🛡️', desc: '免疫「叛徒」屬性，且能透過『角色分享』消除他人身上的叛徒屬性。', pairs: 'loyalist_r' },
+  { id: 'loyalist_r', name: '效忠者 (Loyalist)', team: 'red', icon: '🛡️', desc: '免疫「叛徒」屬性，且能透過『角色分享』消除他人身上的叛徒屬性。', pairs: 'loyalist_b' },
+  { id: 'medic_b', name: '醫療兵 (Medic)', team: 'blue', icon: '🏥', desc: '與你進行『角色分享』的玩家移除所有屬性；本身不免疫屬性。', pairs: 'medic_r' },
+  { id: 'medic_r', name: '醫療兵 (Medic)', team: 'red', icon: '🏥', desc: '與你進行『角色分享』的玩家移除所有屬性；本身不免疫屬性。', pairs: 'medic_b' },
+  { id: 'cleaner_b', name: '清潔工 (Cleaner)', team: 'blue', icon: '🧹', desc: '進行『角色分享』時清除對方身上所有的附加狀態，將其恢復為初始純淨狀態。', pairs: 'cleaner_r' },
+  { id: 'cleaner_r', name: '清潔工 (Cleaner)', team: 'red', icon: '🧹', desc: '進行『角色分享』時清除對方身上所有的附加狀態，將其恢復為初始純淨狀態。', pairs: 'cleaner_b' },
+  { id: 'mad_scientist_b', name: '瘋狂科學家 (Mad Scientist)', team: 'blue', icon: '🧪', desc: '整場限一次，進行『角色揭露』給兩名玩家，強迫這兩名玩家強制互換身分卡。', pairs: 'mad_scientist_r' },
+  { id: 'mad_scientist_r', name: '瘋狂科學家 (Mad Scientist)', team: 'red', icon: '🧪', desc: '整場限一次，進行『角色揭露』給兩名玩家，強迫這兩名玩家強制互換身分卡。', pairs: 'mad_scientist_b' },
+  { id: 'firefighter', name: '消防員 (Firefighter)', team: 'blue', icon: '🧯', desc: '與總統進行『角色分享』賦予「防火」屬性，總統所在的房間免受燃燒波及。', pairs: 'pyrotech' }, //加問答
+  { id: 'pyrotech', name: '煙火專家 (Pyrotech)', team: 'red', icon: '🎆', desc: '與炸彈客進行『角色分享』賦予「燃火」屬性；炸彈爆炸時會燃燒另一間房間。', pairs: 'firefighter' }, //加問答
+  { id: 'xenomorph', name: '異形 (Xenomorph)', team: 'red', icon: '👾', desc: '將你的卡牌寄生於首位進行『顏色分享』的藍隊玩家身上，此舉動會讓你遺失卡牌而無法進行任何分享行為，終局使該藍隊玩家所在房間全員死亡。', pairs: 'xenohunter' }, //可以考慮加機制
+  { id: 'xenohunter', name: '異形獵人 (Xenohunter)', team: 'blue', icon: '🔫', desc: '可以對被異形寄生的藍隊玩家進行『角色揭露』，將此卡與對方的異形卡牌移出遊戲，此舉動會讓你遺失卡牌而無法進行任何分享行為。', pairs: 'xenomorph' }, //可以考慮加機制
+  { id: 'fugitive', name: '逃犯 (Fugitive)', team: 'red', icon: '🏃', desc: '若與獨臂人完成『角色分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'marshall,one_armed_man,witness' }, //加機制
+  { id: 'marshall', name: '法警 (Marshall)', team: 'blue', icon: '⭐', desc: '若與逃犯完成『角色分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'fugitive,one_armed_man,witness' }, //加機制
+  { id: 'one_armed_man', name: '獨臂人 (One-Armed Man)', team: 'blue', icon: '🦾', desc: '若與目擊證人完成『角色分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'marshall,fugitive,witness' }, //加機制
+  { id: 'witness', name: '目擊證人 (Witness)', team: 'red', icon: '👁️', desc: '若與法警完成『角色分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'fugitive,marshall,one_armed_man' }, //加機制
+  
+  // 藍/紅隊角色行為扮演類
   { id: 'angel_b', name: '天使 (Angel)', team: 'blue', icon: '👼', desc: '獲得誠實屬性：只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_r' },
   { id: 'angel_r', name: '天使 (Angel)', team: 'red', icon: '👼', desc: '獲得誠實屬性：只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_b' },
   { id: 'demon_b', name: '惡魔 (Demon)', team: 'blue', icon: '👿', desc: '獲得撒謊屬性：只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_r' },
   { id: 'demon_r', name: '惡魔 (Demon)', team: 'red', icon: '😈', desc: '獲得撒謊屬性：只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_b' },
-  { id: 'mime_b', name: '默劇演員 (Mime)', team: 'blue', icon: '🤐', desc: '扮演類角色，全場必須盡力保持不發出任何聲音。', pairs: 'mime_r' },
-  { id: 'mime_r', name: '默劇演員 (Mime)', team: 'red', icon: '🤐', desc: '扮演類角色，全場必須盡力保持不發出任何聲音。', pairs: 'mime_b' },
-  { id: 'clown_b', name: '小丑 (Clown)', team: 'blue', icon: '🤡', desc: '扮演類角色，在遊戲進行中必須盡全力保持全場微笑。', pairs: 'clown_r' },
-  { id: 'clown_r', name: '小丑 (Clown)', team: 'red', icon: '🤡', desc: '扮演類角色，在遊戲進行中必須盡全力保持全場微笑。', pairs: 'clown_b' },
-  { id: 'blind_b', name: '盲人 (Blind)', team: 'blue', icon: '🦯', desc: '扮演類角色，在整場遊戲過程中必須盡全力閉上雙眼。', pairs: 'blind_r' },
-  { id: 'blind_r', name: '盲人 (Blind)', team: 'red', icon: '🦯', desc: '扮演類角色，在整場遊戲過程中必須盡全力閉上雙眼。', pairs: 'blind_b' },
-  { id: 'mummy_b', name: '木乃伊 (Mummy)', team: 'blue', icon: '🧻', desc: '扮演類角色，全場必須盡力保持不發出任何聲音，與你進行『卡片分享』的玩家也是。', pairs: 'mummy_r' },
-  { id: 'mummy_r', name: '木乃伊 (Mummy)', team: 'red', icon: '🧻', desc: '扮演類角色，全場必須盡力保持不發出任何聲音，與你進行『卡片分享』的玩家也是。', pairs: 'mummy_b' },
-  { id: 'paparazzo_b', name: '狗仔隊 (Paparazzo)', team: 'blue', icon: '📸', desc: '全力破壞私下交談，可貼近偷窺『卡片分享』，但不可對他人動手動腳。', pairs: 'paparazzo_r' },
-  { id: 'paparazzo_r', name: '狗仔隊 (Paparazzo)', team: 'red', icon: '📸', desc: '全力破壞私下交談，可貼近偷窺『卡片分享』，但不可對他人動手動腳。', pairs: 'paparazzo_b' },
-  { id: 'coy_b', name: '靦腆少年 (Coy Boy)', team: 'blue', icon: '😳', desc: '只能進行『顏色分享』，無法進行『卡片分享』或公開揭露。', pairs: 'coy_r' },
-  { id: 'coy_r', name: '靦腆少年 (Coy Boy)', team: 'red', icon: '😳', desc: '只能進行『顏色分享』，無法進行『卡片分享』或公開揭露。', pairs: 'coy_b' },
-  { id: 'shy_b', name: '害羞小子 (Shy Guy)', team: 'blue', icon: '🙈', desc: '不能進行任何『卡片揭露』或公開揭露行動。', pairs: 'shy_r' },
-  { id: 'shy_r', name: '害羞小子 (Shy Guy)', team: 'red', icon: '🙈', desc: '不能進行任何『卡片揭露』或公開揭露行動。', pairs: 'shy_b' },
-  { id: 'negotiator_b', name: '談判專家 (Negotiator)', team: 'blue', icon: '🤝', desc: '自帶悟性屬性：只能進行『卡片分享』，禁止『顏色分享』或公開揭露。', pairs: 'negotiator_r' },
-  { id: 'negotiator_r', name: '談判專家 (Negotiator)', team: 'red', icon: '🤝', desc: '自帶悟性屬性：只能進行『卡片分享』，禁止『顏色分享』或公開揭露。', pairs: 'negotiator_b' },
-  { id: 'psychologist_b', name: '心理醫生 (Psychologist)', team: 'blue', icon: '🛋️', desc: '進行『卡片揭露』給害羞或靦腆玩家時，對方可與你『卡片分享』並治癒移除這些屬性。', pairs: 'psychologist_r' },
-  { id: 'psychologist_r', name: '心理醫生 (Psychologist)', team: 'red', icon: '🛋️', desc: '進行『卡片揭露』給害羞或靦腆玩家時，對方可與你『卡片分享』並治癒移除這些屬性。', pairs: 'psychologist_b' },
-  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹', desc: '與你進行『卡片分享』的玩家獲得「害羞」屬性，不能進行任何揭露。', pairs: 'criminal_r' },
-  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹', desc: '與你進行『卡片分享』的玩家獲得「害羞」屬性，不能進行任何揭露。', pairs: 'criminal_b' },
-  { id: 'thug_b', name: '暴徒 (Thug)', team: 'blue', icon: '🥊', desc: '與你進行『卡片分享』的玩家獲得「靦腆」屬性，只能進行『顏色分享』。', pairs: 'thug_r' },
-  { id: 'thug_r', name: '暴徒 (Thug)', team: 'red', icon: '🥊', desc: '與你進行『卡片分享』的玩家獲得「靦腆」屬性，只能進行『顏色分享』。', pairs: 'thug_b' },
-  { id: 'dealer_b', name: '荷官 (Dealer)', team: 'blue', icon: '🃏', desc: '與你進行『卡片分享』的玩家獲得「愚蠢」屬性，不能拒絕任何分享。', pairs: 'dealer_r' },
-  { id: 'dealer_r', name: '荷官 (Dealer)', team: 'red', icon: '🃏', desc: '與你進行『卡片分享』的玩家獲得「愚蠢」屬性，不能拒絕任何分享。', pairs: 'dealer_b' },
-  { id: 'fool_b', name: '傻瓜 (Fool)', team: 'blue', icon: '🤪', desc: '自帶「愚蠢」屬性，不能拒絕任何『卡片分享』或『顏色分享』。', pairs: 'fool_r' },
-  { id: 'fool_r', name: '傻瓜 (Fool)', team: 'red', icon: '🤪', desc: '自帶「愚蠢」屬性，不能拒絕任何『卡片分享』或『顏色分享』。', pairs: 'fool_b' },
-  { id: 'paranoid_b', name: '妄想者 (Paranoid)', team: 'blue', icon: '👀', desc: '自帶妄想屬性，整場遊戲只能進行一次『卡片分享』；可被心理醫生治癒。', pairs: 'paranoid_r' },
-  { id: 'paranoid_r', name: '妄想者 (Paranoid)', team: 'red', icon: '👀', desc: '自帶妄想屬性，整場遊戲只能進行一次『卡片分享』；可被心理醫生治癒。', pairs: 'paranoid_b' },
-  { id: 'professor_b', name: '教授 (Professor)', team: 'blue', icon: '🎓', desc: '任何與你進行『卡片分享』者獲得「精明」屬性，之後只能『卡片分享』且不可拒絕。', pairs: 'professor_r' },
-  { id: 'professor_r', name: '教授 (Professor)', team: 'red', icon: '🎓', desc: '任何與你進行『卡片分享』者獲得「精明」屬性，之後只能『卡片分享』且不可拒絕。', pairs: 'professor_b' },
-  { id: 'bully_b', name: '惡霸 (Bully)', team: 'blue', icon: '🤬', desc: '當有人同意與你進行『顏色分享』時，改為『卡片揭露』，強制對方也必須『卡片揭露』。', pairs: 'bully_r' },
-  { id: 'bully_r', name: '惡霸 (Bully)', team: 'red', icon: '🤬', desc: '當有人同意與你進行『顏色分享』時，改為『卡片揭露』，強制對方也必須『卡片揭露』。', pairs: 'bully_b' },
-  { id: 'interrogator_b', name: '審訊官 (Interrogator)', team: 'blue', icon: '🔦', desc: '每輪限一次，向對方進行『卡片揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_r' },
-  { id: 'interrogator_r', name: '審訊官 (Interrogator)', team: 'red', icon: '🔦', desc: '每輪限一次，向對方進行『卡片揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_b' },
-  { id: 'enforcer_b', name: '執法者 (Enforcer)', team: 'blue', icon: '📋', desc: '每輪限一次，向兩名玩家進行『卡片揭露』，告訴他們「你們必須互相進行『卡片分享』！」。', pairs: 'enforcer_r' },
-  { id: 'enforcer_r', name: '執法者 (Enforcer)', team: 'red', icon: '📋', desc: '每輪限一次，向兩名玩家進行『卡片揭露』，告訴他們「你們必須互相進行『卡片分享』！」。', pairs: 'enforcer_b' },
-  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '可找一名玩家進行『卡片揭露』，強制對方與你進行『卡片分享』，無法拒絕。', pairs: 'agent_r' },
-  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '🕶️', desc: '可找一名玩家進行『卡片揭露』，強制對方與你進行『卡片分享』，無法拒絕。', pairs: 'agent_b' },
+  { id: 'mime_b', name: '默劇演員 (Mime)', team: 'blue', icon: '🤐', desc: '你只能用比手畫腳來表演，全場必須盡力保持不發出任何聲音。', pairs: 'mime_r' },
+  { id: 'mime_r', name: '默劇演員 (Mime)', team: 'red', icon: '🤐', desc: '你只能用比手畫腳來表演，全場必須盡力保持不發出任何聲音。', pairs: 'mime_b' },
+  { id: 'clown_b', name: '小丑 (Clown)', team: 'blue', icon: '🤡', desc: '你是一名帶來歡樂的小丑，在遊戲進行中必須盡全力保持微笑。', pairs: 'clown_r' },
+  { id: 'clown_r', name: '小丑 (Clown)', team: 'red', icon: '🤡', desc: '你是一名帶來歡樂的小丑，在遊戲進行中必須盡全力保持微笑。', pairs: 'clown_b' },
+  { id: 'blind_b', name: '盲人 (Blind)', team: 'blue', icon: '🦯', desc: '你現在看不到了，在整場遊戲過程中必須盡力閉上雙眼。', pairs: 'blind_r' },
+  { id: 'blind_r', name: '盲人 (Blind)', team: 'red', icon: '🦯', desc: '你現在看不到了，在整場遊戲過程中必須盡力閉上雙眼。', pairs: 'blind_b' },
+  { id: 'mummy_b', name: '木乃伊 (Mummy)', team: 'blue', icon: '🧻', desc: '你只能用「呃」這個字來溝通，與你進行過『角色分享』的玩家也是。', pairs: 'mummy_r' },
+  { id: 'mummy_r', name: '木乃伊 (Mummy)', team: 'red', icon: '🧻', desc: '你只能用「呃」這個字來溝通，與你進行過『角色分享』的玩家也是。', pairs: 'mummy_b' },
+  { id: 'paparazzo_b', name: '狗仔隊 (Paparazzo)', team: 'blue', icon: '📸', desc: '全力破壞私下交談，可貼近偷窺任何卡牌分享行為，但不可對他人動手動腳。', pairs: 'paparazzo_r' },
+  { id: 'paparazzo_r', name: '狗仔隊 (Paparazzo)', team: 'red', icon: '📸', desc: '全力破壞私下交談，可貼近偷窺任何卡牌分享行為，但不可對他人動手動腳。', pairs: 'paparazzo_b' },
+ 
+  // 藍/紅隊房間移動類
   { id: 'security_b', name: '保安 (Security)', team: 'blue', icon: '👮', desc: '整場一次，公開揭露後指定一名同房玩家本輪不能作為人質離開房間。', pairs: 'security_r' },
   { id: 'security_r', name: '保安 (Security)', team: 'red', icon: '👮', desc: '整場一次，公開揭露後指定一名同房玩家本輪不能作為人質離開房間。', pairs: 'security_b' },
   { id: 'pirate_b', name: '海盜 (Pirate)', team: 'blue', icon: '🏴‍☠️', desc: '永久公開身分，強制指定房內一名玩家在本輪結束時必須作為人質換房。', pairs: 'pirate_r' },
   { id: 'pirate_r', name: '海盜 (Pirate)', team: 'red', icon: '🏴‍☠️', desc: '永久公開身分，強制指定房內一名玩家在本輪結束時必須作為人質換房。', pairs: 'pirate_b' },
-  { id: 'bouncer_b', name: '保鏢 (Bouncer)', team: 'blue', icon: '🚪', desc: '房內人數多於對面時，可進行『卡片揭露』要求一人立刻「滾出去」更換房間。', pairs: 'bouncer_r' },
-  { id: 'bouncer_r', name: '保鏢 (Bouncer)', team: 'red', icon: '🚪', desc: '房內人數多於對面時，可進行『卡片揭露』要求一人立刻「滾出去」更換房間。', pairs: 'bouncer_b' },
+  { id: 'bouncer_b', name: '保鏢 (Bouncer)', team: 'blue', icon: '🚪', desc: '房內人數多於對面時，可進行『角色揭露』要求一人立刻「滾出去」更換房間。', pairs: 'bouncer_r' },
+  { id: 'bouncer_r', name: '保鏢 (Bouncer)', team: 'red', icon: '🚪', desc: '房內人數多於對面時，可進行『角色揭露』要求一人立刻「滾出去」更換房間。', pairs: 'bouncer_b' },
   { id: 'tentaclese_b', name: '觸手怪 (Tentaclese)', team: 'blue', icon: '🐙', desc: '身處少數人房間時，可衝進對面房間抓住一名玩家拖回自己房間。', pairs: 'tentaclese_r' },
   { id: 'tentaclese_r', name: '觸手怪 (Tentaclese)', team: 'red', icon: '🐙', desc: '身處少數人房間時，可衝進對面房間抓住一名玩家拖回自己房間。', pairs: 'tentaclese_b' },
   { id: 'kangaroo_b', name: '袋鼠 (Kangaroo)', team: 'blue', icon: '🦘', desc: '永久公開身分跳至對面房間，並強制挑選對面房內一人踢回原房間。', pairs: 'kangaroo_r' },
@@ -79,80 +127,32 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'time_lord_r', name: '時間領主 (Time Lord)', team: 'red', icon: '⏳', desc: '可公開展示身分宣告回合結束；若超過5分鐘未宣告則失去能力。', pairs: 'time_lord_b' },
   { id: 'gargoyle_b', name: '石像鬼 (Gargoyle)', team: 'blue', icon: '🗿', desc: '被選為人質時可公開亮牌喊「化石」，拒絕離開並迫使領袖重選他人。', pairs: 'gargoyle_r' },
   { id: 'gargoyle_r', name: '石像鬼 (Gargoyle)', team: 'red', icon: '🗿', desc: '被選為人質時可公開亮牌喊「化石」，拒絕離開並迫使領袖重選他人。', pairs: 'gargoyle_b' },
-  { id: 'ambassador_b', name: '大使 (Ambassador)', team: 'blue', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。', pairs: 'ambassador_r' },
-  { id: 'ambassador_r', name: '大使 (Ambassador)', team: 'red', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。', pairs: 'ambassador_b' },
-  { id: 'seer_b', name: '先知 (Seer)', team: 'blue', icon: '🔮', desc: '開局全體閉眼公開展示30秒供先知辨識；開局自帶無法亮牌的「害羞」屬性。', pairs: 'seer_r' },
-  { id: 'seer_r', name: '先知 (Seer)', team: 'red', icon: '🔮', desc: '開局全體閉眼公開展示30秒供先知辨識；開局自帶無法亮牌的「害羞」屬性。', pairs: 'seer_b' },
-  { id: 'medic_b', name: '醫療兵 (Medic)', team: 'blue', icon: '🏥', desc: '與你進行『卡片分享』的玩家移除所有屬性；本身不免疫屬性。', pairs: 'medic_r' },
-  { id: 'medic_r', name: '醫療兵 (Medic)', team: 'red', icon: '🏥', desc: '與你進行『卡片分享』的玩家移除所有屬性；本身不免疫屬性。', pairs: 'medic_b' },
-  { id: 'cleaner_b', name: '清潔工 (Cleaner)', team: 'blue', icon: '🧹', desc: '進行『卡片分享』時清除對方身上所有的附加狀態，將其恢復為初始純淨狀態。', pairs: 'cleaner_r' },
-  { id: 'cleaner_r', name: '清潔工 (Cleaner)', team: 'red', icon: '🧹', desc: '進行『卡片分享』時清除對方身上所有的附加狀態，將其恢復為初始純淨狀態。', pairs: 'cleaner_b' },
-  { id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '🛡️', desc: '獲得免疫屬性，任何角色能力或負面屬性對你完全無效。', pairs: 'immunologist_r' },
-  { id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '🛡️', desc: '獲得免疫屬性，任何角色能力或負面屬性對你完全無效。', pairs: 'immunologist_b' },
-  { id: 'gorgon_b', name: '蛇髮女妖 (Gorgon)', team: 'blue', icon: '🐍', desc: '進行『卡片分享』時賦予對方「石化」屬性，使其雙臂垂下並喪失所有投票權。', pairs: 'gorgon_r' },
-  { id: 'gorgon_r', name: '蛇髮女妖 (Gorgon)', team: 'red', icon: '🐍', desc: '進行『卡片分享』時賦予對方「石化」屬性，使其雙臂垂下並喪失所有投票權。', pairs: 'gorgon_b' },
-  { id: 'vampire_b', name: '吸血鬼 (Vampire)', team: 'blue', icon: '🧛', desc: '與不同顏色玩家進行『卡片分享』時賦予「誘惑」屬性，對方必須服從你的指示與投票。', pairs: 'vampire_r' },
-  { id: 'vampire_r', name: '吸血鬼 (Vampire)', team: 'red', icon: '🧛', desc: '與不同顏色玩家進行『卡片分享』時賦予「誘惑」屬性，對方必須服從你的指示與投票。', pairs: 'vampire_b' },
-  { id: 'werewolf_b', name: '狼人 (Werewolf)', team: 'blue', icon: '🐺', desc: '進行『卡片分享』或『顏色分享』會施加「咬傷」，被咬者必須如實回答狼人問題。', pairs: 'werewolf_r' },
-  { id: 'werewolf_r', name: '狼人 (Werewolf)', team: 'red', icon: '🐺', desc: '進行『卡片分享』或『顏色分享』會施加「咬傷」，被咬者必須如實回答狼人問題。', pairs: 'werewolf_b' },
-  { id: 'hunter_b', name: '獵人 (Hunter)', team: 'blue', icon: '🏹', desc: '若有人對你使用『卡片分享』技能，你沒收其角色卡且不受其技能影響。', pairs: 'hunter_r' },
-  { id: 'hunter_r', name: '獵人 (Hunter)', team: 'red', icon: '🏹', desc: '若有人對你使用『卡片分享』技能，你沒收其角色卡且不受其技能影響。', pairs: 'hunter_b' },
-  { id: 'hypnotist_b', name: '催眠師 (Hypnotist)', team: 'blue', icon: '🌀', desc: '進行『卡片分享』時對其施加催眠，強制對方在行為上必須扮演你指定的角色。', pairs: 'hypnotist_r' },
-  { id: 'hypnotist_r', name: '催眠師 (Hypnotist)', team: 'red', icon: '🌀', desc: '進行『卡片分享』時對其施加催眠，強制對方在行為上必須扮演你指定的角色。', pairs: 'hypnotist_b' },
-  { id: 'centipede_b', name: '人體蜈蚣 (Centipede)', team: 'blue', icon: '🐛', desc: '與你進行『卡片分享』者獲得「依附」屬性；一旦與你分處不同房間則撕裂並永久公開亮牌。', pairs: 'centipede_r' },
-  { id: 'centipede_r', name: '人體蜈蚣 (Centipede)', team: 'red', icon: '🐛', desc: '與你進行『卡片分享』者獲得「依附」屬性；一旦與你分處不同房間則撕裂並永久公開亮牌。', pairs: 'centipede_b' },
-  { id: 'piper_b', name: '吹笛人 (Piper)', team: 'blue', icon: '🪈', desc: '與你進行『卡片分享』者獲得「被引誘」屬性，遊戲結束時若未與你在同一個房間則直接判負。', pairs: 'piper_r' },
-  { id: 'piper_r', name: '吹笛人 (Piper)', team: 'red', icon: '🪈', desc: '與你進行『卡片分享』者獲得「被引誘」屬性，遊戲結束時若未與你在同一個房間則直接判負。', pairs: 'piper_b' },
-  { id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '👤', desc: '進行『卡片分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
-  { id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '👤', desc: '進行『卡片分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
-  { id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『卡片分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
-  { id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『卡片分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
-  { id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '🎭', desc: '進行『卡片分享』時奪取對方卡牌與身分，並將自帶害羞的竊賊卡塞給對方。', pairs: 'identity_thief_r' },
-  { id: 'identity_thief_r', name: '身分竊賊 (Identity Thief)', team: 'red', icon: '🎭', desc: '進行『卡片分享』時奪取對方卡牌與身分，並將自帶害羞的竊賊卡塞給對方。', pairs: 'identity_thief_b' },
-  { id: 'mad_scientist_b', name: '瘋狂科學家 (Mad Scientist)', team: 'blue', icon: '🧪', desc: '整場限一次，進行『卡片揭露』給兩名玩家，強迫這兩名玩家強制互換身分卡。', pairs: 'mad_scientist_r' },
-  { id: 'mad_scientist_r', name: '瘋狂科學家 (Mad Scientist)', team: 'red', icon: '🧪', desc: '整場限一次，進行『卡片揭露』給兩名玩家，強迫這兩名玩家強制互換身分卡。', pairs: 'mad_scientist_b' },
-  { id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '每輪限一次，可直接將自己的手牌與底層的埋葬卡互換（不可偷看）。', pairs: 'trader_r' },
-  { id: 'trader_r', name: '走私商人 (Trader)', team: 'red', icon: '📦', desc: '每輪限一次，可直接將自己的手牌與底層的埋葬卡互換（不可偷看）。', pairs: 'trader_b' },
-  { id: 'conspirator_b', name: '共謀者 (Conspirator)', team: 'blue', icon: '🗡️', desc: '與紅隊進行『卡片分享』時對其施加「叛徒」屬性，使其獲勝目標倒戈向藍隊。', pairs: 'conspirator_r' },
-  { id: 'conspirator_r', name: '共謀者 (Conspirator)', team: 'red', icon: '🗡️', desc: '與藍隊進行『卡片分享』時對其施加「叛徒」屬性，使其獲勝目標倒戈向紅隊。', pairs: 'conspirator_b' },
-  { id: 'loyalist_b', name: '效忠者 (Loyalist)', team: 'blue', icon: '🛡️', desc: '免疫「叛徒」屬性，且能透過『卡片分享』消除他人身上的叛徒屬性。', pairs: 'loyalist_r' },
-  { id: 'loyalist_r', name: '效忠者 (Loyalist)', team: 'red', icon: '🛡️', desc: '免疫「叛徒」屬性，且能透過『卡片分享』消除他人身上的叛徒屬性。', pairs: 'loyalist_b' },
   { id: 'ninja_b', name: '忍者 (Ninja)', team: 'blue', icon: '🥷', desc: '除最後一輪外，公開身分衝入對面房間抓走一人，雙方一同移出遊戲。', pairs: 'ninja_r' },
   { id: 'ninja_r', name: '忍者 (Ninja)', team: 'red', icon: '🥷', desc: '除最後一輪外，公開身分衝入對面房間抓走一人，雙方一同移出遊戲。', pairs: 'ninja_b' },
-  { id: 'informer_b', name: '告密者 (Informer)', team: 'blue', icon: '✉️', desc: '紅隊向你進行『卡片揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_r' },
-  { id: 'informer_r', name: '告密者 (Informer)', team: 'red', icon: '✉️', desc: '藍隊向你進行『卡片揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_b' },
-  { id: 'rageaholic_b', name: '狂怒者 (Rageaholic)', team: 'blue', icon: '🤬', desc: '選完人質在走廊等待對方領袖時大喊咆哮，數到10對方未至則直接獨贏。', pairs: 'rageaholic_r' },
-  { id: 'rageaholic_r', name: '狂怒者 (Rageaholic)', team: 'red', icon: '🤬', desc: '選完人質在走廊等待對方領袖時大喊咆哮，數到10對方未至則直接獨贏。', pairs: 'rageaholic_b' },
-  { id: 'secret_police_b', name: '秘密警察 (Secret Police)', team: 'blue', icon: '🚨', desc: '回合之間抓到有人進行任何遊戲行為，亮牌逮捕並獲得個人單獨勝利。', pairs: 'secret_police_r' },
-  { id: 'secret_police_r', name: '秘密警察 (Secret Police)', team: 'red', icon: '🚨', desc: '回合之間抓到有人進行任何遊戲行為，亮牌逮捕並獲得個人單獨勝利。', pairs: 'secret_police_b' },
-  { id: 'voyeur_b', name: '窺陰狂 (Voyeur)', team: 'blue', icon: '🫣', desc: '性偏好系列。在遊戲過程中的任何時刻皆可直接偷看底層的埋葬卡。', pairs: 'voyeur_r' },
-  { id: 'voyeur_r', name: '窺陰狂 (Voyeur)', team: 'red', icon: '🫣', desc: '性偏好系列。在遊戲過程中的任何時刻皆可直接偷看底層的埋葬卡。', pairs: 'voyeur_b' },
-  { id: 'exhibitionist_b', name: '露體狂 (Exhibitionist)', team: 'blue', icon: '🥼', desc: '自帶「裸露」屬性，全場只能進行公開展示，禁止『卡片揭露』或『卡片分享』。', pairs: 'exhibitionist_r' },
-  { id: 'exhibitionist_r', name: '露體狂 (Exhibitionist)', team: 'red', icon: '🥼', desc: '自帶「裸露」屬性，全場只能進行公開展示，禁止『卡片揭露』或『卡片分享』。', pairs: 'exhibitionist_b' },
-
-  // 即死判定
-  { id: 'dr_boom', name: '爆炸先生 (Dr. Boom)', team: 'red', icon: '💥', desc: '紅隊角色。若你與『總統』進行了『卡片分享』，房內全體包含自己死亡，遊戲直接結束。', pairs: 'tues_knight' },
-  { id: 'tues_knight', name: '星期二騎士 (Tuesday Knight)', team: 'blue', icon: '⚔️', desc: '藍隊角色。若你與『炸彈客』進行了『卡片分享』，房內除了總統外全體死亡，遊戲直接結束。', pairs: 'dr_boom' },
-
-  // 專屬紅 / 藍陣營角色
+  { id: 'ambassador_b', name: '大使 (Ambassador)', team: 'blue', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。', pairs: 'ambassador_r' },
+  { id: 'ambassador_r', name: '大使 (Ambassador)', team: 'red', icon: '🕊️', desc: '開局直接公開宣布，免疫所有技能且可任意在兩房間走動，不算人質也不算人數。', pairs: 'ambassador_b' },
   { id: 'cupid', name: '愛神丘比特 (Cupid)', team: 'red', icon: '💘', desc: '整場一次，指定兩位玩家相愛，兩人結算時必須在同一房間才能獲勝。', pairs: 'eris' },
   { id: 'eris', name: '紛爭女神厄里斯 (Eris)', team: 'blue', icon: '⚡', desc: '整場一次，指定兩位玩家憎恨，兩人結算時必須在不同房間才能獲勝。', pairs: 'cupid' },
-  { id: 'capitalist', name: '資本家 (Capitalist)', team: 'blue', icon: '💰', desc: '進行『卡片分享』時，強迫對方在下輪前將其手牌換成普通的藍隊成員卡。', pairs: 'socialist' },
-  { id: 'socialist', name: '社會主義者 (Socialist)', team: 'red', icon: '🚩', desc: '進行『卡片分享』時，強迫對方在下輪前將其手牌換成普通的紅隊成員卡。', pairs: 'capitalist' },
-  { id: 'firefighter', name: '消防員 (Firefighter)', team: 'blue', icon: '🧯', desc: '與總統進行『卡片分享』賦予「防火」屬性，總統所在的房間免受燃燒波及。', pairs: 'pyrotech' }, //加問答
-  { id: 'pyrotech', name: '煙火專家 (Pyrotech)', team: 'red', icon: '🎆', desc: '與炸彈客進行『卡片分享』賦予「燃火」屬性；炸彈爆炸時會燃燒另一間房間。', pairs: 'firefighter' }, //加問答
-  { id: 'xenomorph', name: '異形 (Xenomorph)', team: 'red', icon: '👾', desc: '將你的卡牌寄生於首位進行任何分享的藍隊玩家身上，此舉動會讓你遺失卡牌而無法進行任何分享行為，終局使該藍隊玩家所在房間全員死亡。', pairs: 'xenohunter' }, //可以考慮加機制
-  { id: 'xenohunter', name: '異形獵人 (Xenohunter)', team: 'blue', icon: '🔫', desc: '可以對被異形寄生的藍隊玩家進行卡片分享，將此卡與對方的異形卡牌移出遊戲，此舉動會讓你遺失卡牌而無法進行任何分享行為。', pairs: 'xenomorph' }, //可以考慮加機制
-  { id: 'fugitive', name: '逃犯 (Fugitive)', team: 'red', icon: '🏃', desc: '若與獨臂人完成『卡片分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'marshall,one_armed_man,witness' }, //加機制
-  { id: 'marshall', name: '法警 (Marshall)', team: 'blue', icon: '⭐', desc: '若與逃犯完成『卡片分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'fugitive,one_armed_man,witness' }, //加機制
-  { id: 'one_armed_man', name: '獨臂人 (One-Armed Man)', team: 'blue', icon: '🦾', desc: '若與目擊證人完成『卡片分享』，遊戲立即結束，藍隊直接獲勝。', pairs: 'marshall,fugitive,witness' }, //加機制
-  { id: 'witness', name: '目擊證人 (Witness)', team: 'red', icon: '👁️', desc: '若與法警完成『卡片分享』，遊戲立即結束，紅隊直接獲勝。', pairs: 'fugitive,marshall,one_armed_man' }, //加機制
+  
+  // 藍/紅隊特殊行為類
+  { id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '🛡️', desc: '獲得免疫屬性，任何角色能力或負面屬性對你完全無效。', pairs: 'immunologist_r' },
+  { id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '🛡️', desc: '獲得免疫屬性，任何角色能力或負面屬性對你完全無效。', pairs: 'immunologist_b' },
+  { id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '每輪限一次，可直接將自己的手牌與底層的埋葬卡互換。', pairs: 'trader_r' },
+  { id: 'trader_r', name: '走私商人 (Trader)', team: 'red', icon: '📦', desc: '每輪限一次，可直接將自己的手牌與底層的埋葬卡互換。', pairs: 'trader_b' },
+  { id: 'voyeur_b', name: '偷窺狂 (Voyeur)', team: 'blue', icon: '🫣', desc: '在遊戲過程中的任何時刻皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_r' },
+  { id: 'voyeur_r', name: '偷窺狂 (Voyeur)', team: 'red', icon: '🫣', desc: '在遊戲過程中的任何時刻皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_b' },
+  { id: 'rageaholic_b', name: '狂怒者 (Rageaholic)', team: 'blue', icon: '🤬', desc: '選完人質在走廊等待對方領袖時大喊咆哮，數到10對方未至則直接獨贏。', pairs: 'rageaholic_r' },
+  { id: 'rageaholic_r', name: '狂怒者 (Rageaholic)', team: 'red', icon: '🤬', desc: '選完人質在走廊等待對方領袖時大喊咆哮，數到10對方未至則直接獨贏。', pairs: 'rageaholic_b' },
+  { id: 'seer_b', name: '先知 (Seer)', team: 'blue', icon: '🔮', desc: '開局全體閉眼公開展示30秒供先知辨識；開局自帶無法亮牌的「害羞」屬性。', pairs: 'seer_r' },
+  { id: 'seer_r', name: '先知 (Seer)', team: 'red', icon: '🔮', desc: '開局全體閉眼公開展示30秒供先知辨識；開局自帶無法亮牌的「害羞」屬性。', pairs: 'seer_b' },
+  { id: 'dr_boom', name: '爆炸先生 (Dr. Boom)', team: 'red', icon: '💥', desc: '紅隊角色。若你與『總統』進行了『角色分享』，房內全體包含自己死亡，遊戲直接結束。', pairs: 'tues_knight' },
+  { id: 'tues_knight', name: '星期二騎士 (Tuesday Knight)', team: 'blue', icon: '⚔️', desc: '藍隊角色。若你與『炸彈客』進行了『角色分享』，房內除了總統外全體死亡，遊戲直接結束。', pairs: 'dr_boom' },
 
-  // 普通成員
+  // 藍/紅隊普通成員
   { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🛡️', desc: '保護總統安全，不要讓『總統』與『炸彈客』在同一個房間！', pairs: 'red_mem' },
   { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🎯', desc: '協助炸彈客，讓『炸彈客』與『總統』在同一個房間引爆！', pairs: 'blue_mem' },
 
-  // 進階核心身分
+  // 藍/紅隊額外核心角色
   { id: 'blue_drone', name: '藍色無人機 (Blue Drone)', team: 'blue', icon: '🛸', desc: '主要角色。遊戲結束時若與「紅色鐵拳」身處同一個房間，則藍隊獲勝。', pairs: 'red_fist' },
   { id: 'red_fist', name: '紅色鐵拳 (Red Fist)', team: 'red', icon: '✊', desc: '主要角色。遊戲結束時若與「藍色無人機」身處不同房間，則紅隊獲勝。', pairs: 'blue_drone' },
   { id: 'blue_firecracker', name: '藍色爆竹 (Blue Firecracker)', team: 'blue', icon: '🧨', desc: '無人機替補角色。若無人機被埋牌或死亡，接替其所有職責。', pairs: 'red_foot' },
@@ -186,15 +186,15 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'target', name: '目標 (Target)', team: 'grey', icon: '🎯', desc: '結算時若狙擊手沒有打中你則獲勝。', pairs: 'sniper,decoy' }, //問答
   { id: 'decoy', name: '誘餌 (Decoy)', team: 'grey', icon: '🦆', desc: '結算時若狙擊手開槍打中你，則你獲勝！', pairs: 'sniper,target' }, //問答
 
-  //灰隊卡片分享或揭露類
-  { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『卡片分享』或『顏色分享』者的勝利條件，若無人與你分享則你失敗。', pairs: 'robot' },
-  { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『卡片分享』或『顏色分享』的人若失敗則你獲勝，若無人與你分享則你失敗。', pairs: 'clone' },
-  { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '任何人與你進行『卡片分享』或『顏色分享』，必須立即與你交換身分卡繼續遊戲！' },
-  { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '任何人與你進行『卡片分享』或『顏色分享』時，可以扣留他們的卡牌；若無人獲得勝利，則扣牌較多的一隊勝；若一樣多則法官獨贏。' }, //加機制
-  { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '愚蠢屬性不能拒絕分享，結算時若跟總統或炸彈客進行過『卡片分享』則你單獨獲勝，全體失敗！' },
-  { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟『炸彈客』及『總統』都進行過『卡片分享』則獲勝。' },
-  { id: 'illuminati', name: '光明會 (Illuminati)', team: 'grey', icon: '👁️', desc: '『卡片分享』或『顏色分享』傳播會員狀態；若光明會死亡，全體會員一同判負。' },
-  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'grey', icon: '🛐', desc: '『卡片分享』或『顏色分享』傳播信徒狀態；若教主存活，全體信徒一同判負。' },
+  //灰隊分享或揭露類
+  { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『角色分享』或『顏色分享』者的勝利條件，若無人與你分享則你失敗。', pairs: 'robot' },
+  { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『角色分享』或『顏色分享』的人若失敗則你獲勝，若無人與你分享則你失敗。', pairs: 'clone' },
+  { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '任何人與你進行『角色分享』或『顏色分享』，必須立即與你交換身分卡繼續遊戲！' },
+  { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '任何人與你進行『角色分享』或『顏色分享』時，可以扣留他們的卡牌；若無人獲得勝利，則扣牌較多的一隊勝；若一樣多則法官獨贏。' }, //加機制
+  { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '愚蠢屬性不能拒絕分享，結算時若跟總統或炸彈客進行過『角色分享』則你單獨獲勝，全體失敗！' },
+  { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟『炸彈客』及『總統』都進行過『角色分享』則獲勝。' },
+  { id: 'illuminati', name: '光明會 (Illuminati)', team: 'grey', icon: '👁️', desc: '『角色分享』或『顏色分享』傳播會員狀態；若光明會死亡，全體會員一同判負。' },
+  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'grey', icon: '🛐', desc: '『角色分享』或『顏色分享』傳播信徒狀態；若教主存活，全體信徒一同判負。' },
   
   // 灰隊特殊勝利類
   { id: 'frotteur', name: '性騷擾者 (Frotteur)', team: 'grey', icon: '🖐️', desc: '遊戲結束前必須觸碰過全場每一位玩家；若被『保守人士』抓住手腕則直接失敗。', pairs: 'prude' },
@@ -204,25 +204,26 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'born_leader', name: '天生領袖 (Born Leader)', team: 'grey', icon: '👑', desc: '遊戲結束時，若你身為所在房間的現任領袖則獲勝。' },
   { id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '在最後一輪結束前，必須將自己的卡片換為紅隊或藍隊卡並倒戈。' }, //需要特殊機制
   { id: 'telepath', name: '心靈感應者 (Telepath)', team: 'grey', icon: '🔮', desc: '最後一輪亮牌預測終局進入本房間的人質玩家，猜中即獲勝。' }, //需要特殊機制or加問答
-  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個角色，猜對獲勝。' },
   { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束後公開玩家身分前，依序點名猜測全場每一位玩家的卡牌顏色，全對即獲勝。' }, //加問答
   { id: 'anarchist', name: '無政府主義者 (Anarchist)', team: 'grey', icon: '🏴', desc: '進行五輪回合需篡位三次，三輪需篡位兩次成功才算獲勝。', pairs: 'minion,mastermind' },
   { id: 'minion', name: '僕從 (Minion)', team: 'grey', icon: '🙇', desc: '遊戲結束時，與你在同一個房間的領隊從來沒有被篡位過則獲勝。', pairs: 'anarchist,mastermind' },
   { id: 'mastermind', name: '策劃者 (Mastermind)', team: 'grey', icon: '♟️', desc: '遊戲結束時你是一個房間領隊，且曾做過對面房間領隊則獲勝。', pairs: 'anarchist,minion' },
   { id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '遊戲中必須將卡牌隨機換成歡樂牌庫(沒用到的角色)中的一張牌，以新牌目標結算。' },  //需要特殊機制
   { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '遊戲結束前公開自己並預測哪一隊獲勝（紅/藍/無），猜對獲勝。' }, //需要特殊機制
+  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個角色，猜對獲勝。' },
 
   // 特殊陣營
   { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'purple', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' }, //加問答
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'purple', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『埋葬卡』互換並繼承其條件。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '開局藏寶特殊角色；若玩家未能在終局前找到寶藏，則你獲勝。' },
   { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獲勝。' },
-  { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『卡片分享』或『顏色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
+  { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'black', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，亮牌逮捕並獲得個人單獨勝利。' },
+  { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』或『顏色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
   
   // 綠隊 (Green Team)
-  { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『卡片分享』或『顏色分享』者皆感染成殭屍！全體存活玩家皆變成殭屍即獲勝。' },
+  { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『角色分享』或『顏色分享』者皆感染成殭屍！全體存活玩家皆變成殭屍即獲勝。' },
   { id: 'leprechaun', name: '小妖精 (Leprechaun)', team: 'green', icon: '🍀', desc: '愚蠢屬性不能拒絕分享；任何分享者必須互換卡片，終局持有小妖精者獲勝。' },
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'green', icon: '👁️‍🗨', desc: '永久公開且全免疫四處巡視，一旦當場看見任何玩家卡面並大聲喊出即獨贏。' },
-  { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'green', icon: '🌌', desc: '邪神。任何玩家一旦與你進行『卡片分享』或『顏色分享』，你立刻單獨獲勝。' }
+  { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'green', icon: '🌌', desc: '邪神。任何玩家一旦與你進行『角色分享』或『顏色分享』，你立刻單獨獲勝。' }
   
 ];
