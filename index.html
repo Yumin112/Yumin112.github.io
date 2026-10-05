@@ -37,7 +37,7 @@
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     // ==========================================
-    // 0. 常數與通訊伺服器配置
+    // 0. 常數與通訊伺服器配置[cite: 1]
     // ==========================================
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
     const MQTT_USER = 'yumin112for2r1b!';
@@ -53,7 +53,7 @@
     };
 
     // ==========================================
-    // 1. 本地儲存與工具函式 (Utilities & Storage)
+    // 1. 本地儲存與輔助工具函式[cite: 1]
     // ==========================================
     const safeJsonParse = (str, fallback = null) => {
       try { return JSON.parse(str); } catch (e) { return fallback; }
@@ -100,18 +100,17 @@
     };
 
     const getHostageCount = (playerCount, totalRounds, roundIndex) => {
-      let schedule5Rounds = [1, 1, 1, 1, 1];
-      if (playerCount <= 10) schedule5Rounds = [1, 1, 1, 1, 1];
-      else if (playerCount <= 13) schedule5Rounds = [2, 2, 2, 1, 1];
-      else if (playerCount <= 17) schedule5Rounds = [3, 2, 2, 1, 1];
-      else if (playerCount <= 21) schedule5Rounds = [4, 3, 2, 1, 1];
-      else schedule5Rounds = [5, 4, 3, 2, 1];
+      let schedule = [1, 1, 1, 1, 1];
+      if (playerCount <= 10) schedule = [1, 1, 1, 1, 1];
+      else if (playerCount <= 13) schedule = [2, 2, 2, 1, 1];
+      else if (playerCount <= 17) schedule = [3, 2, 2, 1, 1];
+      else if (playerCount <= 21) schedule = [4, 3, 2, 1, 1];
+      else schedule = [5, 4, 3, 2, 1];
 
       if (totalRounds === 3) {
-        const schedule3Rounds = schedule5Rounds.slice(2);
-        return schedule3Rounds[roundIndex] || 1;
+        return schedule.slice(2)[roundIndex] || 1;
       }
-      return schedule5Rounds[roundIndex] || 1;
+      return schedule[roundIndex] || 1;
     };
 
     const formatTime = (secs) => {
@@ -121,89 +120,61 @@
     };
 
     // ==========================================
-    // 2. 特殊狀態機制配置 (Status Mechanics Config)
+    // 2. 特殊狀態與角色機制映射配置[cite: 1]
     // ==========================================
     const ROLE_STATUS_ACTIONS = {
       zombie: {
-        statusId: 'infected',
-        statusName: '感染 (殭屍病毒)',
-        statusIcon: '🧟',
-        btnLabel: '🧟 賦予感染狀態',
-        badge: '殭屍 專屬',
+        statusId: 'infected', statusName: '感染 (殭屍病毒)', statusIcon: '🧟',
+        btnLabel: '🧟 賦予感染狀態', badge: '殭屍 專屬',
         style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
         promptText: '選擇一位玩家賦予【殭屍病毒感染】。對方同意後將成為感染者。'
       },
       cult_leader: {
-        statusId: 'cultist',
-        statusName: '信徒',
-        statusIcon: '🛐',
-        btnLabel: '🛐 吸收為信徒',
-        badge: '邪教教主 專屬',
+        statusId: 'cultist', statusName: '信徒', statusIcon: '🛐',
+        btnLabel: '🛐 吸收為信徒', badge: '邪教教主 專屬',
         style: 'from-purple-600 to-violet-800 hover:from-purple-500 hover:to-violet-700 border-purple-400 text-white',
         promptText: '選擇一位玩家吸收為【信徒】。對方同意後將具有信徒屬性。'
       },
       thug_b: {
-        statusId: 'coy',
-        statusName: '靦腆',
-        statusIcon: '🥊',
-        btnLabel: '🥊 賦予靦腆狀態',
-        badge: '暴徒 專屬',
+        statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
+        btnLabel: '🥊 賦予靦腆狀態', badge: '暴徒 專屬',
         style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
         promptText: '選擇一位玩家施加【靦腆】屬性（使其僅能進行顏色分享）。'
       },
       thug_r: {
-        statusId: 'coy',
-        statusName: '靦腆',
-        statusIcon: '🥊',
-        btnLabel: '🥊 賦予靦腆狀態',
-        badge: '暴徒 專屬',
+        statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
+        btnLabel: '🥊 賦予靦腆狀態', badge: '暴徒 專屬',
         style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
         promptText: '選擇一位玩家施加【靦腆】屬性（使其僅能進行顏色分享）。'
       },
       dealer_b: {
-        statusId: 'foolish',
-        statusName: '愚蠢',
-        statusIcon: '🃏',
-        btnLabel: '🃏 賦予愚蠢狀態',
-        badge: '荷官 專屬',
+        statusId: 'foolish', statusName: '愚蠢', statusIcon: '🃏',
+        btnLabel: '🃏 賦予愚蠢狀態', badge: '荷官 專屬',
         style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400 text-zinc-950',
         promptText: '選擇一位玩家施加【愚蠢】屬性（不能拒絕任何分享）。'
       },
       dealer_r: {
-        statusId: 'foolish',
-        statusName: '愚蠢',
-        statusIcon: '🃏',
-        btnLabel: '🃏 賦予愚蠢狀態',
-        badge: '荷官 專屬',
+        statusId: 'foolish', statusName: '愚蠢', statusIcon: '🃏',
+        btnLabel: '🃏 賦予愚蠢狀態', badge: '荷官 專屬',
         style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400 text-zinc-950',
         promptText: '選擇一位玩家施加【愚蠢】屬性（不能拒絕任何分享）。'
       },
       criminal_b: {
-        statusId: 'shy',
-        statusName: '害羞',
-        statusIcon: '🦹',
-        btnLabel: '🦹 賦予害羞狀態',
-        badge: '罪犯 專屬',
+        statusId: 'shy', statusName: '害羞', statusIcon: '🦹',
+        btnLabel: '🦹 賦予害羞狀態', badge: '罪犯 專屬',
         style: 'from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 border-indigo-400 text-white',
         promptText: '選擇一位玩家施加【害羞】屬性（不能進行任何揭露）。'
       },
       criminal_r: {
-        statusId: 'shy',
-        statusName: '害羞',
-        statusIcon: '🦹',
-        btnLabel: '🦹 賦予害羞狀態',
-        badge: '罪犯 專屬',
+        statusId: 'shy', statusName: '害羞', statusIcon: '🦹',
+        btnLabel: '🦹 賦予害羞狀態', badge: '罪犯 專屬',
         style: 'from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 border-indigo-400 text-white',
         promptText: '選擇一位玩家施加【害羞】屬性（不能進行任何揭露）。'
       }
     };
 
-    // ==========================================
-    // 3. 角色專屬機制外掛 (Role Mechanics)
-    // ==========================================
     const createMadScientistAction = (badgeText) => (ctx) => {
       if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
-
       return {
         label: '🧪 操控角色對調',
         badge: badgeText,
@@ -225,12 +196,10 @@
           label: '🔄 發起身分交換',
           badge: '燙手山芋 專屬',
           style: 'from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 border-amber-300/40 text-zinc-950',
-          onClick: () => {
-            ctx.openSwapModal({
-              ruleDesc: '🥔 燙手山芋規則：交換給和你進行任何分享行為的玩家。',
-              isTargetDisabled: () => false
-            });
-          }
+          onClick: () => ctx.openSwapModal({
+            ruleDesc: '🥔 燙手山芋規則：交換給和你進行任何分享行為的玩家。',
+            isTargetDisabled: () => false
+          })
         })
       },
       leprechaun: {
@@ -238,20 +207,17 @@
           label: '🔄 發起身分交換',
           badge: '小妖精 專屬',
           style: 'from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-emerald-500 border-emerald-300/40 text-zinc-950',
-          onClick: () => {
-            ctx.openSwapModal({
-              ruleDesc: '🍀 小妖精規則：曾當過小妖精的玩家不可再次交換。',
-              isTargetDisabled: (target) => Boolean(target.hasBeenLeprechaun),
-              disabledBadge: '曾當過小妖精'
-            });
-          }
+          onClick: () => ctx.openSwapModal({
+            ruleDesc: '🍀 小妖精規則：曾當過小妖精的玩家不可再次交換。',
+            isTargetDisabled: (target) => Boolean(target.hasBeenLeprechaun),
+            disabledBadge: '曾當過小妖精'
+          })
         })
       },
       drunk: {
         getActionButton: (ctx) => {
           const isLastRound = ctx.currentRoundIndex === ctx.roundSettings.length - 1;
           if (!ctx.buriedCard || !isLastRound) return null;
-
           return {
             label: '🍺 與埋葬卡互換身分',
             badge: '最後一輪專屬',
@@ -267,25 +233,17 @@
     const RoleMechanics = {
       getRoleAction(myRole, context) {
         if (!myRole) return null;
+        if (ROLE_PLUGINS[myRole.id]) return ROLE_PLUGINS[myRole.id].getActionButton(context);
 
-        // 優先檢查角色專屬外掛
-        if (ROLE_PLUGINS[myRole.id]) {
-          return ROLE_PLUGINS[myRole.id].getActionButton(context);
-        }
-
-        // 檢查是否具有狀態賦予技能
         const statusConfig = ROLE_STATUS_ACTIONS[myRole.id];
         if (statusConfig) {
           return {
             label: statusConfig.btnLabel,
             badge: statusConfig.badge,
             style: statusConfig.style,
-            onClick: () => {
-              context.openGrantStatusModal(statusConfig);
-            }
+            onClick: () => context.openGrantStatusModal(statusConfig)
           };
         }
-
         return null;
       },
       applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
@@ -293,16 +251,12 @@
         const p2 = playersList.find(p => p.id === p2Id);
         if (!p1 || !p2) return playersList;
 
-        const role1 = p1.role;
-        const team1 = p1.team;
-        const role2 = p2.role;
-        const team2 = p2.team;
+        const { role: role1, team: team1 } = p1;
+        const { role: role2, team: team2 } = p2;
 
         return playersList.map(p => {
           let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
-          if (initiatorId && p.id === initiatorId) {
-            hasUsedMadScientistAbility = true;
-          }
+          if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;
 
           if (p.id === p1Id) {
             return {
@@ -327,13 +281,11 @@
       },
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
         if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };
-
         const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);
         if (!drunkPlayer) return { nextPlayers: playersList, newBuried: curBuried };
 
         const oldRole = drunkPlayer.role;
         const newRole = curBuried;
-        const newBuried = oldRole;
 
         const nextPlayers = playersList.map(p => {
           if (p.id === drunkPlayerId) {
@@ -346,18 +298,14 @@
           }
           return p;
         });
-
-        return { nextPlayers, newBuried };
+        return { nextPlayers, newBuried: oldRole };
       },
       applyGrantStatus(playersList, targetPlayerId, statusObj) {
         return playersList.map(p => {
           if (p.id === targetPlayerId) {
             const currentStatuses = p.statuses || [];
             if (currentStatuses.some(s => s.id === statusObj.id)) return p;
-            return {
-              ...p,
-              statuses: [...currentStatuses, statusObj]
-            };
+            return { ...p, statuses: [...currentStatuses, statusObj] };
           }
           return p;
         });
@@ -366,12 +314,96 @@
     window.RoleMechanics = RoleMechanics;
 
     // ==========================================
-    // 4. 主應用程式組件 (Main App Component)
+    // 3. 模組化子組件 (UI Sub-Components)
+    // ==========================================
+    const Header = ({ connStatus, roomId, playersCount, isHost, onLeave }) => (
+      <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
+        <div className="flex items-center gap-2">
+          <span className="text-3xl">💣</span>
+          <div>
+            <h1 className="text-xl font-black tracking-wider bg-gradient-to-r from-red-500 via-amber-400 to-blue-500 bg-clip-text text-transparent uppercase">
+              Two Rooms and a Boom!
+            </h1>
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <span className={connStatus.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{connStatus}</span>
+              {roomId && <span>玩家: {playersCount} 人</span>}
+            </div>
+          </div>
+        </div>
+
+        {roomId && (
+          <div className="flex items-center gap-2">
+            <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
+              <span className="text-xs text-zinc-400">房號:</span>
+              <span className="text-base font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
+              <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
+                {isHost ? '房長' : '玩家'}
+              </span>
+            </div>
+            <button
+              onClick={onLeave}
+              className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-200 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
+            >
+              🚪 離開
+            </button>
+          </div>
+        )}
+      </header>
+    );
+
+    const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck }) => (
+      <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🃏</span>
+            <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
+          </div>
+          <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
+            總共 {totalCardsInDeck} 張卡片
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {activeRolesInDeck.map(group => {
+            const hasBlue = group.teams.includes('blue');
+            const hasRed = group.teams.includes('red');
+            let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+
+            if (hasBlue && hasRed) bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
+            else if (hasBlue) bgStyle = getTeamMeta('blue').listBg;
+            else if (hasRed) bgStyle = getTeamMeta('red').listBg;
+            else if (group.teams.length > 0) bgStyle = getTeamMeta(group.teams[0]).listBg;
+
+            return (
+              <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
+                <div className="flex items-start gap-2.5">
+                  <span className="text-2xl mt-0.5">{group.icon}</span>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-sm text-zinc-100">{group.name}</span>
+                      {group.teams.map(t => (
+                        <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
+                          {getTeamMeta(t).label}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+
+    // ==========================================
+    // 4. 主應用程式組件 (Main App Component)[cite: 1]
     // ==========================================
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || [];
 
-      // 房間與網路狀態
+      // 房間與連線狀態
       const [gameState, setGameState] = useState('home'); 
       const [roomId, setRoomId] = useState('');
       const [joinRoomInput, setJoinRoomInput] = useState('');
@@ -419,10 +451,10 @@
       const [selectedScientistTargets, setSelectedScientistTargets] = useState([]);
       const [madScientistPendingData, setMadScientistPendingData] = useState(null);
 
-      // 特殊狀態賦予 (Status Mechanics State)
+      // 特殊狀態賦予
       const [showGrantStatusModal, setShowGrantStatusModal] = useState(false);
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
-      const [statusPromptData, setStatusPromptData] = useState(null); // 被賦予者收到的確認彈窗
+      const [statusPromptData, setStatusPromptData] = useState(null);
 
       // 勝負結算
       const [showVictoryModal, setShowVictoryModal] = useState(false);
@@ -439,7 +471,7 @@
       const debounceBroadcastTimerRef = useRef(null);
       const madScientistVoteTrackerRef = useRef(null);
 
-      // 狀態快照更新與持久化
+      // 狀態持久化快照
       useEffect(() => {
         const stateSnapshot = {
           players, roomStatus, roundSettings, roleCounts, currentRoundIndex,
@@ -454,7 +486,7 @@
         }
       }, [players, roomStatus, roundSettings, roleCounts, currentRoundIndex, timeLeft, isTimerRunning, isHost, roomId, myPlayerId, playerName, gameState, buriedCard, gameResult]);
 
-      // 記憶化衍生狀態
+      // 衍生狀態 Memo
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
@@ -484,14 +516,14 @@
         return Object.values(groups);
       }, [rolesCatalog, roleCounts]);
 
-      // 封裝安全發送封包
+      // 安全發送 MQTT 封包
       const publishMsg = useCallback((topic, payload, opts = { qos: 1 }) => {
         if (clientRef.current?.connected) {
           clientRef.current.publish(topic, JSON.stringify(payload), opts);
         }
       }, []);
 
-      // 全場廣播狀態更新
+      // 房間同步廣播
       const broadcastLatest = useCallback((override = {}) => {
         const s = { ...latestStateRef.current, ...override };
         if (!s.roomId) return;
@@ -529,7 +561,6 @@
         }, { qos: 0 });
       }, [publishMsg]);
 
-      // 房長端交換業務
       const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
         setPlayers(prev => {
           const next = window.RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);
@@ -543,7 +574,6 @@
         });
       }, [publishMsg, broadcastLatest]);
 
-      // 房長端賦予狀態
       const executeGrantStatusOnHost = useCallback((targetId, statusObj, initiatorId = null) => {
         setPlayers(prev => {
           const next = window.RoleMechanics.applyGrantStatus(prev, targetId, statusObj);
@@ -558,7 +588,6 @@
         });
       }, [publishMsg, broadcastLatest]);
 
-      // 重置所有遊戲狀態返回首頁
       const resetToHome = useCallback(() => {
         if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
         if (clientRef.current) {
@@ -586,7 +615,7 @@
         madScientistVoteTrackerRef.current = null;
       }, []);
 
-      // 建立 MQTT 雙向連線
+      // MQTT 通訊與調度派發
       const setupConnection = useCallback((code, asHost, name, uid) => {
         setConnStatus('連線伺服器中...');
         const topic = `trb_game_sync_room_${code}`;
@@ -602,7 +631,6 @@
           clean: true,
           reconnectPeriod: 2000
         });
-
         clientRef.current = client;
 
         client.on('connect', () => {
@@ -625,40 +653,32 @@
           }
         });
 
-        // 訊息調度派發器 (Message Dispatcher)
         client.on('message', (t, msg) => {
           const data = safeJsonParse(msg.toString());
           if (!data) return;
 
-          // 處理公共大廳探索
           if (t === DISCOVERY_TOPIC) {
-            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) {
-              replyDiscoveryAsHost();
-            }
+            if (data.type === 'DISCOVERY_QUERY_ROOMS' && latestStateRef.current.isHost) replyDiscoveryAsHost();
             return;
           }
 
-          // 處理房間解散
           if (data.type === 'ROOM_DISBANDED') {
             alert('房長已離開，房間已解散！');
             resetToHome();
             return;
           }
 
-          // 房長專屬邏輯 (Host Dispatcher)
+          // 房長邏輯
           if (latestStateRef.current.isHost) {
             if (data.type === 'CHECK_ROOM_REQ') {
               const currentPlayers = latestStateRef.current.players || [];
-              const targetName = (data.playerName || '').trim();
-              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === targetName);
-
+              const isDuplicated = currentPlayers.some(p => p.id !== data.senderId && p.name === (data.playerName || '').trim());
               publishMsg(topic, isDuplicated
                 ? { type: 'ROOM_JOIN_REJECTED', targetId: data.senderId, reason: 'NAME_DUPLICATED' }
                 : { type: 'ROOM_VERIFIED', targetId: data.senderId, senderId: uid }
               );
               return;
             }
-
             if (data.type === 'REPORT_PRESENCE') {
               setPlayers(prev => {
                 const next = prev.some(p => p.id === data.player.id)
@@ -669,7 +689,6 @@
               });
               return;
             }
-
             if (data.type === 'EXECUTE_DRUNK_SWAP') {
               const curBuried = latestStateRef.current.buriedCard;
               if (curBuried) {
@@ -682,7 +701,6 @@
               }
               return;
             }
-
             if (data.type === 'MAD_SCIENTIST_INITIATE') {
               madScientistVoteTrackerRef.current = {
                 initiatorId: data.initiatorId, initiatorName: data.initiatorName,
@@ -695,7 +713,6 @@
               });
               return;
             }
-
             if (data.type === 'MAD_SCIENTIST_VOTE') {
               const tracker = madScientistVoteTrackerRef.current;
               if (!tracker) return;
@@ -720,15 +737,13 @@
               }
               return;
             }
-
-            // 狀態賦予確認通過，房長寫入資料並同步
             if (data.type === 'EXECUTE_GRANT_STATUS') {
               executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
               return;
             }
           }
 
-          // 玩家專屬邏輯 (Player Dispatcher)
+          // 玩家接收處理
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
@@ -770,19 +785,19 @@
             return;
           }
 
-          // 狀態賦予：目標玩家收到賦予請求提示
           if (data.type === 'STATUS_PROMPT_TARGET') {
             if (data.targetId === uid) {
               setStatusPromptData({
                 initiatorId: data.initiatorId,
                 initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                initiatorRoleIcon: data.initiatorRoleIcon,
                 statusObj: data.statusObj
               });
             }
             return;
           }
 
-          // 狀態賦予被拒絕
           if (data.type === 'STATUS_PROMPT_REJECTED') {
             if (data.initiatorId === uid) {
               setSwapStatusMessage(`❌ ${data.rejectorName} 拒絕了狀態賦予！`);
@@ -791,7 +806,6 @@
             return;
           }
 
-          // 狀態賦予成功通知
           if (data.type === 'STATUS_GRANTED_SUCCESS') {
             if (data.initiatorId === uid) {
               setSwapStatusMessage(`🎉 對方已同意，成功賦予【${data.statusName}】！`);
@@ -804,10 +818,9 @@
             return;
           }
 
-          // 忽視自己的廣播
           if (data.senderId === uid) return;
 
-          // 一般通用廣播處理
+          // 廣播分發
           switch (data.type) {
             case 'PLAYER_PING_SYNC':
               if (latestStateRef.current.isHost) {
@@ -821,7 +834,6 @@
                 });
               }
               break;
-
             case 'PLAYER_LEFT':
               setPlayers(prev => {
                 const next = prev.filter(p => p.id !== data.playerId);
@@ -829,33 +841,26 @@
                 return next;
               });
               break;
-
             case 'SWAP_REQUEST':
               if (data.targetId === uid) {
                 setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });
               }
               break;
-
             case 'SWAP_REJECTED':
               if (data.fromId === uid) {
                 setSwapStatusMessage('對方拒絕了身分交換請求！');
                 setTimeout(() => setSwapStatusMessage(''), 3000);
               }
               break;
-
             case 'SWAP_SUCCESS':
               if (data.player1Id === uid || data.player2Id === uid) {
                 setSwapStatusMessage('🎉 身分已成功交換！');
                 setTimeout(() => setSwapStatusMessage(''), 2500);
               }
               break;
-
             case 'EXECUTE_SWAP':
-              if (latestStateRef.current.isHost) {
-                executeSwapOnHost(data.player1Id, data.player2Id);
-              }
+              if (latestStateRef.current.isHost) executeSwapOnHost(data.player1Id, data.player2Id);
               break;
-
             case 'FULL_SYNC':
               setPlayers(data.players);
               setRoomStatus(data.roomStatus);
@@ -874,13 +879,11 @@
                 setIsTimerRunning(false);
               }
               break;
-
             case 'TIME_SYNC':
               if (!latestStateRef.current.isHost) {
                 setTimeLeft(prev => (Math.abs(prev - data.timeLeft) > 2 ? data.timeLeft : prev));
               }
               break;
-
             default:
               break;
           }
@@ -889,7 +892,7 @@
         client.on('error', () => setConnStatus('連線重試中...'));
       }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, resetToHome]);
 
-      // 初始化冷啟動狀態
+      // 冷啟動還原
       useEffect(() => {
         const storedId = StorageManager.getUid();
         setMyPlayerId(storedId);
@@ -974,7 +977,7 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
 
-      // 房間管理操作
+      // 大廳操作流程
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -991,7 +994,6 @@
         setGameResult(null);
         setRoomStatus('waiting');
         setGameState('lobby');
-
         setupConnection(code, true, trimmedName, myPlayerId);
       };
 
@@ -1097,7 +1099,6 @@
         }
       };
 
-      // 大廳線上房間探尋
       const handleOpenRoomsModal = () => {
         setShowRoomsModal(true);
         setOnlineRooms([]);
@@ -1144,16 +1145,10 @@
         if (gameState === 'home') setConnStatus('未連線');
       };
 
-      // 遊戲流程推進
+      // 遊戲進行流程
       const handleStartAssignRooms = () => {
-        if (players.length < 2) {
-          alert('至少需要 2 位玩家加入才能開始！');
-          return;
-        }
-        if (totalCardsInDeck < players.length) {
-          alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
-          return;
-        }
+        if (players.length < 2) return alert('至少需要 2 位玩家加入才能開始！');
+        if (totalCardsInDeck < players.length) return alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
 
         const shuffled = [...players].sort(() => Math.random() - 0.5);
         const half = Math.ceil(shuffled.length / 2);
@@ -1224,7 +1219,7 @@
         }
       };
 
-      // 勝負判定邏輯
+      // 勝負判定推導
       const resolveGameResult = (ans) => {
         const { sameRoom, engineerShared, doctorShared } = ans;
         if (sameRoom) {
@@ -1247,23 +1242,14 @@
         setVictoryAns(updatedAns);
 
         if (key === 'sameRoom') {
-          if (val === true) {
-            hasEngineerInGame ? setVictoryStep(2) : finalizeVictory(updatedAns);
-          } else {
-            hasDoctorInGame ? setVictoryStep(3) : finalizeVictory(updatedAns);
-          }
+          if (val === true) hasEngineerInGame ? setVictoryStep(2) : finalizeVictory(updatedAns);
+          else hasDoctorInGame ? setVictoryStep(3) : finalizeVictory(updatedAns);
         } else if (key === 'engineerShared') {
-          if (victoryAns.sameRoom === true && val === false && hasDoctorInGame) {
-            setVictoryStep(4);
-          } else {
-            finalizeVictory(updatedAns);
-          }
+          if (victoryAns.sameRoom === true && val === false && hasDoctorInGame) setVictoryStep(4);
+          else finalizeVictory(updatedAns);
         } else if (key === 'doctorShared') {
-          if (victoryAns.sameRoom === false && val === false && hasEngineerInGame) {
-            setVictoryStep(5);
-          } else {
-            finalizeVictory(updatedAns);
-          }
+          if (victoryAns.sameRoom === false && val === false && hasEngineerInGame) setVictoryStep(5);
+          else finalizeVictory(updatedAns);
         }
       };
 
@@ -1274,7 +1260,7 @@
         broadcastLatest({ gameResult: result });
       };
 
-      // 互動與技能交換
+      // 互動事件處理
       const handleTouchMove = (e) => {
         if (!isColorOnly || !cardRef.current) return;
         const touch = e.touches[0];
@@ -1373,7 +1359,6 @@
         setSelectedScientistTargets([]);
       };
 
-      // 狀態賦予發起與確認處理
       const handleOpenGrantStatusModal = (config) => {
         setActiveStatusConfig(config);
         setShowGrantStatusModal(true);
@@ -1389,6 +1374,8 @@
           senderId: myPlayerId,
           initiatorId: myPlayerId,
           initiatorName: myInfo.name,
+          initiatorRoleName: myInfo.role?.name || '未知角色',
+          initiatorRoleIcon: myInfo.role?.icon || '⭐',
           targetId: targetPlayer.id,
           statusObj: {
             id: activeStatusConfig.statusId,
@@ -1448,99 +1435,72 @@
       };
 
       // ==========================================
-      // 5. 畫面渲染樹 (JSX Render Tree)
+      // 5. 畫面渲染樹 (JSX Render Tree)[cite: 1]
       // ==========================================
       return (
         <div className="max-w-4xl mx-auto pb-12">
           {/* 頂部導覽列 */}
-          <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="text-3xl">💣</span>
-              <div>
-                <h1 className="text-xl font-black tracking-wider bg-gradient-to-r from-red-500 via-amber-400 to-blue-500 bg-clip-text text-transparent uppercase">
-                  Two Rooms and a Boom!
-                </h1>
-                <div className="flex items-center gap-2 text-xs text-zinc-400">
-                  <span className={connStatus.includes('🟢') ? 'text-emerald-400 font-medium' : ''}>{connStatus}</span>
-                  {roomId && <span>玩家: {players.length} 人</span>}
-                </div>
-              </div>
-            </div>
-
-            {roomId && (
-              <div className="flex items-center gap-2">
-                <div className="bg-zinc-800/80 border border-zinc-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <span className="text-xs text-zinc-400">房號:</span>
-                  <span className="text-base font-mono font-bold tracking-widest text-amber-400">{roomId}</span>
-                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
-                    {isHost ? '房長' : '玩家'}
-                  </span>
-                </div>
-                <button
-                  onClick={handleLeaveRoom}
-                  className="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:text-rose-200 text-xs px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 active:scale-95"
-                >
-                  🚪 離開
-                </button>
-              </div>
-            )}
-          </header>
+          <Header
+            connStatus={connStatus}
+            roomId={roomId}
+            playersCount={players.length}
+            isHost={isHost}
+            onLeave={handleLeaveRoom}
+          />
 
           {/* 首頁：建立 / 加入房間 */}
           {gameState === 'home' && (
-            <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">您的暱稱</label>
-                  <input
-                    type="text"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="輸入暱稱 (例如: 特工 007)"
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+            <div className="max-w-md mx-auto bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">您的暱稱</label>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="輸入暱稱 (例如: 特工 007)"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
 
+              <button
+                type="button"
+                onClick={handleCreateRoom}
+                className="w-full bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 hover:opacity-90 text-white font-semibold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 active:scale-95"
+              >
+                <span>👑 建立新房間 (當房長)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenRoomsModal}
+                className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-semibold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2 active:scale-95 text-sm"
+              >
+                <span>📋 查看當前所有線上房間</span>
+              </button>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-zinc-800"></div>
+                <span className="flex-shrink mx-4 text-xs text-zinc-500">或手動輸入 6 碼房間號</span>
+                <div className="flex-grow border-t border-zinc-800"></div>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  maxLength={6}
+                  value={joinRoomInput}
+                  onChange={(e) => setJoinRoomInput(e.target.value)}
+                  placeholder="輸入 6 碼房號"
+                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 text-white font-mono text-center tracking-widest placeholder-zinc-500 focus:outline-none"
+                />
                 <button
                   type="button"
-                  onClick={handleCreateRoom}
-                  className="w-full bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 hover:opacity-90 text-white font-semibold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                  disabled={isVerifying}
+                  onClick={() => executeJoinRoom(joinRoomInput)}
+                  className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl text-white font-medium transition active:scale-95 disabled:opacity-50 min-w-[80px]"
                 >
-                  <span>👑 建立新房間 (當房長)</span>
+                  {isVerifying ? '驗證中...' : '加入'}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={handleOpenRoomsModal}
-                  className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-semibold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2 active:scale-95 text-sm"
-                >
-                  <span>📋 查看當前所有線上房間</span>
-                </button>
-
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-zinc-800"></div>
-                  <span className="flex-shrink mx-4 text-xs text-zinc-500">或手動輸入 6 碼房間號</span>
-                  <div className="flex-grow border-t border-zinc-800"></div>
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="tel"
-                    maxLength={6}
-                    value={joinRoomInput}
-                    onChange={(e) => setJoinRoomInput(e.target.value)}
-                    placeholder="輸入 6 碼房號"
-                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 text-white font-mono text-center tracking-widest placeholder-zinc-500 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    disabled={isVerifying}
-                    onClick={() => executeJoinRoom(joinRoomInput)}
-                    className="bg-zinc-700 hover:bg-zinc-600 px-6 py-2 rounded-xl text-white font-medium transition active:scale-95 disabled:opacity-50 min-w-[80px]"
-                  >
-                    {isVerifying ? '驗證中...' : '加入'}
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -1716,54 +1676,7 @@
               </div>
 
               {/* 本局使用角色池一覽 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
-                <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🃏</span>
-                    <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
-                  </div>
-                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
-                    總共 {totalCardsInDeck} 張卡片
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeRolesInDeck.map(group => {
-                    const hasBlue = group.teams.includes('blue');
-                    const hasRed = group.teams.includes('red');
-                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';
-
-                    if (hasBlue && hasRed) {
-                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
-                    } else if (hasBlue) {
-                      bgStyle = getTeamMeta('blue').listBg;
-                    } else if (hasRed) {
-                      bgStyle = getTeamMeta('red').listBg;
-                    } else if (group.teams.length > 0) {
-                      bgStyle = getTeamMeta(group.teams[0]).listBg;
-                    }
-
-                    return (
-                      <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-2xl mt-0.5">{group.icon}</span>
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-sm text-zinc-100">{group.name}</span>
-                              {group.teams.map(t => (
-                                <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
-                                  {getTeamMeta(t).label}
-                                </span>
-                              ))}
-                            </div>
-                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
 
@@ -1935,7 +1848,7 @@
                     )}
                   </div>
 
-                  {/* 全場玩家身分揭曉 */}
+                  {/* 全場玩家身分與狀態揭曉 */}
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
                       <div className="flex items-center gap-2">
@@ -1982,7 +1895,6 @@
                               )}
                             </div>
 
-                            {/* 終局結算時揭開玩家獲得的特殊狀態 */}
                             {p.statuses && p.statuses.length > 0 && (
                               <div className="flex flex-wrap gap-1 my-0.5">
                                 {p.statuses.map(st => (
@@ -2091,7 +2003,7 @@
                         </p>
                       </div>
 
-                      {/* 玩家個人目前擁有的特殊狀態（僅自己可見） */}
+                      {/* 玩家個人目前擁有的特殊狀態 */}
                       {myInfo.statuses && myInfo.statuses.length > 0 && (
                         <div className="bg-zinc-950/80 border border-purple-500/40 rounded-xl p-2.5 my-2 space-y-1">
                           <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
@@ -2108,7 +2020,7 @@
                         </div>
                       )}
 
-                      {/* 角色機制外掛通插槽：本局結束後隱藏按鈕 */}
+                      {/* 角色機制插槽 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
@@ -2160,58 +2072,11 @@
               </div>
 
               {/* 進行中角色池一覽 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
-                <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🃏</span>
-                    <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
-                  </div>
-                  <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
-                    總共 {totalCardsInDeck} 張卡片
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeRolesInDeck.map(group => {
-                    const hasBlue = group.teams.includes('blue');
-                    const hasRed = group.teams.includes('red');
-                    let bgStyle = 'bg-zinc-900/40 border-zinc-800';
-
-                    if (hasBlue && hasRed) {
-                      bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
-                    } else if (hasBlue) {
-                      bgStyle = getTeamMeta('blue').listBg;
-                    } else if (hasRed) {
-                      bgStyle = getTeamMeta('red').listBg;
-                    } else if (group.teams.length > 0) {
-                      bgStyle = getTeamMeta(group.teams[0]).listBg;
-                    }
-
-                    return (
-                      <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-2xl mt-0.5">{group.icon}</span>
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-sm text-zinc-100">{group.name}</span>
-                              {group.teams.map(t => (
-                                <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
-                                  {getTeamMeta(t).label}
-                                </span>
-                              ))}
-                            </div>
-                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
             </div>
           )}
 
-          {/* 彈窗：特殊狀態賦予目標選擇（不透露其他玩家目前狀態） */}
+          {/* 彈窗：特殊狀態賦予目標選擇 */}
           {showGrantStatusModal && activeStatusConfig && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -2262,8 +2127,20 @@
               <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
                 <div className="text-4xl animate-bounce">{statusPromptData.statusObj.icon}</div>
                 <h3 className="text-lg font-black text-purple-300">特殊狀態賦予請求！</h3>
+
+                <div className="bg-zinc-950/70 border border-zinc-700/80 rounded-xl p-3 text-left space-y-1.5">
+                  <div className="text-[11px] text-zinc-400 font-medium">來自玩家發起：</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">{statusPromptData.initiatorName}</span>
+                    <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                      <span>{statusPromptData.initiatorRoleIcon}</span>
+                      <span>{statusPromptData.initiatorRoleName}</span>
+                    </span>
+                  </div>
+                </div>
+
                 <p className="text-sm text-zinc-300 leading-relaxed">
-                  玩家 <strong className="text-white font-bold">{statusPromptData.initiatorName}</strong> 想要賦予你特殊狀態：
+                  想要賦予你特殊狀態：
                   <span className="block mt-1 text-base font-black text-purple-400">
                     【{statusPromptData.statusObj.name}】
                   </span>
@@ -2388,7 +2265,7 @@
             </div>
           )}
 
-          {/* 彈窗：勝負判定問答 */}
+          {/* 彈窗：勝負判定推導 */}
           {showVictoryModal && isHost && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
@@ -2421,7 +2298,7 @@
                   </div>
                 )}
 
-                {victoryStep === 2 && (
+                {(victoryStep === 2 || victoryStep === 5) && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
                       💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
@@ -2443,7 +2320,7 @@
                   </div>
                 )}
 
-                {victoryStep === 3 && (
+                {(victoryStep === 3 || victoryStep === 4) && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
                       👔 總統 有和 🩺 醫生<br />進行『卡片分享』嗎？
@@ -2457,50 +2334,6 @@
                       </button>
                       <button
                         onClick={() => handleVictoryAnswer('doctorShared', false)}
-                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        否
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {victoryStep === 4 && (
-                  <div className="space-y-4 text-center">
-                    <p className="text-base font-black text-white">
-                      👔 總統 有和 🩺 醫生<br />進行『卡片分享』嗎？
-                    </p>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleVictoryAnswer('doctorShared', true)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        是
-                      </button>
-                      <button
-                        onClick={() => handleVictoryAnswer('doctorShared', false)}
-                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        否
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {victoryStep === 5 && (
-                  <div className="space-y-4 text-center">
-                    <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
-                    </p>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleVictoryAnswer('engineerShared', true)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        是
-                      </button>
-                      <button
-                        onClick={() => handleVictoryAnswer('engineerShared', false)}
                         className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
                       >
                         否
