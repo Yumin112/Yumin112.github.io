@@ -206,24 +206,23 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '在最後一輪結束前，必須將自己的卡片換為紅隊或藍隊卡並倒戈。' }, //需要特殊機制
   { id: 'telepath', name: '心靈感應者 (Telepath)', team: 'grey', icon: '🔮', desc: '最後一輪亮牌預測終局進入本房間的人質玩家，猜中即獲勝。' }, //需要特殊機制or加問答
   { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束後公開玩家身分前，依序點名猜測全場每一位玩家的卡牌顏色，全對即獲勝。' }, //加問答
-
   { id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '遊戲中必須將卡牌隨機換成歡樂牌庫(沒用到的角色)中的一張牌，以新牌目標結算。' },  //需要特殊機制
   { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '遊戲結束前公開自己並預測哪一隊獲勝（紅/藍/無），猜對獲勝。' }, //需要特殊機制
   { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個角色，猜對獲勝。' },
 
   // 特殊陣營
-  { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: '終局前宣告陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你獲勝。' }, //加問答
+  { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: '在遊戲結束後公開玩家身分前，猜測埋葬卡是哪個陣營，若猜中埋葬卡的陣營且該陣營獲勝，則你一起獲勝。' },
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'brown', icon: '🍺', desc: '在最後一回合開始時，必須跟場中央的『埋葬卡』互換並繼承其條件。' },
-  { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獲勝。' },
-  { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'black', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，亮牌逮捕並獲得個人單獨勝利。' },
-  { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』或『顏色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
+  { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
+  { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'black', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，亮牌逮捕他！你獲得獨自獲勝。' },
+  { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』者皆加入黃隊！終局總統未死且與你同室則黃隊勝，若炸彈客也在則全員敗。' },
   { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『角色分享』或『顏色分享』者皆感染成殭屍！全體存活玩家皆變成殭屍即獲勝。' },
   { id: 'leprechaun', name: '小妖精 (Leprechaun)', team: 'green', icon: '🍀', desc: '你是熱情的小精靈，因此不能拒絕任何人的分享邀請；進行任何分享後必須和對方互換卡片，終局還持有小妖精者也會獲勝。' },
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'green', icon: '👁️‍🗨', desc: '你可以公開揭露你的卡牌，獲得免疫所有角色技能的能力；並開始在兩個房間中四處巡視，一旦看見任何玩家的卡面大聲喊出即可獨自勝利。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '遊戲開始時暫停倒數且所有玩家離開房間，你需要在兩間房間內各藏一個寶物，若所有玩家未能在遊戲結束前找到兩個寶藏，則你獨自獲勝。' },
   { id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '👁️', desc: '『角色分享』或『顏色分享』傳播會員狀態；若光明會死亡，全體會員一同判負。' },
-  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '可透過『角色分享』或『顏色分享』對玩家傳播"信徒"狀態；若「邪教教主」與「猶格·索托斯」進行過『角色分享』或『顏色分享』，全體信徒勝利。' },
-  { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'purple', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！當你與擁有"信徒"狀態的玩家進行『角色分享』或『顏色分享』，你立刻獨自勝利。' },
-  { id: 'white_paper', name: '白紙 (White Paper)', team: 'white', icon: '📃', desc: ' ' }
+  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"信徒"狀態（仍保留原本陣營）。遊戲結束時，若你曾與「猶格·索托斯」進行過『角色分享』，且信徒人數超過總人數1/4，全體信徒與教主共同勝利。' },
+  { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'purple', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！遊戲結束時，若你在遊戲中與"信徒"進行過『角色分享』，且你從未與邪教教主進行過『角色分享』，你獨自獲勝' },
+  { id: 'white_paper', name: '白紙 (White Paper)', team: 'white', icon: '📃', desc: '...' }
 
 ];
