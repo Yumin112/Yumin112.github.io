@@ -67,8 +67,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'interrogator_r', name: '審訊官 (Interrogator)', team: 'red', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_b' },
   { id: 'enforcer_b', name: '執法者 (Enforcer)', team: 'blue', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_r' },
   { id: 'enforcer_r', name: '執法者 (Enforcer)', team: 'red', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_b' },
-  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
-  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
+  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '😎', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
+  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '😎', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
   //奪取卡牌的角色加機制 外星人 盜身魔 身分竊賊 獵人
   //{ id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
   //{ id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
@@ -144,8 +144,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'ambassador_r', name: '大使 (Ambassador)', team: 'red', icon: '🕊️', desc: '你可以『公開角色』，你永久免疫所有技能且可以任意在兩房間走動，不能當人質也不算投票人數。', pairs: 'ambassador_b' },
 
   // 藍/紅隊特殊行為類
-  { id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '🛡️', desc: '獲得"免疫"狀態，任何角色能力或負面狀態對你完全無效。', pairs: 'immunologist_r' },
-  { id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '🛡️', desc: '獲得"免疫"狀態，任何角色能力或負面狀態對你完全無效。', pairs: 'immunologist_b' },
+  { id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '💊', desc: '獲得"免疫"狀態，任何角色能力或負面狀態對你完全無效。', pairs: 'immunologist_r' },
+  { id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '💊', desc: '獲得"免疫"狀態，任何角色能力或負面狀態對你完全無效。', pairs: 'immunologist_b' },
   { id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_r' },
   { id: 'trader_r', name: '走私商人 (Trader)', team: 'red', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_b' },
   { id: 'voyeur_b', name: '偷窺狂 (Voyeur)', team: 'blue', icon: '🫣', desc: '在遊戲過程中的任何時刻，皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_r' },
@@ -158,8 +158,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'rageaholic_r', name: '狂怒者 (Rageaholic)', team: 'red', icon: '🤬', desc: '整場遊戲只能使用一次，當你的房間已經選完人質，且你所在的房間領袖已經在走廊等待對方領袖時，你可以『公開角色』並大喊咆哮[從1數到10]對方未至則直接獨贏。', pairs: 'rageaholic_b' },
   
   // 藍/紅隊普通成員
-  { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🛡️', desc: '保護總統安全，不要讓「總統」與「炸彈客」在同一個房間！', pairs: 'red_mem' },
-  { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🎯', desc: '協助炸彈客，讓「炸彈客」與「總統」在同一個房間引爆！', pairs: 'blue_mem' },
+  { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🔵', desc: '保護總統安全，不要讓「總統」與「炸彈客」在同一個房間！', pairs: 'red_mem' },
+  { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🔴', desc: '協助炸彈客，讓「炸彈客」與「總統」在同一個房間引爆！', pairs: 'blue_mem' },
 
   // 藍/紅隊額外核心角色
   { id: 'blue_drone', name: '藍色無人機 (Blue Drone)', team: 'blue', icon: '🛸', desc: '主要角色。遊戲結束時若與「紅色鐵拳」身處同一個房間，則藍隊獲勝。', pairs: 'red_fist' },
@@ -223,7 +223,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   // 特殊陣營
   { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: '在遊戲結束後公開玩家角色卡牌前，猜測埋葬卡是哪個陣營，若猜中埋葬卡的陣營且該陣營獲勝，即可一起獲勝。' },
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'brown', icon: '🍺', desc: '在最後一回合開始時，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。' },
-  { id: 'the_black', name: '純黑 (The Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
+  { id: 'mr_black', name: '黑先生 (Mr.Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
   { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'black', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，『公開角色』並大喊[你作弊！！！]並描述情況給同房間的其他玩家聽！若說服大家則你獨自獲勝。' },
   { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』者皆加入"黃隊"！在遊戲結束時，和「總統」在同一個房間則"黃隊"勝，若「炸彈客」也在同一個房間則藍黃紅隊皆敗。' },
   { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『角色分享』或『顏色分享』者皆感染"殭屍"狀態！全體存活玩家皆變成"殭屍"即獲勝。' },
