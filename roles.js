@@ -32,8 +32,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   //{ id: 'seer_r', name: '先知 (Seer)', team: 'red', icon: '🔮', desc: '自帶"通靈"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』；遊戲開始30秒內，先知可以透過技能查看所有玩家的角色。', pairs: 'seer_b' },
 
   // 藍/紅隊賦予狀態類
-  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_r' },
-  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_b' },
+  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_r' },
+  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_b' },
   { id: 'thug_b', name: '暴徒 (Thug)', team: 'blue', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得"靦腆"狀態：只能進行『顏色分享』。', pairs: 'thug_r' },
   { id: 'thug_r', name: '暴徒 (Thug)', team: 'red', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得"靦腆"狀態：只能進行『顏色分享』。', pairs: 'thug_b' },
   { id: 'dealer_b', name: '荷官 (Dealer)', team: 'blue', icon: '🎴', desc: '與你進行『角色分享』的玩家獲得「愚蠢」狀態：不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'dealer_r' },
@@ -67,15 +67,15 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'interrogator_r', name: '審訊官 (Interrogator)', team: 'red', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_b' },
   { id: 'enforcer_b', name: '執法者 (Enforcer)', team: 'blue', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_r' },
   { id: 'enforcer_r', name: '執法者 (Enforcer)', team: 'red', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_b' },
-  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '😎', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
-  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '😎', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
+  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
+  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
   //奪取卡牌的角色加機制 外星人 盜身魔 身分竊賊 獵人
   //{ id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
   //{ id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
-  //{ id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '👤', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
-  //{ id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '👤', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
-  //{ id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_r' },
-  //{ id: 'identity_thief_r', name: '身分竊賊 (Identity Thief)', team: 'red', icon: '🎭', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_b' },
+  //{ id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
+  //{ id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
+  //{ id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '👥', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_r' },
+  //{ id: 'identity_thief_r', name: '身分竊賊 (Identity Thief)', team: 'red', icon: '👥', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_b' },
   //加機制換成普通隊員 資本家 社會主義者 白隊成員 
   { id: 'capitalist', name: '資本家 (Capitalist)', team: 'blue', icon: '💰', desc: '每回合只能用一次，進行『角色分享』時，強迫對方將其角色卡牌換成「藍隊成員」。', pairs: 'socialist' },
   { id: 'socialist', name: '社會主義者 (Socialist)', team: 'red', icon: '🚩', desc: '每回合只能用一次，進行『角色分享』時，強迫對方將其角色卡牌換成「紅隊成員」。', pairs: 'capitalist' },
@@ -184,8 +184,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'villain', name: '惡徒 (Villain)', team: 'grey', icon: '🦹', desc: '遊戲結束時，自己和「總統」在同一個房間，「炸彈客」在不同房間時獲勝。', pairs: 'hero' },
   { id: 'queen', name: '女王 (Queen)', team: 'grey', icon: '👸', desc: '遊戲結束時，「總統」與「炸彈客」在同一個房間，而你在另一個房間時獲勝。', pairs: 'stunt_double' },
   { id: 'stunt_double', name: '替身演員 (Stunt Double)', team: 'grey', icon: '🎬', desc: '遊戲結束時，自己和「炸彈客」在同一個房間，「總統」在不同房間時獲勝。', pairs: 'queen' },
-  { id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨', desc: '第一回合時，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態；遊戲結束時，若這兩名玩家和「總統」在同一房間則獲勝。', pairs: 'mother' },
-  { id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩', desc: '第一回合時，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態，遊戲結束時，若這兩名玩家和「炸彈客」在不同房間時獲勝。', pairs: 'father' },
+  { id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨‍👧‍👦', desc: '第一回合時，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態；遊戲結束時，若這兩名玩家和「總統」在同一房間則獲勝。', pairs: 'mother' },
+  { id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩‍👧‍👦', desc: '第一回合時，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態，遊戲結束時，若這兩名玩家和「炸彈客」在不同房間時獲勝。', pairs: 'father' },
   
   // 灰隊三角關係
   { id: 'rock', name: '石頭 (Rock)', team: 'grey', icon: '🪨', desc: '遊戲結束時，自己和「剪刀」在同一個房間，「布」在不同房間時獲勝。', pairs: 'paper,scissors' }, 
@@ -223,7 +223,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   // 特殊陣營
   { id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: '在遊戲結束後公開玩家角色卡牌前，猜測埋葬卡是哪個陣營，若猜中埋葬卡的陣營且該陣營獲勝，即可一起獲勝。' },
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'brown', icon: '🍺', desc: '在最後一回合開始時，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。' },
-  { id: 'mr_black', name: '黑先生 (Mr.Black)', team: 'black', icon: '🕶️', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
+  { id: 'mr_black', name: '黑先生 (Mr.Black)', team: 'black', icon: '👤', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
   { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'black', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，『公開角色』並大喊[你作弊！！！]並描述情況給同房間的其他玩家聽！若說服大家則你獨自獲勝。' },
   { id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』者皆加入"黃隊"！在遊戲結束時，和「總統」在同一個房間則"黃隊"勝，若「炸彈客」也在同一個房間則藍黃紅隊皆敗。' },
   { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『角色分享』或『顏色分享』者皆感染"殭屍"狀態！全體存活玩家皆變成"殭屍"即獲勝。' },
