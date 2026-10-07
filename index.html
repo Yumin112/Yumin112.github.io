@@ -308,6 +308,12 @@
         btnLabel: '🗡️ 施加叛徒狀態', badge: '共謀者 專屬',
         style: 'from-amber-600 to-red-700 hover:from-amber-500 hover:to-red-600 border-amber-400 text-white',
         promptText: '選擇一位非同隊玩家施加【叛徒】狀態（使其獲勝目標倒戈向紅隊）。'
+      },
+      judge: {
+        statusId: 'jury', statusName: '陪審團', statusIcon: '⚖️',
+        btnLabel: '⚖️ 賦予陪審團狀態', badge: '法官 專屬',
+        style: 'from-amber-600 to-yellow-700 hover:from-amber-500 hover:to-yellow-600 border-amber-400 text-zinc-950',
+        promptText: '選擇一位玩家賦予【陪審團】狀態。'
       }
     };
 
@@ -322,6 +328,26 @@
             ctx.openMadScientistModal({
               ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，發送對調請求。必須經過「雙方均同意」後才會交換角色（限用一次）。',
               onConfirm: (p1Id, p2Id) => ctx.triggerMadScientistSwap(p1Id, p2Id)
+            });
+          }
+        }
+      };
+    };
+
+    const createDualStatusGrantAction = ({ statusId, statusName, statusIcon, btnLabel, badge, style, promptDesc, firstRoundOnly }) => (ctx) => {
+      if (ctx.myPlayerState?.hasUsedDualTargetAbility) return null;
+      if (firstRoundOnly && ctx.currentRoundIndex !== 0) return null;
+
+      return {
+        label: btnLabel,
+        badge,
+        style,
+        onClick: () => {
+          if (ctx.openDualStatusModal) {
+            ctx.openDualStatusModal({
+              statusId, statusName, statusIcon,
+              ruleDesc: promptDesc,
+              onConfirm: (t1Id, t2Id) => ctx.triggerDualStatusGrant(t1Id, t2Id, { id: statusId, name: statusName, icon: statusIcon })
             });
           }
         }
@@ -365,7 +391,41 @@
         }
       },
       mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },
-      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }
+      mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') },
+      eris: {
+        getActionButton: createDualStatusGrantAction({
+          statusId: 'hatred', statusName: '憎恨', statusIcon: '⚡',
+          btnLabel: '⚡ 賦予兩人【憎恨】狀態', badge: '整場限一次',
+          style: 'from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 border-blue-400 text-white',
+          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家賦予【憎恨】狀態（整場限用一次）。'
+        })
+      },
+      cupid: {
+        getActionButton: createDualStatusGrantAction({
+          statusId: 'in_love', statusName: '相愛', statusIcon: '💘',
+          btnLabel: '💘 賦予兩人【相愛】狀態', badge: '整場限一次',
+          style: 'from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 border-rose-300 text-white',
+          promptDesc: '💘 愛神規則：選擇兩名其他玩家賦予【相愛】狀態（整場限用一次）。'
+        })
+      },
+      father: {
+        getActionButton: createDualStatusGrantAction({
+          statusId: 'father_child', statusName: '父親的孩子', statusIcon: '👨',
+          btnLabel: '👨 賦予兩人【父親的孩子】', badge: '限第1輪/限一次',
+          style: 'from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 border-amber-400 text-white',
+          promptDesc: '👨 父親規則：只能在第 1 回合使用，選擇兩名其他玩家賦予【父親的孩子】狀態。',
+          firstRoundOnly: true
+        })
+      },
+      mother: {
+        getActionButton: createDualStatusGrantAction({
+          statusId: 'mother_child', statusName: '母親的孩子', statusIcon: '👩',
+          btnLabel: '👩 賦予兩人【母親的孩子】', badge: '限第1輪/限一次',
+          style: 'from-pink-600 to-purple-700 hover:from-pink-500 hover:to-purple-600 border-pink-400 text-white',
+          promptDesc: '👩 母親規則：只能在第 1 回合使用，選擇兩名其他玩家賦予【母親的孩子】狀態。',
+          firstRoundOnly: true
+        })
+      }
     };
 
     const RoleMechanics = {
@@ -446,6 +506,21 @@
             return { ...p, statuses: [...currentStatuses, statusObj] };
           }
           return p;
+        });
+      },
+      applyDualStatusGrant(playersList, t1Id, t2Id, statusObj, initiatorId = null) {
+        return playersList.map(p => {
+          let hasUsedDualTargetAbility = p.hasUsedDualTargetAbility;
+          if (initiatorId && p.id === initiatorId) hasUsedDualTargetAbility = true;
+
+          if (p.id === t1Id || p.id === t2Id) {
+            const currentStatuses = p.statuses || [];
+            const nextStatuses = currentStatuses.some(s => s.id === statusObj.id)
+              ? currentStatuses
+              : [...currentStatuses, statusObj];
+            return { ...p, statuses: nextStatuses, hasUsedDualTargetAbility };
+          }
+          return { ...p, hasUsedDualTargetAbility };
         });
       }
     };
@@ -581,6 +656,11 @@
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
+      // 雙目標賦予狀態 Modal State
+      const [showDualStatusModal, setShowDualStatusModal] = useState(false);
+      const [dualStatusConfig, setDualStatusConfig] = useState(null);
+      const [selectedDualTargets, setSelectedDualTargets] = useState([]);
+
       const [showVictoryModal, setShowVictoryModal] = useState(false);
       const [victoryStep, setVictoryStep] = useState(1);
       const [victoryAns, setVictoryAns] = useState({});
@@ -610,7 +690,7 @@
 
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
@@ -708,6 +788,42 @@
         });
       }, [publishMsg, broadcastLatest]);
 
+      const executeDualGrantOnHost = useCallback((t1Id, t2Id, statusObj, initiatorId = null) => {
+        setPlayers(prev => {
+          const next = window.RoleMechanics.applyDualStatusGrant(prev, t1Id, t2Id, statusObj, initiatorId);
+          publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
+            type: 'DUAL_STATUS_GRANTED_SUCCESS',
+            t1Id,
+            t2Id,
+            initiatorId,
+            statusName: statusObj.name
+          });
+          setTimeout(() => broadcastLatest({ players: next }), 50);
+          return next;
+        });
+      }, [publishMsg, broadcastLatest]);
+
+      const handleTriggerDualStatusGrant = useCallback((t1Id, t2Id, statusObj) => {
+        const t1 = players.find(p => p.id === t1Id);
+        const t2 = players.find(p => p.id === t2Id);
+        if (!t1 || !t2) return;
+
+        if (latestStateRef.current.isHost) {
+          executeDualGrantOnHost(t1Id, t2Id, statusObj, myPlayerId);
+        } else {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_DUAL_GRANT_STATUS',
+            senderId: myPlayerId,
+            initiatorId: myPlayerId,
+            t1Id,
+            t2Id,
+            statusObj
+          });
+        }
+        setSwapStatusMessage(`🎉 已為 ${t1.name} 與 ${t2.name} 施加【${statusObj.name}】！`);
+        setTimeout(() => setSwapStatusMessage(''), 3500);
+      }, [players, myPlayerId, roomId, executeDualGrantOnHost, publishMsg]);
+
       const resetToHome = useCallback(() => {
         if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
         if (clientRef.current) {
@@ -730,6 +846,9 @@
         setMadScientistPendingData(null);
         setShowGrantStatusModal(false);
         setStatusPromptData(null);
+        setShowDualStatusModal(false);
+        setDualStatusConfig(null);
+        setSelectedDualTargets([]);
         setSwapStatusMessage('');
         setIsVerifying(false);
         setConnStatus('未連線');
@@ -759,7 +878,7 @@
           if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
           };
 
           if (asHost) {
@@ -903,12 +1022,17 @@
               executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
               return;
             }
+
+            if (data.type === 'EXECUTE_DUAL_GRANT_STATUS') {
+              executeDualGrantOnHost(data.t1Id, data.t2Id, data.statusObj, data.initiatorId);
+              return;
+            }
           }
 
           // === 所有玩家通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
             return;
@@ -990,6 +1114,14 @@
             return;
           }
 
+          if (data.type === 'DUAL_STATUS_GRANTED_SUCCESS') {
+            if (data.t1Id === uid || data.t2Id === uid) {
+              setSwapStatusMessage(`✨ 你已獲得【${data.statusName}】狀態！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
           if (data.senderId === uid) return;
 
           switch (data.type) {
@@ -1059,6 +1191,7 @@
                 setShowSwapTargetModal(false);
                 setShowMadScientistModal(false);
                 setShowDrunkConfirmModal(false);
+                setShowDualStatusModal(false);
               }
 
               if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
@@ -1098,7 +1231,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, resetToHome]);
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeDualGrantOnHost, resetToHome]);
 
       // 冷啟動還原
       useEffect(() => {
@@ -1166,7 +1299,7 @@
           if (initialList.length === 0) {
             initialList = [{
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
             }];
           }
           setPlayers(initialList);
@@ -1216,7 +1349,7 @@
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
-          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
+          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
         };
 
         StorageManager.saveSession(code, trimmedName, true);
@@ -1301,7 +1434,7 @@
 
             const selfPlayer = {
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
             };
             setPlayers([selfPlayer]);
             setupConnection(code, false, trimmedName, myPlayerId);
@@ -1392,6 +1525,7 @@
           statuses: [], 
           hasBeenLeprechaun: false, 
           hasUsedMadScientistAbility: false,
+          hasUsedDualTargetAbility: false,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
 
@@ -1430,6 +1564,7 @@
             role: r,
             hasBeenLeprechaun: r.id === 'leprechaun',
             hasUsedMadScientistAbility: false,
+            hasUsedDualTargetAbility: false,
             statuses: initialStatuses
           };
         });
@@ -2328,7 +2463,13 @@
                             setShowMadScientistModal(true);
                           },
                           triggerMadScientistSwap: handleTriggerMadScientistSwap,
-                          openGrantStatusModal: handleOpenGrantStatusModal
+                          openGrantStatusModal: handleOpenGrantStatusModal,
+                          openDualStatusModal: (config) => {
+                            setDualStatusConfig(config);
+                            setSelectedDualTargets([]);
+                            setShowDualStatusModal(true);
+                          },
+                          triggerDualStatusGrant: handleTriggerDualStatusGrant
                         });
 
                         if (!action) return null;
@@ -2453,6 +2594,83 @@
                     className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
                   >
                     確認接受
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：雙目標賦予狀態選擇 (厄里斯 / 丘比特 / 父親 / 母親) */}
+          {showDualStatusModal && dualStatusConfig && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-indigo-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                  <h3 className="text-base font-bold text-white flex items-center gap-1.5">
+                    <span>{dualStatusConfig.statusIcon} 選擇 2 位玩家賦予【{dualStatusConfig.statusName}】</span>
+                  </h3>
+                  <button onClick={() => setShowDualStatusModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+
+                <p className="text-xs text-zinc-300">
+                  {dualStatusConfig.ruleDesc || '請在下方點選 2 位目標玩家（不能選擇自己）：'}
+                </p>
+
+                <div className="text-xs font-bold text-amber-400">
+                  已選 ({selectedDualTargets.length}/2)：
+                  {selectedDualTargets.map(id => players.find(p => p.id === id)?.name).join(' 與 ') || '尚未選擇'}
+                </div>
+
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {players.filter(p => p.id !== myPlayerId).map(p => {
+                    const isSelected = selectedDualTargets.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDualTargets(prev => {
+                            if (prev.includes(p.id)) return prev.filter(id => id !== pid);
+                            return prev.length >= 2 ? [prev[1], p.id] : [...prev, p.id];
+                          });
+                        }}
+                        className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-indigo-950/60 border-indigo-400 ring-1 ring-indigo-400'
+                            : 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-sm text-zinc-100">{p.name}</span>
+                          {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
+                        </div>
+                        <span className={`text-xs font-bold ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`}>
+                          {isSelected ? '✓ 已選' : '選取'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDualStatusModal(false)}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 text-xs transition active:scale-95"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selectedDualTargets.length !== 2}
+                    onClick={() => {
+                      if (selectedDualTargets.length !== 2) return;
+                      dualStatusConfig.onConfirm(selectedDualTargets[0], selectedDualTargets[1]);
+                      setShowDualStatusModal(false);
+                      setSelectedDualTargets([]);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-40 text-white font-black py-2.5 rounded-xl text-xs transition shadow active:scale-95"
+                  >
+                    確認賦予狀態
                   </button>
                 </div>
               </div>
