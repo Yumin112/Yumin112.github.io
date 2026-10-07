@@ -231,7 +231,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'green', icon: '👁️‍🗨', desc: '你一旦看見任何玩家的卡面，大聲喊出他的角色即可獨自勝利。你也可以『公開角色』，獲得免疫所有角色技能的能力，開始在兩個房間中四處巡視，' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '遊戲開始時暫停倒數且所有玩家離開房間，你需要在兩間房間內各藏一個寶物，若所有玩家未能在遊戲結束前找到兩個寶藏，則你獨自獲勝。' },
   //{ id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '👁️', desc: '），遊戲結束時你仍存活則你也獲勝；透過『角色分享』或『顏色分享』傳播"會員"狀態，"會員"須完成自身角色卡牌的勝利條件以及保護「光明會」，若「光明會」死亡，則全體"會員"強制失敗。' },
-  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"信徒"狀態（仍保留原角色卡牌）；遊戲結束時，若你曾與「猶格·索托斯」進行過『角色分享』，且信徒人數超過總人數1/3(無條件捨棄小數點)，其他玩家失敗而全體"信徒"與「邪教教主」共同獲得勝利。', pairs: 'yog_sothoth' },
+  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"信徒"狀態："信徒"可以使用原角色技能，但須協助「邪教教主」。遊戲結束時，若「邪教教主」曾與「猶格·索托斯」進行過『角色分享』，且信徒人數超過總人數1/3(無條件捨棄小數點)，全體"信徒"與「邪教教主」獲得共同勝利。', pairs: 'yog_sothoth' },
   { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'purple', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！若你在遊戲中與"信徒"進行過『角色分享』，且你從來沒有和「邪教教主」進行過『角色分享』，即可帶著該名"信徒"玩家找到房主終止遊戲，你直接獨自獲勝。', pairs: 'cult_leader' },
   //{ id: 'white_team', name: '白隊成員 (White Team)', team: 'white', icon: '⚪', desc: '在最後一回合結束前，必須將自己的卡片換為「紅隊成員」或「藍隊成員」。' },
   { id: 'white_paper', name: '白紙 (White Paper)', team: 'white', icon: '📃', desc: '...' }
