@@ -397,7 +397,7 @@
           statusId: 'hatred', statusName: '憎恨', statusIcon: '⚡',
           btnLabel: '⚡ 賦予兩人【憎恨】狀態', badge: '整場限一次',
           style: 'from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 border-blue-400 text-white',
-          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家賦予【憎恨】狀態（整場限用一次）。'
+          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家，發送【憎恨】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。'
         })
       },
       cupid: {
@@ -405,7 +405,7 @@
           statusId: 'in_love', statusName: '相愛', statusIcon: '💘',
           btnLabel: '💘 賦予兩人【相愛】狀態', badge: '整場限一次',
           style: 'from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 border-rose-300 text-white',
-          promptDesc: '💘 愛神規則：選擇兩名其他玩家賦予【相愛】狀態（整場限用一次）。'
+          promptDesc: '💘 愛神規則：選擇兩名其他玩家，發送【相愛】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。'
         })
       },
       father: {
@@ -413,7 +413,7 @@
           statusId: 'father_child', statusName: '父親的孩子', statusIcon: '👨',
           btnLabel: '👨 賦予兩人【父親的孩子】', badge: '限第1輪/限一次',
           style: 'from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 border-amber-400 text-white',
-          promptDesc: '👨 父親規則：只能在第 1 回合使用，選擇兩名其他玩家賦予【父親的孩子】狀態。',
+          promptDesc: '👨 父親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【父親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
           firstRoundOnly: true
         })
       },
@@ -422,7 +422,7 @@
           statusId: 'mother_child', statusName: '母親的孩子', statusIcon: '👩',
           btnLabel: '👩 賦予兩人【母親的孩子】', badge: '限第1輪/限一次',
           style: 'from-pink-600 to-purple-700 hover:from-pink-500 hover:to-purple-600 border-pink-400 text-white',
-          promptDesc: '👩 母親規則：只能在第 1 回合使用，選擇兩名其他玩家賦予【母親的孩子】狀態。',
+          promptDesc: '👩 母親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【母親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
           firstRoundOnly: true
         })
       }
@@ -656,10 +656,11 @@
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
-      // 雙目標賦予狀態 Modal State
+      // 雙目標賦予狀態 Modal State (厄里斯 / 丘比特 / 父親 / 母親)
       const [showDualStatusModal, setShowDualStatusModal] = useState(false);
       const [dualStatusConfig, setDualStatusConfig] = useState(null);
       const [selectedDualTargets, setSelectedDualTargets] = useState([]);
+      const [dualStatusPendingData, setDualStatusPendingData] = useState(null);
 
       const [showVictoryModal, setShowVictoryModal] = useState(false);
       const [victoryStep, setVictoryStep] = useState(1);
@@ -673,6 +674,7 @@
       const latestStateRef = useRef({});
       const debounceBroadcastTimerRef = useRef(null);
       const madScientistVoteTrackerRef = useRef(null);
+      const dualStatusVoteTrackerRef = useRef(null);
 
       useEffect(() => {
         const stateSnapshot = {
@@ -808,21 +810,32 @@
         const t2 = players.find(p => p.id === t2Id);
         if (!t1 || !t2) return;
 
-        if (latestStateRef.current.isHost) {
-          executeDualGrantOnHost(t1Id, t2Id, statusObj, myPlayerId);
-        } else {
-          publishMsg(`trb_game_sync_room_${roomId}`, {
-            type: 'EXECUTE_DUAL_GRANT_STATUS',
-            senderId: myPlayerId,
-            initiatorId: myPlayerId,
-            t1Id,
-            t2Id,
-            statusObj
-          });
-        }
-        setSwapStatusMessage(`🎉 已為 ${t1.name} 與 ${t2.name} 施加【${statusObj.name}】！`);
-        setTimeout(() => setSwapStatusMessage(''), 3500);
-      }, [players, myPlayerId, roomId, executeDualGrantOnHost, publishMsg]);
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'DUAL_STATUS_INITIATE',
+          senderId: myPlayerId,
+          initiatorId: myPlayerId,
+          initiatorName: myInfo.name,
+          initiatorRoleName: myInfo.role?.name || '未知角色',
+          t1Id,
+          t1Name: t1.name,
+          t2Id,
+          t2Name: t2.name,
+          statusObj
+        });
+        setSwapStatusMessage(`已向 ${t1.name} 與 ${t2.name} 發送賦予【${statusObj.name}】請求，等待雙方同意中...`);
+      }, [players, myPlayerId, myInfo.name, myInfo.role?.name, roomId, publishMsg]);
+
+      const handleDualStatusTargetVote = (accepted) => {
+        if (!dualStatusPendingData) return;
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'DUAL_STATUS_VOTE',
+          senderId: myPlayerId,
+          voterId: myPlayerId,
+          voterName: myInfo.name,
+          accepted
+        });
+        setDualStatusPendingData(null);
+      };
 
       const resetToHome = useCallback(() => {
         if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
@@ -849,10 +862,12 @@
         setShowDualStatusModal(false);
         setDualStatusConfig(null);
         setSelectedDualTargets([]);
+        setDualStatusPendingData(null);
         setSwapStatusMessage('');
         setIsVerifying(false);
         setConnStatus('未連線');
         madScientistVoteTrackerRef.current = null;
+        dualStatusVoteTrackerRef.current = null;
       }, []);
 
       const setupConnection = useCallback((code, asHost, name, uid) => {
@@ -1018,13 +1033,73 @@
               return;
             }
 
-            if (data.type === 'EXECUTE_GRANT_STATUS') {
-              executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
+            if (data.type === 'DUAL_STATUS_INITIATE') {
+              dualStatusVoteTrackerRef.current = {
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                t1Id: data.t1Id,
+                t1Name: data.t1Name,
+                t2Id: data.t2Id,
+                t2Name: data.t2Name,
+                statusObj: data.statusObj,
+                approvals: {}
+              };
+              publishMsg(topic, {
+                type: 'DUAL_STATUS_PROMPT_TARGETS',
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                t1Id: data.t1Id,
+                t1Name: data.t1Name,
+                t2Id: data.t2Id,
+                t2Name: data.t2Name,
+                statusObj: data.statusObj
+              });
               return;
             }
 
-            if (data.type === 'EXECUTE_DUAL_GRANT_STATUS') {
-              executeDualGrantOnHost(data.t1Id, data.t2Id, data.statusObj, data.initiatorId);
+            if (data.type === 'DUAL_STATUS_VOTE') {
+              const tracker = dualStatusVoteTrackerRef.current;
+              if (!tracker) return;
+
+              if (data.accepted) {
+                tracker.approvals[data.voterId] = true;
+                const t1Agreed = tracker.approvals[tracker.t1Id] === true;
+                const t2Agreed = tracker.approvals[tracker.t2Id] === true;
+
+                if (t1Agreed && t2Agreed) {
+                  executeDualGrantOnHost(tracker.t1Id, tracker.t2Id, tracker.statusObj, tracker.initiatorId);
+                  publishMsg(topic, {
+                    type: 'DUAL_STATUS_COMPLETED',
+                    initiatorId: tracker.initiatorId,
+                    t1Id: tracker.t1Id,
+                    t2Id: tracker.t2Id,
+                    statusName: tracker.statusObj.name
+                  });
+                  dualStatusVoteTrackerRef.current = null;
+                } else {
+                  publishMsg(topic, {
+                    type: 'DUAL_STATUS_WAITING_OTHER',
+                    initiatorId: tracker.initiatorId,
+                    voterName: data.voterName
+                  });
+                }
+              } else {
+                publishMsg(topic, {
+                  type: 'DUAL_STATUS_REJECTED',
+                  initiatorId: tracker.initiatorId,
+                  rejectorName: data.voterName,
+                  t1Id: tracker.t1Id,
+                  t2Id: tracker.t2Id
+                });
+                dualStatusVoteTrackerRef.current = null;
+              }
+              return;
+            }
+
+            if (data.type === 'EXECUTE_GRANT_STATUS') {
+              executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
               return;
             }
           }
@@ -1076,6 +1151,49 @@
               setTimeout(() => setSwapStatusMessage(''), 3500);
             } else if (data.p1Id === uid || data.p2Id === uid) {
               setSwapStatusMessage('🎉 雙方均已同意，你的角色已被瘋狂科學家對調！');
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
+          // 雙人狀態賦予 (厄里斯 / 丘比特 / 父親 / 母親) 監聽
+          if (data.type === 'DUAL_STATUS_PROMPT_TARGETS') {
+            if (data.t1Id === uid || data.t2Id === uid) {
+              setDualStatusPendingData({
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                otherName: data.t1Id === uid ? data.t2Name : data.t1Name,
+                statusObj: data.statusObj
+              });
+            }
+            return;
+          }
+
+          if (data.type === 'DUAL_STATUS_WAITING_OTHER') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`⏳ ${data.voterName} 已同意，正在等待另一位玩家確認...`);
+            }
+            return;
+          }
+
+          if (data.type === 'DUAL_STATUS_REJECTED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`❌ 狀態賦予失敗：${data.rejectorName} 拒絕了請求！`);
+              setTimeout(() => setSwapStatusMessage(''), 4000);
+            }
+            if (data.t1Id === uid || data.t2Id === uid) {
+              setDualStatusPendingData(null);
+              setSwapStatusMessage(`❌ 狀態賦予已取消：${data.rejectorName} 拒絕了請求。`);
+              setTimeout(() => setSwapStatusMessage(''), 3000);
+            }
+            return;
+          }
+
+          if (data.type === 'DUAL_STATUS_COMPLETED') {
+            setDualStatusPendingData(null);
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`🎉 雙方均已同意，成功賦予【${data.statusName}】狀態！`);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
             return;
@@ -1192,6 +1310,7 @@
                 setShowMadScientistModal(false);
                 setShowDrunkConfirmModal(false);
                 setShowDualStatusModal(false);
+                setDualStatusPendingData(null);
               }
 
               if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
@@ -2612,7 +2731,7 @@
                 </div>
 
                 <p className="text-xs text-zinc-300">
-                  {dualStatusConfig.ruleDesc || '請在下方點選 2 位目標玩家（不能選擇自己）：'}
+                  {dualStatusConfig.ruleDesc || '請在下方點選 2 位目標玩家（不能選擇自己），發起後需經「雙方均同意」才會賦予：'}
                 </p>
 
                 <div className="text-xs font-bold text-amber-400">
@@ -2629,7 +2748,7 @@
                         type="button"
                         onClick={() => {
                           setSelectedDualTargets(prev => {
-                            if (prev.includes(p.id)) return prev.filter(id => id !== pid);
+                            if (prev.includes(p.id)) return prev.filter(id => id !== p.id);
                             return prev.length >= 2 ? [prev[1], p.id] : [...prev, p.id];
                           });
                         }}
@@ -2670,7 +2789,41 @@
                     }}
                     className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-40 text-white font-black py-2.5 rounded-xl text-xs transition shadow active:scale-95"
                   >
-                    確認賦予狀態
+                    發送狀態確認請求
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：被選中者確認賦予雙人狀態 (厄里斯 / 丘比特 / 父親 / 母親) */}
+          {dualStatusPendingData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">{dualStatusPendingData.statusObj.icon}</div>
+                <h3 className="text-lg font-black text-indigo-300">特殊狀態賦予請求！</h3>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  玩家 <strong className="text-white font-bold">{dualStatusPendingData.initiatorName}</strong>（{dualStatusPendingData.initiatorRoleName}）想要將你與玩家 <strong className="text-amber-400 font-bold">{dualStatusPendingData.otherName}</strong> 同時附加特殊狀態：
+                  <span className="block mt-1 text-base font-black text-indigo-400">
+                    【{dualStatusPendingData.statusObj.name}】
+                  </span>
+                </p>
+                <p className="text-xs text-zinc-400">必須經過你與對方「雙方均同意」後才會正式生效。是否同意？</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDualStatusTargetVote(false)}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    拒絕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDualStatusTargetVote(true)}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    同意附加
                   </button>
                 </div>
               </div>
