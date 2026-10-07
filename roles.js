@@ -229,7 +229,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'mr_black', name: '黑先生 (Mr.Black)', team: 'black', icon: '👤', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'black', icon: '👁️‍🗨', desc: '你一旦看見任何玩家的卡面，大聲喊出他的角色即可獨自勝利。你也可以『公開角色』，獲得免疫所有角色技能的能力，開始在兩個房間中四處巡視。' },
   //{ id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』者皆加入"黃隊"！在遊戲結束時，和「總統」在同一個房間則"黃隊"勝，若「炸彈客」也在同一個房間則藍黃紅隊皆敗。' },
-  { id: 'leprechaun', name: '小妖精 (Leprechaun)', team: 'yellow', icon: '✨', desc: '自帶"愚蠢"狀態，不能拒絕任何『角色分享』或『顏色分享』；進行任何分享後必須和對方互換卡片，終局還持有小妖精者也獲勝。' },
+  { id: 'leprechaun', name: '小妖精 (Leprechaun)', team: 'yellow', icon: '✨', desc: '你不能拒絕其他玩家的『角色分享』或『顏色分享』；進行任何分享後必須和對方互換卡片，終局還持有小妖精者也獲勝。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '遊戲開始時暫停倒數且所有玩家離開房間，你需要在兩間房間內各藏一個寶物，若所有玩家未能在遊戲結束前找到兩個寶藏，則你獨自獲勝。' },
   //{ id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '👁️', desc: '），遊戲結束時你仍存活則你也獲勝；透過『角色分享』或『顏色分享』傳播"會員"狀態，"會員"須完成自身角色卡牌的勝利條件以及保護「光明會」，若「光明會」死亡，則全體"會員"強制失敗。' },
   //{ id: 'white_team', name: '白隊成員 (White Team)', team: 'white', icon: '⚪', desc: '在最後一回合結束前，必須將自己的卡片換為「紅隊成員」或「藍隊成員」。' },
