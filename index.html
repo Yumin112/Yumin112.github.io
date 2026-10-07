@@ -243,7 +243,7 @@ const INITIAL_ROLE_STATUSES = {
       mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') }
     };
 
-    const RoleMechanics = {
+        const RoleMechanics = {
       getRoleAction(myRole, context) {
         if (!myRole) return null;
         if (ROLE_PLUGINS[myRole.id]) return ROLE_PLUGINS[myRole.id].getActionButton(context);
@@ -292,7 +292,6 @@ const INITIAL_ROLE_STATUSES = {
           return { ...p, hasUsedMadScientistAbility };
         });
       },
-
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
         if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };
         const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);
@@ -326,6 +325,7 @@ const INITIAL_ROLE_STATUSES = {
       }
     };
     window.RoleMechanics = RoleMechanics;
+
 
     const Header = ({ connStatus, roomId, playersCount, isHost, onLeave }) => (
       <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
