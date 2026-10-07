@@ -139,8 +139,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   //想技能
   //{ id: 'time_lord_b', name: '時間領主 (Time Lord)', team: 'blue', icon: '⏳', desc: '整場遊戲只能使用一次，『公開角色』後。', pairs: 'time_lord_r' },
   //{ id: 'time_lord_r', name: '時間領主 (Time Lord)', team: 'red', icon: '⏳', desc: '整場遊戲只能使用一次，『公開角色』後。', pairs: 'time_lord_b' },
-  //{ id: 'eris', name: '紛爭女神厄里斯 (Eris)', team: 'blue', icon: '⚡', desc: '整場遊戲只能使用一次，你可以向兩名玩家進行『角色揭露』，賦予他們"憎恨"狀態：兩人的勝利條件改為：結算時必須在不同房間才能獲勝。', pairs: 'cupid' },
-  //{ id: 'cupid', name: '愛神丘比特 (Cupid)', team: 'red', icon: '💘', desc: '整場遊戲只能使用一次，你可以向兩名玩家進行『角色揭露』，賦予他們"相愛"狀態：兩人的勝利條件改為：結算時必須在同一房間才能獲勝。', pairs: 'eris' },
+  { id: 'eris', name: '紛爭女神厄里斯 (Eris)', team: 'blue', icon: '⚡', desc: '整場遊戲只能使用一次，你可以向兩名玩家進行『角色揭露』，賦予他們"憎恨"狀態：兩人的勝利條件改為：結算時必須在不同房間才能獲勝。', pairs: 'cupid' },
+  { id: 'cupid', name: '愛神丘比特 (Cupid)', team: 'red', icon: '💘', desc: '整場遊戲只能使用一次，你可以向兩名玩家進行『角色揭露』，賦予他們"相愛"狀態：兩人的勝利條件改為：結算時必須在同一房間才能獲勝。', pairs: 'eris' },
   { id: 'enlisted_b', name: '應徵者 (Enlisted)', team: 'blue', icon: '🎖️', desc: '整場遊戲只能使用一次，在最後一回合開始前，你可以『公開角色』後自己直接內定為本輪人質。', pairs: 'enlisted_r' },
   { id: 'enlisted_r', name: '應徵者 (Enlisted)', team: 'red', icon: '🎖️', desc: '整場遊戲只能使用一次，在最後一回合開始前，你可以『公開角色』後自己直接內定為本輪人質。', pairs: 'enlisted_b' },
   { id: 'ninja_b', name: '忍者 (Ninja)', team: 'blue', icon: '🥷', desc: '整場遊戲只能使用一次，在最後一回合開始前，你可以『公開角色』後衝入對面房間抓走一名玩家，雙方一同移出遊戲(離開遊戲場地)。', pairs: 'ninja_r' },
@@ -186,8 +186,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'villain', name: '惡徒 (Villain)', team: 'grey', icon: '🦹', desc: '遊戲結束時，自己和「總統」在同一個房間，「炸彈客」在不同房間時你也獲勝。', pairs: 'hero' },
   { id: 'queen', name: '女王 (Queen)', team: 'grey', icon: '👸', desc: '遊戲結束時，「總統」與「炸彈客」在同一個房間，而你在另一個房間時你也獲勝。', pairs: 'stunt_double' },
   { id: 'stunt_double', name: '替身演員 (Stunt Double)', team: 'grey', icon: '🎬', desc: '遊戲結束時，自己和「炸彈客」在同一個房間，「總統」在不同房間時你也獲勝。', pairs: 'queen' },
-  //{ id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨', desc: '只能在第一回合使用，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態；遊戲結束時，若這兩名玩家和「總統」在同一房間則你也獲勝。', pairs: 'mother' },
-  //{ id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩', desc: '只能在第一回合使用，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態，遊戲結束時，若這兩名玩家和「炸彈客」在不同房間時你也獲勝。', pairs: 'father' },
+  { id: 'father', name: '父親 (Father)', team: 'grey', icon: '👨', desc: '只能在第一回合使用，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態；遊戲結束時，若這兩名玩家和「總統」在同一房間則你也獲勝。', pairs: 'mother' },
+  { id: 'mother', name: '母親 (Mother)', team: 'grey', icon: '👩', desc: '只能在第一回合使用，可以對兩名玩家進行『角色揭露』並賦予他們"孩子"狀態，遊戲結束時，若這兩名玩家和「炸彈客」在不同房間時你也獲勝。', pairs: 'father' },
   
   // 灰隊三角關係 (Grey)
   { id: 'rock', name: '石頭 (Rock)', team: 'grey', icon: '🪨', desc: '遊戲結束時，自己和「剪刀」在同一個房間，「布」在不同房間時你也獲勝。', pairs: 'paper,scissors' }, 
@@ -200,7 +200,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   // 灰隊特殊勝利類 (Grey)
   { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『角色分享』或『顏色分享』者的勝利條件。', pairs: 'robot' },
   { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『角色分享』或『顏色分享』的人若失敗，則你也獲勝。', pairs: 'clone' },
-  //{ id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '你與任何人進行『角色分享』或『顏色分享』時，可以給他們"陪審團"狀態：當藍隊/紅隊平手時，可以根據兩隊"陪審團"人數決定勝負。若"陪審團"數量大於總人數1/2(無條件捨棄小數點)，則「法官」也一起獲勝。' },
+  { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '你與任何人進行『角色分享』或『顏色分享』時，可以給他們"陪審團"狀態：當藍隊/紅隊平手時，可以根據兩隊"陪審團"人數決定勝負。若"陪審團"數量大於總人數1/2(無條件捨棄小數點)，則「法官」也一起獲勝。' },
   { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '自帶"精明"狀態：只能進行『角色分享』。結算時若跟「總統」與「炸彈客」進行過『角色分享』則你獨自獲勝！' },
   { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟「炸彈客」及「總統」都進行過『角色分享』則你也獲勝。' },
   { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '你和任何人進行『角色分享』或『顏色分享』，必須立即與你交換角色卡牌，在遊戲結束時仍是「燙手山芋」則強制失敗。' },
