@@ -259,39 +259,67 @@ const INITIAL_ROLE_STATUSES = {
         }
         return null;
       },
-      applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
-        const p1 = playersList.find(p => p.id === p1Id);
-        const p2 = playersList.find(p => p.id === p2Id);
-        if (!p1 || !p2) return playersList;
+applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
+  const p1 = playersList.find(p => p.id === p1Id);
+  const p2 = playersList.find(p => p.id === p2Id);
+  if (!p1 || !p2) return playersList;
 
-        const { role: role1, team: team1 } = p1;
-        const { role: role2, team: team2 } = p2;
+  const { role: role1, team: team1, statuses: statuses1 = [] } = p1;
+  const { role: role2, team: team2, statuses: statuses2 = [] } = p2;
 
-        return playersList.map(p => {
-          let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
-          if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;
+  // 定義愚蠢狀態物件
+  const foolishStatus = { id: 'foolish', name: '愚蠢', icon: '🃏' };
 
-          if (p.id === p1Id) {
-            return {
-              ...p,
-              role: role2,
-              team: team2,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),
-              hasUsedMadScientistAbility
-            };
-          }
-          if (p.id === p2Id) {
-            return {
-              ...p,
-              role: role1,
-              team: team1,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
-              hasUsedMadScientistAbility
-            };
-          }
-          return { ...p, hasUsedMadScientistAbility };
-        });
-      },
+  // 輔助函式：根據新的角色調整愚蠢狀態 (若換成小妖精則加上愚蠢，若離開小妖精則移除愚蠢)
+  const adjustFoolishStatus = (currentStatuses, oldRole, newRole) => {
+    const isNewLeprechaun = newRole?.id === 'leprechaun';
+    const isOldLeprechaun = oldRole?.id === 'leprechaun';
+
+    // 情況 A：新拿到小妖精牌 -> 確保獲得「愚蠢」狀態
+    if (isNewLeprechaun) {
+      if (!currentStatuses.some(s => s.id === 'foolish')) {
+        return [...currentStatuses, foolishStatus];
+      }
+      return currentStatuses;
+    }
+
+    // 情況 B：把小妖精牌換走 -> 移除「愚蠢」狀態
+    if (isOldLeprechaun && !isNewLeprechaun) {
+      return currentStatuses.filter(s => s.id !== 'foolish');
+    }
+
+    return currentStatuses;
+  };
+
+  return playersList.map(p => {
+    let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
+    if (initiatorId && p.id === initiatorId) hasUsedMadScientistAbility = true;
+
+    if (p.id === p1Id) {
+      const nextStatuses = adjustFoolishStatus(statuses1, role1, role2);
+      return {
+        ...p,
+        role: role2,
+        team: team2,
+        statuses: nextStatuses,
+        hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),
+        hasUsedMadScientistAbility
+      };
+    }
+    if (p.id === p2Id) {
+      const nextStatuses = adjustFoolishStatus(statuses2, role2, role1);
+      return {
+        ...p,
+        role: role1,
+        team: team1,
+        statuses: nextStatuses,
+        hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
+        hasUsedMadScientistAbility
+      };
+    }
+    return { ...p, hasUsedMadScientistAbility };
+  });
+}
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
         if (!curBuried) return { nextPlayers: playersList, newBuried: curBuried };
         const drunkPlayer = playersList.find(p => p.id === drunkPlayerId);
