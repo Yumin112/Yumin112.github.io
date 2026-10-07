@@ -19,8 +19,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'spy_b', name: '藍隊間諜 (Blue Spy)', team: 'red', icon: '🕵️‍♂️', desc: '屬於藍隊但卡片底色為紅色；可以誤導他人『顏色分享』與『顏色揭露』的結果，請對藍隊忠誠！', pairs: 'spy_r' },
   
   // 藍/紅隊普通成員 (Blue,red)
-  { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🔵', desc: '保護總統安全，不要讓「總統」與「炸彈客」在同一個房間！', pairs: 'red_mem' },
-  { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🔴', desc: '協助炸彈客，讓「炸彈客」與「總統」在同一個房間引爆！', pairs: 'blue_mem' },
+  { id: 'blue_mem', name: '藍隊成員 (Blue Team)', team: 'blue', icon: '🔵', desc: '保護「總統」安全，不要讓「總統」與「炸彈客」在同一個房間！', pairs: 'red_mem' },
+  { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🔴', desc: '協助「炸彈客」，讓「炸彈客」與「總統」在同一個房間引爆！', pairs: 'blue_mem' },
 
   // 藍/紅隊自帶狀態類 (Blue,red)
   //{ id: 'shy_b', name: '害羞小子 (Shy Guy)', team: 'blue', icon: '🙈', desc: '自帶"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'shy_r' },
@@ -38,7 +38,9 @@ window.OFFICIAL_ROLES_CATALOG = [
   //加機制 上帝視角技能
   //{ id: 'seer_b', name: '先知 (Seer)', team: 'blue', icon: '🔮', desc: '自帶"通靈"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』；遊戲開始30秒內，先知可以透過技能查看所有玩家的角色。', pairs: 'seer_r' },
   //{ id: 'seer_r', name: '先知 (Seer)', team: 'red', icon: '🔮', desc: '自帶"通靈"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』；遊戲開始30秒內，先知可以透過技能查看所有玩家的角色。', pairs: 'seer_b' },
-
+  //{ id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '💊', desc: '自帶"免疫"狀態，任何角色的技能或狀態都對你完全無效，你可以拒絕一切要求。', pairs: 'immunologist_r' },
+  //{ id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '💊', desc: '自帶"免疫"狀態，任何角色的技能或狀態都對你完全無效，你可以拒絕一切要求。', pairs: 'immunologist_b' },
+  
   // 藍/紅隊賦予狀態類 (Blue,red)
   { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_r' },
   { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_b' },
@@ -146,8 +148,6 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'ambassador_r', name: '大使 (Ambassador)', team: 'red', icon: '🕊️', desc: '你可以『公開角色』，你永久免疫所有技能且可以在回合進行時任意於兩房間走動，不能當人質也不算投票人數。', pairs: 'ambassador_b' },
 
   // 藍/紅隊特殊行為類 (Blue,red)
-  //{ id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '💊', desc: '獲得"免疫"狀態，任何角色能力或負面狀態對你完全無效。', pairs: 'immunologist_r' },
-  //{ id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '💊', desc: '獲得"免疫"狀態，任何角色能力或負面狀態對你完全無效。', pairs: 'immunologist_b' },
   //{ id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_r' },
   //{ id: 'trader_r', name: '走私商人 (Trader)', team: 'red', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_b' },
   //{ id: 'voyeur_b', name: '偷窺狂 (Voyeur)', team: 'blue', icon: '🫣', desc: '在遊戲過程中的任何時刻，皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_r' },
