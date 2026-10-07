@@ -114,6 +114,27 @@
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
+const INITIAL_ROLE_STATUSES = {
+  shy_b: { id: 'shy', name: '害羞', icon: '🙈' },
+  shy_r: { id: 'shy', name: '害羞', icon: '🙈' },
+  coy_b: { id: 'coy', name: '靦腆', icon: '😳' },
+  coy_r: { id: 'coy', name: '靦腆', icon: '😳' },
+  fool_b: { id: 'foolish', name: '愚蠢', icon: '🤪' },
+  fool_r: { id: 'foolish', name: '愚蠢', icon: '🤪' },
+  leprechaun: { id: 'foolish', name: '愚蠢', icon: '🤪' },
+  negotiator_b: { id: 'shrewd', name: '精明', icon: '🤝' },
+  negotiator_r: { id: 'shrewd', name: '精明', icon: '🤝' },
+  nuclear: { id: 'shrewd', name: '精明', icon: '🤝' },
+  exhibitionist_b: { id: 'exposed', name: '裸露', icon: '🥼' },
+  exhibitionist_r: { id: 'exposed', name: '裸露', icon: '🥼' },
+  paranoid_b: { id: 'paranoid', name: '妄想', icon: '👀' },
+  paranoid_r: { id: 'paranoid', name: '妄想', icon: '👀' },
+  seer_b: { id: 'psychic', name: '通靈', icon: '🔮' },
+  seer_r: { id: 'psychic', name: '通靈', icon: '🔮' },
+  immunologist_b: { id: 'immune', name: '免疫', icon: '💊' },
+  immunologist_r: { id: 'immune', name: '免疫', icon: '💊' }
+};
+    
     const ROLE_STATUS_ACTIONS = {
       zombie: {
         statusId: 'infected', statusName: '殭屍', statusIcon: '🧟',
@@ -1242,36 +1263,48 @@
         });
       };
 
-      const handleConfirmDealCardsAndStart = () => {
-        let deck = [];
-        rolesCatalog.forEach(role => {
-          for (let i = 0; i < (roleCounts[role.id] || 0); i++) deck.push({ ...role });
-        });
-        deck.sort(() => Math.random() - 0.5);
+const handleConfirmDealCardsAndStart = () => {
+  let deck = [];
+  rolesCatalog.forEach(role => {
+    for (let i = 0; i < (roleCounts[role.id] || 0); i++) deck.push({ ...role });
+  });
+  deck.sort(() => Math.random() - 0.5);
 
-        const assignedWithRoles = players.map((p, idx) => {
-          const r = deck[idx];
-          return { ...p, team: r.team, role: r, hasBeenLeprechaun: r.id === 'leprechaun', hasUsedMadScientistAbility: false, statuses: [] };
-        });
+  const assignedWithRoles = players.map((p, idx) => {
+    const r = deck[idx];
+    
+    // 檢查角色是否有自帶初始狀態
+    const initialStatus = INITIAL_ROLE_STATUSES[r.id];
+    const initialStatuses = initialStatus ? [initialStatus] : [];
 
-        const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;
-        const initialTime = roundSettings[0] * 60;
-        const targetEnd = Date.now() + initialTime * 1000;
+    return {
+      ...p,
+      team: r.team,
+      role: r,
+      hasBeenLeprechaun: r.id === 'leprechaun',
+      hasUsedMadScientistAbility: false,
+      statuses: initialStatuses // 發牌時自動套用初始狀態
+    };
+  });
 
-        setPlayers(assignedWithRoles);
-        setBuriedCard(generatedBuried);
-        setCurrentRoundIndex(0);
-        setTimeLeft(initialTime);
-        setRoundEndTime(targetEnd);
-        setRoomStatus('round_active');
-        setIsTimerRunning(true);
-        setGameResult(null);
+  const generatedBuried = (deck.length === players.length + 1) ? deck[players.length] : null;
+  const initialTime = roundSettings[0] * 60;
+  const targetEnd = Date.now() + initialTime * 1000;
 
-        broadcastLatest({
-          players: assignedWithRoles, roomStatus: 'round_active', currentRoundIndex: 0,
-          timeLeft: initialTime, roundEndTime: targetEnd, buriedCard: generatedBuried, gameResult: null
-        });
-      };
+  setPlayers(assignedWithRoles);
+  setBuriedCard(generatedBuried);
+  setCurrentRoundIndex(0);
+  setTimeLeft(initialTime);
+  setRoundEndTime(targetEnd);
+  setRoomStatus('round_active');
+  setIsTimerRunning(true);
+  setGameResult(null);
+
+  broadcastLatest({
+    players: assignedWithRoles, roomStatus: 'round_active', currentRoundIndex: 0,
+    timeLeft: initialTime, roundEndTime: targetEnd, buriedCard: generatedBuried, gameResult: null
+  });
+};
 
       const handleTogglePauseTimer = () => {
         if (!isHost) return;
