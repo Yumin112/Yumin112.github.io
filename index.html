@@ -264,18 +264,23 @@ applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
   const p2 = playersList.find(p => p.id === p2Id);
   if (!p1 || !p2) return playersList;
 
-  const { role: role1, team: team1, statuses: statuses1 = [] } = p1;
-  const { role: role2, team: team2, statuses: statuses2 = [] } = p2;
+  const role1 = p1.role;
+  const team1 = p1.team;
+  const statuses1 = p1.statuses || [];
 
-  // 定義愚蠢狀態物件
-  const foolishStatus = { id: 'foolish', name: '愚蠢', icon: '🃏' };
+  const role2 = p2.role;
+  const team2 = p2.team;
+  const statuses2 = p2.statuses || [];
 
-  // 輔助函式：根據新的角色調整愚蠢狀態 (若換成小妖精則加上愚蠢，若離開小妖精則移除愚蠢)
+  // 愚蠢狀態物件
+  const foolishStatus = { id: 'foolish', name: '愚蠢', icon: '🤪' };
+
+  // 調整愚蠢狀態
   const adjustFoolishStatus = (currentStatuses, oldRole, newRole) => {
-    const isNewLeprechaun = newRole?.id === 'leprechaun';
-    const isOldLeprechaun = oldRole?.id === 'leprechaun';
+    const isNewLeprechaun = newRole && newRole.id === 'leprechaun';
+    const isOldLeprechaun = oldRole && oldRole.id === 'leprechaun';
 
-    // 情況 A：新拿到小妖精牌 -> 確保獲得「愚蠢」狀態
+    // 拿到小妖精 -> 加上愚蠢狀態
     if (isNewLeprechaun) {
       if (!currentStatuses.some(s => s.id === 'foolish')) {
         return [...currentStatuses, foolishStatus];
@@ -283,7 +288,7 @@ applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
       return currentStatuses;
     }
 
-    // 情況 B：把小妖精牌換走 -> 移除「愚蠢」狀態
+    // 換走小妖精 -> 移除愚蠢狀態
     if (isOldLeprechaun && !isNewLeprechaun) {
       return currentStatuses.filter(s => s.id !== 'foolish');
     }
@@ -302,8 +307,8 @@ applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
         role: role2,
         team: team2,
         statuses: nextStatuses,
-        hasBeenLeprechaun: p.hasBeenLeprechaun || (role2?.id === 'leprechaun'),
-        hasUsedMadScientistAbility
+        hasBeenLeprechaun: Boolean(p.hasBeenLeprechaun || (role2 && role2.id === 'leprechaun')),
+        hasUsedMadScientistAbility: hasUsedMadScientistAbility
       };
     }
     if (p.id === p2Id) {
@@ -313,11 +318,11 @@ applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
         role: role1,
         team: team1,
         statuses: nextStatuses,
-        hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
-        hasUsedMadScientistAbility
+        hasBeenLeprechaun: Boolean(p.hasBeenLeprechaun || (role1 && role1.id === 'leprechaun')),
+        hasUsedMadScientistAbility: hasUsedMadScientistAbility
       };
     }
-    return { ...p, hasUsedMadScientistAbility };
+    return { ...p, hasUsedMadScientistAbility: hasUsedMadScientistAbility };
   });
 }
       applyDrunkBuriedSwap(playersList, curBuried, drunkPlayerId) {
