@@ -877,18 +877,32 @@ const INITIAL_ROLE_STATUSES = {
           if (data.senderId === uid) return;
 
           switch (data.type) {
-            case 'PLAYER_PING_SYNC':
-              if (latestStateRef.current.isHost) {
-                setPlayers(prev => {
-                  const existing = prev.find(p => p.id === data.player.id);
-                  const next = existing
-                    ? prev.map(p => p.id === data.player.id ? { ...p, ...data.player } : p)
-                    : [...prev, data.player];
-                  debouncedBroadcastLatest(300);
-                  return next;
-                });
-              }
-              break;
+case 'PLAYER_PING_SYNC':
+  if (latestStateRef.current.isHost) {
+    setPlayers(prev => {
+      const existing = prev.find(p => p.id === data.player.id);
+      let next;
+      if (existing) {
+        // 核心修復：如果玩家已存在，只更新名字等基本資訊，保留房長端當前局的角色/隊伍/狀態
+        next = prev.map(p => p.id === data.player.id ? { 
+          ...p, 
+          name: data.player.name || p.name 
+        } : p);
+      } else {
+        // 如果是新進來的玩家，若當前大廳處於等待/分房狀態，確保狀態為空
+        const isGameRunning = ['round_active', 'round_paused', 'round_manual_paused', 'ended'].includes(latestStateRef.current.roomStatus);
+        next = [...prev, {
+          ...data.player,
+          team: isGameRunning ? data.player.team : null,
+          role: isGameRunning ? data.player.role : null,
+          statuses: isGameRunning ? (data.player.statuses || []) : []
+        }];
+      }
+      debouncedBroadcastLatest(300);
+      return next;
+    });
+  }
+  break;
             case 'PLAYER_LEFT':
               setPlayers(prev => {
                 const next = prev.filter(p => p.id !== data.playerId);
@@ -916,33 +930,44 @@ const INITIAL_ROLE_STATUSES = {
             case 'EXECUTE_SWAP':
               if (latestStateRef.current.isHost) executeSwapOnHost(data.player1Id, data.player2Id);
               break;
-            case 'FULL_SYNC':
-              setPlayers(data.players);
-              setRoomStatus(data.roomStatus);
-              if (data.roleCounts) setRoleCounts(data.roleCounts);
-              if (data.roundSettings) setRoundSettings(data.roundSettings);
-              setCurrentRoundIndex(data.currentRoundIndex);
+case 'FULL_SYNC':
+  setPlayers(data.players);
+  setRoomStatus(data.roomStatus);
+  if (data.roleCounts) setRoleCounts(data.roleCounts);
+  if (data.roundSettings) setRoundSettings(data.roundSettings);
+  setCurrentRoundIndex(data.currentRoundIndex);
 
-              if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
-                setRoundEndTime(data.roundEndTime);
-                const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
-                setTimeLeft(actualRemaining);
-              } else {
-                setTimeLeft(data.timeLeft);
-                if (data.roundEndTime !== undefined) setRoundEndTime(data.roundEndTime);
-              }
+  // 如果當前房間狀態已經回到了等候大廳或重新分房，清空過期的個人狀態請求
+  if (['waiting', 'room_assigned'].includes(data.roomStatus)) {
+    setSwapRequestData(null);
+    setMadScientistPendingData(null);
+    setStatusPromptData(null);
+    setShowGrantStatusModal(false);
+    setShowSwapTargetModal(false);
+    setShowMadScientistModal(false);
+    setShowDrunkConfirmModal(false);
+  }
 
-              if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
-              if (data.gameResult !== undefined) setGameResult(data.gameResult);
+  if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
+    setRoundEndTime(data.roundEndTime);
+    const actualRemaining = Math.max(0, Math.floor((data.roundEndTime - Date.now()) / 1000));
+    setTimeLeft(actualRemaining);
+  } else {
+    setTimeLeft(data.timeLeft);
+    if (data.roundEndTime !== undefined) setRoundEndTime(data.roundEndTime);
+  }
 
-              if (['round_active', 'round_paused', 'round_manual_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
-                setGameState('game');
-                setIsTimerRunning(data.roomStatus === 'round_active');
-              } else if (data.roomStatus === 'waiting') {
-                setGameState('lobby');
-                setIsTimerRunning(false);
-              }
-              break;
+  if (data.buriedCard !== undefined) setBuriedCard(data.buriedCard);
+  if (data.gameResult !== undefined) setGameResult(data.gameResult);
+
+  if (['round_active', 'round_paused', 'round_manual_paused', 'room_assigned', 'ended'].includes(data.roomStatus)) {
+    setGameState('game');
+    setIsTimerRunning(data.roomStatus === 'round_active');
+  } else if (data.roomStatus === 'waiting') {
+    setGameState('lobby');
+    setIsTimerRunning(false);
+  }
+  break;
             case 'TIME_SYNC':
               if (!latestStateRef.current.isHost) {
                 if (data.roundEndTime && data.roundEndTime > 0) {
@@ -1240,28 +1265,40 @@ const INITIAL_ROLE_STATUSES = {
         if (gameState === 'home') setConnStatus('未連線');
       };
 
-      const handleStartAssignRooms = () => {
-        if (players.length < 2) return alert('至少需要 2 位玩家加入才能開始！');
-        if (totalCardsInDeck < players.length) return alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
+const handleStartAssignRooms = () => {
+  if (players.length < 2) return alert('至少需要 2 位玩家加入才能開始！');
+  if (totalCardsInDeck < players.length) return alert(`卡池張數 (${totalCardsInDeck} 張) 少於在線玩家 (${players.length} 人)！請於角色池設定增加卡片。`);
 
-        const shuffled = [...players].sort(() => Math.random() - 0.5);
-        const half = Math.ceil(shuffled.length / 2);
-        const assigned = shuffled.map((p, idx) => ({
-          ...p, team: null, role: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, statuses: [],
-          gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
-        }));
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  const half = Math.ceil(shuffled.length / 2);
+  
+  // 核心修復：徹底清空上一局的角色、隊伍與狀態
+  const assigned = shuffled.map((p, idx) => ({
+    ...p, 
+    team: null, 
+    role: null, 
+    statuses: [], 
+    hasBeenLeprechaun: false, 
+    hasUsedMadScientistAbility: false,
+    gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
+  }));
 
-        setPlayers(assigned);
-        setRoomStatus('room_assigned');
-        setIsTimerRunning(false);
-        setRoundEndTime(0);
-        setGameState('game');
+  setPlayers(assigned);
+  setRoomStatus('room_assigned');
+  setIsTimerRunning(false);
+  setRoundEndTime(0);
+  setGameState('game');
 
-        broadcastLatest({
-          players: assigned, roomStatus: 'room_assigned', currentRoundIndex: 0,
-          timeLeft: roundSettings[0] * 60, roundEndTime: 0, buriedCard: null, gameResult: null
-        });
-      };
+  broadcastLatest({
+    players: assigned, 
+    roomStatus: 'room_assigned', 
+    currentRoundIndex: 0,
+    timeLeft: roundSettings[0] * 60, 
+    roundEndTime: 0, 
+    buriedCard: null, 
+    gameResult: null
+  });
+};
 
 const handleConfirmDealCardsAndStart = () => {
   let deck = [];
