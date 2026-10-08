@@ -697,7 +697,7 @@
 
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
@@ -898,7 +898,7 @@
           if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
           };
 
           if (asHost) {
@@ -1112,7 +1112,7 @@
           // === 所有玩家通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
             return;
@@ -1264,6 +1264,7 @@
                       ...data.player,
                       team: isGameRunning ? data.player.team : null,
                       role: isGameRunning ? data.player.role : null,
+                      manualWinner: isGameRunning ? data.player.manualWinner : null,
                       statuses: isGameRunning ? (data.player.statuses || []) : []
                     }];
                   }
@@ -1423,7 +1424,7 @@
           if (initialList.length === 0) {
             initialList = [{
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
             }];
           }
           setPlayers(initialList);
@@ -1473,7 +1474,7 @@
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
-          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
+          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
         };
 
         StorageManager.saveSession(code, trimmedName, true);
@@ -1558,7 +1559,7 @@
 
             const selfPlayer = {
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
             };
             setPlayers([selfPlayer]);
             setupConnection(code, false, trimmedName, myPlayerId);
@@ -1650,6 +1651,7 @@
           hasBeenLeprechaun: false, 
           hasUsedMadScientistAbility: false,
           hasUsedDualTargetAbility: false,
+          manualWinner: null,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
 
@@ -1689,6 +1691,7 @@
             hasBeenLeprechaun: r.id === 'leprechaun',
             hasUsedMadScientistAbility: false,
             hasUsedDualTargetAbility: false,
+            manualWinner: null,
             statuses: initialStatuses
           };
         });
@@ -1732,6 +1735,39 @@
           setRoomStatus('round_active');
           broadcastLatest({ roomStatus: 'round_active', timeLeft, roundEndTime: newEnd });
         }
+      };
+
+      const handleForceEndGame = () => {
+        if (!isHost) return;
+        if (!window.confirm('確定要直接結束倒數並結算遊戲嗎？')) return;
+
+        setIsTimerRunning(false);
+        setRoundEndTime(0);
+        setTimeLeft(0);
+        setRoomStatus('ended');
+
+        setVictoryStep(1);
+        setVictoryAns({});
+        setShowVictoryModal(true);
+
+        broadcastLatest({ roomStatus: 'ended', timeLeft: 0, roundEndTime: 0 });
+      };
+
+      const handleTogglePlayerVictory = (targetPlayerId) => {
+        if (!isHost || roomStatus !== 'ended') return;
+
+        setPlayers(prev => {
+          const next = prev.map(p => {
+            if (p.id === targetPlayerId) {
+              const defaultWin = (gameResult === '紅隊獲勝' && p.team === 'red') || (gameResult === '藍隊獲勝' && p.team === 'blue');
+              const currentEffectiveWin = p.manualWinner !== undefined && p.manualWinner !== null ? p.manualWinner : defaultWin;
+              return { ...p, manualWinner: !currentEffectiveWin };
+            }
+            return p;
+          });
+          setTimeout(() => broadcastLatest({ players: next }), 50);
+          return next;
+        });
       };
 
       const handleNextRoundConfirm = () => {
@@ -2325,16 +2361,25 @@
 
                     <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
                       {isHost && roomStatus !== 'round_paused' && (
-                        <button
-                          onClick={handleTogglePauseTimer}
-                          className={`text-xs font-bold px-3.5 py-2 rounded-xl border transition active:scale-95 flex items-center gap-1 ${
-                            isTimerRunning
-                              ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
-                              : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
-                          }`}
-                        >
-                          {isTimerRunning ? '⏸️ 暫停倒數' : '▶️ 繼續倒數'}
-                        </button>
+                        <React.Fragment>
+                          <button
+                            onClick={handleTogglePauseTimer}
+                            className={`text-xs font-bold px-3.5 py-2 rounded-xl border transition active:scale-95 flex items-center gap-1 ${
+                              isTimerRunning
+                                ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
+                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                            }`}
+                          >
+                            {isTimerRunning ? '⏸️ 暫停倒數' : '▶️ 繼續倒數'}
+                          </button>
+
+                          <button
+                            onClick={handleForceEndGame}
+                            className="text-xs font-bold px-3.5 py-2 rounded-xl border bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40 transition active:scale-95 flex items-center gap-1"
+                          >
+                            🏁 直接結算遊戲
+                          </button>
+                        </React.Fragment>
                       )}
 
                       {isHost && roomStatus === 'round_paused' && (
@@ -2411,26 +2456,42 @@
                         <span className="text-lg">👥</span>
                         <h3 className="font-black text-sm sm:text-base text-white">全場玩家身分與狀態揭曉</h3>
                       </div>
-                      <span className="text-[11px] text-zinc-400 bg-zinc-800/80 px-2.5 py-0.5 rounded-full border border-zinc-700">
-                        共 {players.length} 位玩家
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {isHost && (
+                          <span className="text-[11px] text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md font-medium">
+                            💡 房長可點選玩家卡片手動切換勝負
+                          </span>
+                        )}
+                        <span className="text-[11px] text-zinc-400 bg-zinc-800/80 px-2.5 py-0.5 rounded-full border border-zinc-700">
+                          共 {players.length} 位玩家
+                        </span>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
                       {players.map(p => {
                         const meta = getTeamMeta(p.team);
-                        const isRedWinner = gameResult === '紅隊獲勝' && p.team === 'red';
-                        const isBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';
-                        const isWinner = isRedWinner || isBlueWinner;
+                        const defaultIsRedWinner = gameResult === '紅隊獲勝' && p.team === 'red';
+                        const defaultIsBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';
+                        const defaultWinner = defaultIsRedWinner || defaultIsBlueWinner;
+
+                        // 判斷手動覆蓋或預設勝利
+                        const isWinner = (p.manualWinner !== undefined && p.manualWinner !== null)
+                          ? p.manualWinner
+                          : defaultWinner;
 
                         return (
                           <div
                             key={p.id}
-                            className={`p-2.5 rounded-xl border flex flex-col justify-between gap-1.5 transition-all ${
+                            onClick={() => handleTogglePlayerVictory(p.id)}
+                            className={`p-2.5 rounded-xl border flex flex-col justify-between gap-1.5 transition-all select-none ${
+                              isHost ? 'cursor-pointer hover:ring-2 hover:ring-indigo-400/50' : ''
+                            } ${
                               isWinner
                                 ? 'bg-gradient-to-br from-amber-500/20 via-zinc-900 to-amber-950/30 border-amber-400/80 shadow-md shadow-amber-500/10 ring-1 ring-amber-400/40'
                                 : 'bg-zinc-900/70 border-zinc-800/90 hover:border-zinc-700'
                             }`}
+                            title={isHost ? '點擊手動切換該玩家勝利 / 失敗' : undefined}
                           >
                             <div className="flex items-center justify-between gap-1.5">
                               <div className="font-bold text-xs text-zinc-100 truncate flex items-center gap-1">
