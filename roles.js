@@ -216,22 +216,22 @@ window.OFFICIAL_ROLES_CATALOG = [
   //{ id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '遊戲中必須將卡牌隨機換成歡樂牌庫(沒用到的角色)中的一張牌，以新牌目標結算。' },
   { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束公開玩家角色卡牌前，依序點名猜測全場每一位玩家的卡牌顏色，全對則你獨自獲勝。' },
   { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '在遊戲結束後公開玩家角色卡牌前，猜測哪一隊獲勝（紅/藍/無），猜對獲勝。' },
-  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'grey', icon: '🔍', desc: '在遊戲結束後公開玩家角色卡牌前，猜測埋葬卡是哪個角色，猜中則你也獲勝。' },
   { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'grey', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，『公開角色』並大喊[你作弊！！！]並描述情況給同房間的其他玩家聽！若說服大家則你也獲勝。' },
   //{ id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '。' },
 
   // 特殊陣營 (Purple,Green,Brown,Black,Yellow,Pink,White)
-  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"信徒"狀態："信徒"可以使用原角色技能，但須協助「邪教教主」。遊戲結束時，若「邪教教主」曾與「猶格·索托斯」進行過『角色分享』，且信徒人數超過總人數1/3(無條件捨棄小數點)，全體"信徒"與「邪教教主」獲得共同勝利。', pairs: 'yog_sothoth' },
+  { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"信徒"狀態。遊戲結束時，若「邪教教主」曾與「猶格·索托斯」進行過『角色分享』，且信徒人數超過總人數1/3(無條件捨棄小數點)，全體"信徒"與「邪教教主」獲得共同勝利。', pairs: 'yog_sothoth' },
   { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'purple', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！若你在遊戲中與"信徒"進行過『角色分享』，且你從來沒有和「邪教教主」進行過『角色分享』，即可帶著該名"信徒"玩家找到房主終止遊戲，你直接獨自獲勝。', pairs: 'cult_leader' },
   { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『角色分享』或『顏色分享』者皆感染"殭屍"狀態！全體存活玩家皆變成"殭屍"即獲勝。' },
-  //{ id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: ' 。' },
+  //{ id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: '在遊戲結束後公開玩家角色卡牌前，猜測埋葬卡是哪個角色，猜中則你也獲勝。' },
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'brown', icon: '🍺', desc: '在最後一回合開始時，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。' },
   { id: 'mr_black', name: '黑先生 (Mr.Black)', team: 'black', icon: '👤', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'black', icon: '👁️‍🗨', desc: '你一旦看見任何玩家的卡面，大聲喊出他的角色即可獨自勝利。你也可以『公開角色』，獲得免疫所有角色技能的能力，開始在兩個房間中四處巡視。' },
   //{ id: 'yellow_mem', name: '黃隊成員 (Yellow Team)', team: 'yellow', icon: '🟡', desc: '任何與你進行『角色分享』者皆加入"黃隊"！在遊戲結束時，和「總統」在同一個房間則"黃隊"勝，若「炸彈客」也在同一個房間則藍黃紅隊皆敗。' },
   { id: 'leprechaun', name: '小妖精 (Leprechaun)', team: 'yellow', icon: '✨', desc: '你不能拒絕其他玩家的『角色分享』或『顏色分享』；進行任何分享後必須和對方互換卡片，終局還持有小妖精者也獲勝。' },
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '遊戲開始時暫停倒數且所有玩家離開房間，你需要在兩間房間內各藏一個寶物，若所有玩家未能在遊戲結束前找到兩個寶藏，則你獨自獲勝。' },
-  //{ id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '👁️', desc: '），遊戲結束時你仍存活則你也獲勝；透過『角色分享』或『顏色分享』傳播"會員"狀態，"會員"須完成自身角色卡牌的勝利條件以及保護「光明會」，若「光明會」死亡，則全體"會員"強制失敗。' },
+  //{ id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '👁️', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"會員"狀態：可自由選擇要不要幫助「光明會」，"會員"仍可以維持原角色勝利條件。遊戲結束時，若房間領袖都是"會員"，且「光明會」沒有與「私家偵探」進行過『角色分享』，則世界又被暗中掌控，全體"會員"與「光明會」獲得共同勝利。', pairs: 'private_investigator },
+  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'orange', icon: '🔍', desc: '你是一名調查地下權力的偵探！當你在遊戲中與"會員"進行『角色分享』時可以詢問一個是非題，對方必須誠實作答；若與「光明會」進行過『角色分享』，則你也獲勝', pairs: 'illuminati },
   //{ id: 'white_team', name: '白隊成員 (White Team)', team: 'white', icon: '⚪', desc: '在最後一回合結束前，必須將自己的卡片換為「紅隊成員」或「藍隊成員」。' },
   { id: 'white_paper', name: '白紙 (White Paper)', team: 'white', icon: '📃', desc: '...' }
   
