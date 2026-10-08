@@ -201,7 +201,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'clone', name: '複製人 (Clone)', team: 'grey', icon: '🧬', desc: '複製第一位與你進行『角色分享』或『顏色分享』者的勝利條件。', pairs: 'robot' },
   { id: 'robot', name: '機器人 (Robot)', team: 'grey', icon: '🤖', desc: '第一位與你進行『角色分享』或『顏色分享』的人若失敗，則你也獲勝。', pairs: 'clone' },
   { id: 'judge', name: '法官 (Judge)', team: 'grey', icon: '⚖️', desc: '你與任何人進行『角色分享』或『顏色分享』時，可以給他們"陪審團"狀態：當藍隊/紅隊平手時，可以根據兩隊"陪審團"人數決定勝負。若"陪審團"數量大於總人數1/2(無條件捨棄小數點)，則「法官」也一起獲勝。' },
-  { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '自帶"精明"狀態：只能進行『角色分享』。結算時若跟「總統」與「炸彈客」進行過『角色分享』則你獨自獲勝！' },
+  { id: 'nuclear', name: '核磁暴君 (Nuclear Tyrant)', team: 'grey', icon: '☣️', desc: '你不能拒絕其他玩家的『角色分享』與『顏色分享』。結算時若你沒有和「總統」與「炸彈客」進行過『角色分享』則你獨自獲勝！' },
   { id: 'mi6', name: '秘密情報局 (MI6)', team: 'grey', icon: '🕵️‍♂️', desc: '在遊戲結束時，你有跟「炸彈客」及「總統」都進行過『角色分享』則你也獲勝。' },
   { id: 'hot_potato', name: '燙手山芋 (Hot Potato)', team: 'grey', icon: '🥔', desc: '你和任何人進行『角色分享』或『顏色分享』，必須立即與你交換角色卡牌，在遊戲結束時仍是「燙手山芋」則強制失敗。' },
   { id: 'anarchist', name: '無政府主義者 (Anarchist)', team: 'grey', icon: '🏴', desc: '進行五輪回合需篡位三次，三輪需篡位兩次成功的話你也獲勝。', pairs: 'minion,mastermind' },
