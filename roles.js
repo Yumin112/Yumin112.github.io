@@ -23,18 +23,18 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'red_mem', name: '紅隊成員 (Red Team)', team: 'red', icon: '🔴', desc: '協助「炸彈客」，讓「炸彈客」與「總統」在同一個房間引爆！', pairs: 'blue_mem' },
 
   // 藍/紅隊自帶狀態類 (Blue,red)
-  { id: 'shy_b', name: '害羞小子 (Shy Guy)', team: 'blue', icon: '🙈', desc: '自帶"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'shy_r' },
-  { id: 'shy_r', name: '害羞小子 (Shy Guy)', team: 'red', icon: '🙈', desc: '自帶"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'shy_b' },
-  { id: 'coy_b', name: '靦腆少年 (Coy Boy)', team: 'blue', icon: '😳', desc: '自帶"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'coy_r' },
-  { id: 'coy_r', name: '靦腆少年 (Coy Boy)', team: 'red', icon: '😳', desc: '自帶"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'coy_b' },
+  { id: 'shy_b', name: '害羞小子 (Shy Guy)', team: 'blue', icon: '🙈', desc: '自帶"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』，"害羞"可被心理醫生治癒。', pairs: 'shy_r' },
+  { id: 'shy_r', name: '害羞小子 (Shy Guy)', team: 'red', icon: '🙈', desc: '自帶"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』，"害羞"可被心理醫生治癒。', pairs: 'shy_b' },
+  { id: 'coy_b', name: '靦腆少年 (Coy Boy)', team: 'blue', icon: '😳', desc: '自帶"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為，"靦腆"可被心理醫生治癒。', pairs: 'coy_r' },
+  { id: 'coy_r', name: '靦腆少年 (Coy Boy)', team: 'red', icon: '😳', desc: '自帶"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為，"靦腆"可被心理醫生治癒。', pairs: 'coy_b' },
+  { id: 'paranoid_b', name: '妄想者 (Paranoid)', team: 'blue', icon: '👀', desc: '自帶"妄想"狀態，整場遊戲只能進行一次『角色分享』，"妄想"可被心理醫生治癒。', pairs: 'paranoid_r' },
+  { id: 'paranoid_r', name: '妄想者 (Paranoid)', team: 'red', icon: '👀', desc: '自帶"妄想"狀態，整場遊戲只能進行一次『角色分享』，"妄想"可被心理醫生治癒。', pairs: 'paranoid_b' },
   { id: 'fool_b', name: '傻瓜 (Fool)', team: 'blue', icon: '🤪', desc: '自帶"愚蠢"狀態，不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'fool_r' },
   { id: 'fool_r', name: '傻瓜 (Fool)', team: 'red', icon: '🤪', desc: '自帶"愚蠢"狀態，不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'fool_b' },
   { id: 'negotiator_b', name: '談判專家 (Negotiator)', team: 'blue', icon: '🤝', desc: '自帶"精明"狀態：只能進行『角色分享』，禁止『顏色分享』或任何揭露行為。', pairs: 'negotiator_r' },
   { id: 'negotiator_r', name: '談判專家 (Negotiator)', team: 'red', icon: '🤝', desc: '自帶"精明"狀態：只能進行『角色分享』，禁止『顏色分享』或任何揭露行為。', pairs: 'negotiator_b' },
-  { id: 'exhibitionist_b', name: '露體狂 (Exhibitionist)', team: 'blue', icon: '🥼', desc: '自帶"裸露"狀態，只能進行『公開角色』，禁止任何分享行為。', pairs: 'exhibitionist_r' },
-  { id: 'exhibitionist_r', name: '露體狂 (Exhibitionist)', team: 'red', icon: '🥼', desc: '自帶"裸露"狀態，只能進行『公開角色』，禁止任何分享行為。', pairs: 'exhibitionist_b' },
-  { id: 'paranoid_b', name: '妄想者 (Paranoid)', team: 'blue', icon: '👀', desc: '自帶"妄想"狀態，整場遊戲只能進行一次『角色分享』；可被心理醫生治癒。', pairs: 'paranoid_r' },
-  { id: 'paranoid_r', name: '妄想者 (Paranoid)', team: 'red', icon: '👀', desc: '自帶"妄想"狀態，整場遊戲只能進行一次『角色分享』；可被心理醫生治癒。', pairs: 'paranoid_b' },
+  { id: 'exhibitionist_b', name: '露體狂 (Exhibitionist)', team: 'blue', icon: '🥼', desc: '自帶"裸露"狀態，只能進行『公開角色』，無法進行任何『分享』或『揭露』。', pairs: 'exhibitionist_r' },
+  { id: 'exhibitionist_r', name: '露體狂 (Exhibitionist)', team: 'red', icon: '🥼', desc: '自帶"裸露"狀態，只能進行『公開角色』，無法進行任何『分享』或『揭露』。', pairs: 'exhibitionist_b' },
   { id: 'immunologist_b', name: '免疫者 (Immunologist)', team: 'blue', icon: '💊', desc: '自帶"免疫"狀態，任何角色的技能或狀態都對你完全無效，你可以拒絕一切要求。', pairs: 'immunologist_r' },
   { id: 'immunologist_r', name: '免疫者 (Immunologist)', team: 'red', icon: '💊', desc: '自帶"免疫"狀態，任何角色的技能或狀態都對你完全無效，你可以拒絕一切要求。', pairs: 'immunologist_b' },
   //加機制 上帝視角技能
@@ -43,10 +43,10 @@ window.OFFICIAL_ROLES_CATALOG = [
 
   
   // 藍/紅隊賦予狀態類 (Blue,red)
-  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_r' },
-  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'criminal_b' },
-  { id: 'thug_b', name: '暴徒 (Thug)', team: 'blue', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'thug_r' },
-  { id: 'thug_r', name: '暴徒 (Thug)', team: 'red', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為。', pairs: 'thug_b' },
+  { id: 'criminal_b', name: '罪犯 (Criminal)', team: 'blue', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』，"害羞"可被心理醫生治癒。', pairs: 'criminal_r' },
+  { id: 'criminal_r', name: '罪犯 (Criminal)', team: 'red', icon: '🦹🏻‍♀️', desc: '與你進行『角色分享』的玩家獲得"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』，"害羞"可被心理醫生治癒。', pairs: 'criminal_b' },
+  { id: 'thug_b', name: '暴徒 (Thug)', team: 'blue', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為，"靦腆"可被心理醫生治癒。', pairs: 'thug_r' },
+  { id: 'thug_r', name: '暴徒 (Thug)', team: 'red', icon: '🥊', desc: '與你進行『角色分享』的玩家獲得"靦腆"狀態：只能進行『顏色分享』，無法進行『角色分享』或任何揭露行為，"靦腆"可被心理醫生治癒。', pairs: 'thug_b' },
   { id: 'dealer_b', name: '荷官 (Dealer)', team: 'blue', icon: '🎴', desc: '與你進行『角色分享』的玩家獲得"愚蠢"狀態：不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'dealer_r' },
   { id: 'dealer_r', name: '荷官 (Dealer)', team: 'red', icon: '🎴', desc: '與你進行『角色分享』的玩家獲得"愚蠢"狀態：不能拒絕任何『角色分享』或『顏色分享』。', pairs: 'dealer_b' },
   { id: 'professor_b', name: '教授 (Professor)', team: 'blue', icon: '🎓', desc: '任何與你進行『角色分享』者獲得"精明"狀態：之後只能進行『角色分享』。', pairs: 'professor_r' },
