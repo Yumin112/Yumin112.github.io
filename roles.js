@@ -95,6 +95,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   //{ id: 'informer_r', name: '告密者 (Informer)', team: 'red', icon: '✉️', desc: '藍隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_b' },
   { id: 'mad_scientist_b', name: '瘋狂科學家 (Mad Scientist)', team: 'blue', icon: '🧪', desc: '整場限一次，進行『角色揭露』給兩名玩家，強迫這兩名玩家強制互換角色卡牌。', pairs: 'mad_scientist_r' },
   { id: 'mad_scientist_r', name: '瘋狂科學家 (Mad Scientist)', team: 'red', icon: '🧪', desc: '整場限一次，進行『角色揭露』給兩名玩家，強迫這兩名玩家強制互換角色卡牌。', pairs: 'mad_scientist_b' },
+  { id: 'paparazzo_b', name: '狗仔隊 (Paparazzo)', team: 'blue', icon: '📸', desc: '可以干擾玩家間的交談，可正大光明偷窺任何『分享』與『揭露』行為，但不可對他人動手動腳。', pairs: 'paparazzo_r' },
+  { id: 'paparazzo_r', name: '狗仔隊 (Paparazzo)', team: 'red', icon: '📸', desc: '可以干擾玩家間的交談，可正大光明偷窺任何『分享』與『揭露』行為，但不可對他人動手動腳。', pairs: 'paparazzo_b' },
   
   // 藍/紅隊角色行為扮演類 (Blue,red)
   { id: 'angel_b', name: '天使 (Angel)', team: 'blue', icon: '👼', desc: '只能說實話，但不需要說出口的可以撒謊或隱瞞。', pairs: 'angel_r' },
@@ -103,16 +105,16 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'demon_r', name: '惡魔 (Demon)', team: 'red', icon: '😈', desc: '只能說謊話，不需要說出口的可以不撒謊。', pairs: 'demon_b' },
   { id: 'mime_b', name: '默劇演員 (Mime)', team: 'blue', icon: '🤐', desc: '你只能用比手畫腳來表演，全場必須盡力保持不發出任何聲音。', pairs: 'mime_r' },
   { id: 'mime_r', name: '默劇演員 (Mime)', team: 'red', icon: '🤐', desc: '你只能用比手畫腳來表演，全場必須盡力保持不發出任何聲音。', pairs: 'mime_b' },
+  { id: 'mummy_b', name: '木乃伊 (Mummy)', team: 'blue', icon: '🧻', desc: '你只能說[呃...]這個字來溝通。', pairs: 'mummy_r' },
+  { id: 'mummy_r', name: '木乃伊 (Mummy)', team: 'red', icon: '🧻', desc: '你只能說[呃...]這個字來溝通。', pairs: 'mummy_b' },
+  { id: 'doggy_b', name: '狗狗 (Doggy)', team: 'blue', icon: '🐶', desc: '你只能說[汪!]這個字來溝通。若你比敵方陣營的「狗狗」更快對「狗狗主人」進行『角色分享』，則「狗狗主人」的勝利條件會與你所屬的陣營一樣。', pairs: 'doggy_r,dog_owner' },
+  { id: 'doggy_r', name: '狗狗 (Doggy)', team: 'red', icon: '🐶', desc: '你只能說[汪!]這個字來溝通。若你比敵方陣營的「狗狗」更快和「狗狗主人」進行『角色分享』，則「狗狗主人」的勝利條件會與你所屬的陣營一樣。', pairs: 'doggy_b,dog_owner' },
   { id: 'clown_b', name: '小丑 (Clown)', team: 'blue', icon: '🤡', desc: '你是一名帶來歡樂的小丑，在遊戲進行中必須盡全力保持微笑。', pairs: 'clown_r' },
   { id: 'clown_r', name: '小丑 (Clown)', team: 'red', icon: '🤡', desc: '你是一名帶來歡樂的小丑，在遊戲進行中必須盡全力保持微笑。', pairs: 'clown_b' },
   { id: 'loner_b', name: '邊緣人 (Loner)', team: 'blue', icon: '🫥', desc: '你現在很邊緣，在整場遊戲過程中必須站在角落不能移動，回合結束時你可以換一個角落。', pairs: 'blind_r' },
   { id: 'loner_r', name: '邊緣人 (Loner)', team: 'red', icon: '🫥', desc: '你現在很邊緣，在整場遊戲過程中必須站在角落不能移動，回合結束時你可以換一個角落。', pairs: 'blind_b' },
   { id: 'blind_b', name: '盲人 (Blind)', team: 'blue', icon: '🦯', desc: '你現在看不到了，在整場遊戲過程中必須盡力閉上雙眼。', pairs: 'blind_r' },
   { id: 'blind_r', name: '盲人 (Blind)', team: 'red', icon: '🦯', desc: '你現在看不到了，在整場遊戲過程中必須盡力閉上雙眼。', pairs: 'blind_b' },
-  { id: 'mummy_b', name: '木乃伊 (Mummy)', team: 'blue', icon: '🧻', desc: '你只能說[呃...]這個字來溝通。', pairs: 'mummy_r' },
-  { id: 'mummy_r', name: '木乃伊 (Mummy)', team: 'red', icon: '🧻', desc: '你只能說[呃...]這個字來溝通。', pairs: 'mummy_b' },
-  { id: 'paparazzo_b', name: '狗仔隊 (Paparazzo)', team: 'blue', icon: '📸', desc: '可以干擾玩家間的交談，可正大光明偷窺任何『分享』與『揭露』行為，但不可對他人動手動腳。', pairs: 'paparazzo_r' },
-  { id: 'paparazzo_r', name: '狗仔隊 (Paparazzo)', team: 'red', icon: '📸', desc: '可以干擾玩家間的交談，可正大光明偷窺任何『分享』與『揭露』行為，但不可對他人動手動腳。', pairs: 'paparazzo_b' },
  
   // 藍/紅隊房間移動類 (Blue,red)
   { id: 'security_b', name: '保安 (Security)', team: 'blue', icon: '👮', desc: '整場遊戲只能使用一次，你可以『公開角色』後指定一名同房玩家本輪不能作為人質離開房間。', pairs: 'security_r' },
@@ -213,6 +215,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   //{ id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '。' },
   { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束公開玩家角色卡牌前，依序點名猜測全場每一位玩家的卡牌顏色，全對則你獨自獲勝。' },
   { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '在遊戲結束後公開玩家角色卡牌前，猜測哪一隊獲勝（紅/藍/無），猜對獲勝。' },
+  { id: 'dog_owner', name: '狗狗主人 (Dog Owner)', team: 'grey', icon: '🐕‍🦺', desc: '你必須找到遺失的「狗狗」。你的勝利條件與你第一個進行『角色分享』的「狗狗」其所屬的陣營一樣。「狗狗」可以在你耳邊說悄悄話溝通，對其他玩家仍要用[汪!]來溝通。', pairs: 'doggy_b,doggy_r' },
   { id: 'secret_police', name: '秘密警察 (Secret Police)', team: 'grey', icon: '🚨', desc: '如果你抓到有人進行任何作弊行為，『公開角色』並大喊[你作弊！！！]並描述情況給同房間的其他玩家聽！若說服大家則你也獲勝。' },
 
   // 特殊陣營 (Purple,Green,Brown,Black,Yellow,Pink,White)
