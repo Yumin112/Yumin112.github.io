@@ -682,43 +682,43 @@
 
       // 完整決策樹節點定義
       const DECISION_TREE = useMemo(() => ({
-        ROOT: {
+        ROOT_1: {
           question: '🌟 有特殊陣營獨自獲勝嗎？',
           btnYes: '有',
           btnNo: '否',
           resultYes: '特殊陣營獲勝',  
-          onNo: 'PRES_BOMB_CHECK'
+          onNo: 'PRES_BOMB_CHECK_N2'
         },
-        PRES_BOMB_CHECK: {
+        PRES_BOMB_CHECK_N2: {
           question: '💣 炸彈客 與 👔 總統 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_SAME_ENG',
-          onNo: 'N_DIFF_PYRO'
+          onYes: 'N_SAME_ENG_NY3',
+          onNo: 'N_DIFF_PYRO_NN3'
         },
         // --- 炸彈客與總統同房分支 ---
-        N_SAME_ENG: {
+        N_SAME_ENG_NY3: {
           question: '💣 炸彈客 有和 ⚙️ 工程師 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_SAME_ENG_Y_DRONE',
-          onNo: 'N_SAME_ENG_N_DOC'
+          onYes: 'NY3_DRONE',
+          onNo: 'NY3_DOC_NYN4'
         },
-        N_SAME_ENG_Y_DRONE: {
+        NY3_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
           resultYes: '沒有隊伍獲勝',
           resultNo: '紅隊獲勝'
         },
-        N_SAME_ENG_N_DOC: {
+        NY3_DOC_NYN4: {
           question: '👔 總統 有和 🩺 醫生 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_SAME_DOC_Y_DRONE',
+          onYes: 'NYN4_DRONE',
           resultNo: '沒有隊伍獲勝'
         },
-        N_SAME_DOC_Y_DRONE: {
+        NYN4_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
@@ -726,43 +726,43 @@
           resultNo: '沒有隊伍獲勝'
         },
         // --- 炸彈客與總統不同房分支 ---
-        N_DIFF_PYRO: {
+        N_DIFF_PYRO_NN3: {
           question: '🎆 煙火專家 有和 💣 炸彈客 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_DIFF_FIRE',
-          onNo: 'N_DIFF_PYRO_N_DOC'
+          onYes: 'N_DIFF_FIRE_NNY4',
+          onNo: 'NN3_DOC_NNN4'
         },
-        N_DIFF_FIRE: {
+        N_DIFF_FIRE_NNY4: {
           question: '🧑‍🚒 消防員 有和 👔 總統 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_FIRE_Y_DOC',
-          onNo: 'N_FIRE_N_ENG'
+          onYes: 'N_FIRE_Y_DOC_NNYY5',
+          onNo: 'N_FIRE_N_ENG_NNYN5'
         },
         // 消防員 = 是
-        N_FIRE_Y_DOC: {
+        N_FIRE_Y_DOC_NNYY5: {
           question: '👔 總統 有和 🩺 醫生 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_FIRE_Y_DOC_Y_DRONE',
-          onNo: 'N_FIRE_Y_DOC_N_ENG'
+          onYes: 'NNYY5_DRONE',
+          onNo: 'NNYY5_ENG_NNYYN6'
         },
-        N_FIRE_Y_DOC_Y_DRONE: {
+        NNYY5_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
           resultYes: '藍隊獲勝',
           resultNo: '沒有隊伍獲勝'
         },
-        N_FIRE_Y_DOC_N_ENG: {
+        NNYY5_ENG_NNYYN6: {
           question: '💣 炸彈客 有和 ⚙️ 工程師 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_FIRE_Y_ENG_Y_DRONE',
+          onYes: 'NNYYN6_DRONE',
           resultNo: '沒有隊伍獲勝'
         },
-        N_FIRE_Y_ENG_Y_DRONE: {
+        NNYYN6_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
@@ -770,21 +770,21 @@
           resultNo: '紅隊獲勝'
         },
         // 消防員 = 否
-        N_FIRE_N_ENG: {
+        N_FIRE_N_ENG_NNYN5: {
           question: '💣 炸彈客 有和 ⚙️ 工程師 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
           resultYes: '紅隊獲勝',
-          onNo: 'N_FIRE_N_DOC'
+          onNo: 'NNYN5_DOC'
         },
-        N_FIRE_N_DOC: {
+        NNYN5_DOC_NNYNN6: {
           question: '👔 總統 有和 🩺 醫生 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_FIRE_N_DOC_Y_DRONE',
+          onYes: 'NNYNN6_DRONE',
           resultNo: '沒有隊伍獲勝'
         },
-        N_FIRE_N_DOC_Y_DRONE: {
+        NNYNN6_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
@@ -792,28 +792,28 @@
           resultNo: '沒有隊伍獲勝'
         },
         // 煙火專家 = 否
-        N_DIFF_PYRO_N_DOC: {
+        NN3_DOC_NNN4: {
           question: '👔 總統 有和 🩺 醫生 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_PYRO_N_DOC_Y_DRONE',
-          onNo: 'N_PYRO_N_DOC_N_ENG'
+          onYes: 'NNN4_DRONE',
+          onNo: 'NNN4_ENG_NNNN5'
         },
-        N_PYRO_N_DOC_Y_DRONE: {
+        NNN4_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
           resultYes: '藍隊獲勝',
           resultNo: '沒有隊伍獲勝'
         },
-        N_PYRO_N_DOC_N_ENG: {
+        NNN4_ENG_NNNN5: {
           question: '💣 炸彈客 有和 ⚙️ 工程師 分享卡片嗎？',
           btnYes: '是',
           btnNo: '否',
-          onYes: 'N_PYRO_N_ENG_Y_DRONE',
+          onYes: 'NNNN5_DRONE',
           resultNo: '沒有隊伍獲勝'
         },
-        N_PYRO_N_ENG_Y_DRONE: {
+        NNNN5_DRONE: {
           question: '🛸 藍色無人機 與 🥊 紅色鐵拳 在同一個房間？',
           btnYes: '是',
           btnNo: '否',
