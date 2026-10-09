@@ -15,6 +15,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'engineer', name: '工程師 (Engineer)', team: 'red', icon: '⚙️', desc: '遊戲結束前，你必須與「炸彈客」進行過『角色分享』，否則紅隊強制失敗。', pairs: 'doctor,judge' },
   { id: 'nurse', name: '護士 (Nurse)', team: 'blue', icon: '💉', desc: '你是「醫生」備選人，若「醫生」被埋葬或離開遊戲時，你必須承擔「醫生」的職責。', pairs: 'tinkerer' },
   { id: 'tinkerer', name: '工匠 (Tinkerer)', team: 'red', icon: '🔨', desc: '你是「工程師」備選人，若「工程師」被埋葬或離開遊戲時，你必須承擔「工程師」的職責。', pairs: 'nurse' },
+  { id: 'firefighter', name: '消防員 (Firefighter)', team: 'blue', icon: '🧑‍🚒', desc: '與「總統」進行『角色分享』賦予"防火"狀態，「總統」所在的房間免受燃燒波及，使該房間不受"燃火"狀態影響而死亡。', pairs: 'pyrotech,judge' }, 
+  { id: 'pyrotech', name: '煙火專家 (Pyrotech)', team: 'red', icon: '🎆', desc: '與「炸彈客」進行『角色分享』賦予"燃火"狀態；「炸彈客」爆炸時引發燃燒，使另一間房間的玩家也會死亡。', pairs: 'firefighter,judge' }, 
   { id: 'spy_r', name: '紅隊間諜 (Red Spy)', team: 'blue', icon: '🕵️‍♀️', desc: '屬於紅隊但卡片底色為藍色；可以誤導他人『顏色分享』與『顏色揭露』的結果，請對紅隊忠誠！', pairs: 'spy_b' },
   { id: 'spy_b', name: '藍隊間諜 (Blue Spy)', team: 'red', icon: '🕵️‍♂️', desc: '屬於藍隊但卡片底色為紅色；可以誤導他人『顏色分享』與『顏色揭露』的結果，請對藍隊忠誠！', pairs: 'spy_r' },
   
@@ -157,9 +159,6 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'dr_boom', name: '爆炸先生 (Dr. Boom)', team: 'red', icon: '💥', desc: '若你與「總統」進行了『角色分享』，房內所有玩家包含自己立即死亡，請帶著「總統」找到房主終止遊戲，紅隊直接獲勝。', pairs: 'tues_knight' },
   { id: 'rageaholic_b', name: '狂怒者 (Rageaholic)', team: 'blue', icon: '🤬', desc: '整場遊戲只能使用一次，當你的房間已經選完人質，且你所在的房間領袖已經在走廊等待對方領袖時，你可以『公開角色』並大喊咆哮[從1數到10]對方領袖仍未出來則直接獨自獲勝。', pairs: 'rageaholic_r' },
   { id: 'rageaholic_r', name: '狂怒者 (Rageaholic)', team: 'red', icon: '🤬', desc: '整場遊戲只能使用一次，當你的房間已經選完人質，且你所在的房間領袖已經在走廊等待對方領袖時，你可以『公開角色』並大喊咆哮[從1數到10]對方領袖仍未出來則直接獨自獲勝。', pairs: 'rageaholic_b' },
-  //消防員 煙火專家 + 角色在位的問答判斷
-  { id: 'firefighter', name: '消防員 (Firefighter)', team: 'blue', icon: '🧯', desc: '與「總統」進行『角色分享』賦予"防火"狀態，「總統」所在的房間免受燃燒波及，使該房間不受"燃火"狀態影響而死亡。', pairs: 'pyrotech,judge' }, 
-  { id: 'pyrotech', name: '煙火專家 (Pyrotech)', team: 'red', icon: '🎆', desc: '與「炸彈客」進行『角色分享』賦予"燃火"狀態；「炸彈客」爆炸時引發燃燒，使另一間房間的玩家也會死亡。', pairs: 'firefighter,judge' }, 
   //{ id: 'xenohunter', name: '異形獵手 (Xenohunter)', team: 'blue', icon: '🔫', desc: '可以對被「異形」寄生的藍隊玩家進行『角色揭露』，將你的卡與對方的「異形」卡牌移出遊戲，此舉動會讓你遺失卡牌而無法進行任何分享行為。', pairs: 'xenomorph' }, //可以考慮加機制
   //{ id: 'xenomorph', name: '異形 (Xenomorph)', team: 'red', icon: '👾', desc: '將你的卡牌寄生於首位進行『顏色分享』的藍隊玩家身上，此舉動會讓你遺失卡牌而無法進行任何分享行為，終局使該藍隊玩家所在房間全員死亡。', pairs: 'xenohunter' }, //可以考慮加機制
   { id: 'marshall', name: '法警 (Marshall)', team: 'blue', icon: '⭐', desc: '若與「獨臂人」完成『角色分享』，請帶著「獨臂人」找到房主終止遊戲，藍隊直接獲勝。', pairs: 'fugitive,one_armed_man,witness' }, 
