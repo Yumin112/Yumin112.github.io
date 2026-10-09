@@ -710,7 +710,7 @@
       // 角色存在性檢查（支援不同 ID 命名防呆）
       const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
       const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
-      const hasPyroInGame = useMemo(() => (roleCounts['pyrotechnician'] || roleCounts['pyro'] || 0) > 0, [roleCounts]);
+      const hasPyroInGame = useMemo(() => (roleCounts['pyrotech'] || roleCounts['pyro'] || 0) > 0, [roleCounts]);
       const hasFirefighterInGame = useMemo(() => (roleCounts['firefighter'] || 0) > 0, [roleCounts]);
       const hasDroneFistInGame = useMemo(() => {
         const hasDrone = (roleCounts['drone_b'] || roleCounts['blue_drone'] || roleCounts['drone'] || 0) > 0;
