@@ -680,10 +680,10 @@
       const madScientistVoteTrackerRef = useRef(null);
       const dualStatusVoteTrackerRef = useRef(null);
 
-      // 完整決策樹節點定義 (完全對應圖片分支)
+      // 完整決策樹節點定義
       const DECISION_TREE = useMemo(() => ({
         ROOT: {
-        question: '🌟 有特殊陣營獨自獲勝嗎？',
+          question: '🌟 有特殊陣營獨自獲勝嗎？',
           btnYes: '有',
           btnNo: '否',
           resultYes: '特殊陣營獲勝',  
@@ -1300,7 +1300,7 @@
             return;
           }
 
-          // 雙人狀態賦予 (厄里斯 / 丘比特 / 父親 / 母親) 監聽
+          // 雙人狀態賦予監聽
           if (data.type === 'DUAL_STATUS_PROMPT_TARGETS') {
             if (data.t1Id === uid || data.t2Id === uid) {
               setDualStatusPendingData({
@@ -1608,6 +1608,107 @@
         return () => clearInterval(timerIntervalRef.current);
       }, [isTimerRunning, roomStatus, timeLeft, roomId, myPlayerId, broadcastLatest, publishMsg]);
 
+      const finalizeVictory = useCallback((resultText) => {
+        setGameResult(resultText);
+        setShowVictoryModal(false);
+        broadcastLatest({ gameResult: resultText });
+      }, [broadcastLatest]);
+
+      // 判斷特定角色池中是否有啟用特定角色
+      const isRoleInGame = useCallback((roleKeys) => {
+        const keys = Array.isArray(roleKeys) ? roleKeys : [roleKeys];
+        return keys.some(key => (roleCounts[key] || 0) > 0);
+      }, [roleCounts]);
+
+      // 自動判定規則：若關鍵角色未加入牌庫，自動推導答案並跳過問答
+      const getAutoDecisionForNode = useCallback((nodeKey, prevNodeKey) => {
+        if (!nodeKey) return null;
+
+        // 1. 工程師分享相關提問
+        if (nodeKey.includes('ENG')) {
+          const hasEngineer = isRoleInGame(['engineer', 'engineer_r']);
+          if (!hasEngineer) return true; // 未加入則自動回答「是」
+        }
+
+        // 2. 醫生分享相關提問
+        if (nodeKey.includes('DOC')) {
+          const hasDoctor = isRoleInGame(['doctor', 'doctor_b']);
+          if (!hasDoctor) return true; // 未加入則自動回答「是」
+        }
+
+        // 3. 煙火專家相關提問
+        if (nodeKey.includes('PYRO')) {
+          const hasPyro = isRoleInGame(['pyro', 'pyrotechnician', 'pyrotechnician_r']);
+          if (!hasPyro) return false; // 未加入則自動回答「否」
+        }
+
+        // 4. 藍色無人機與紅色鐵拳同房提問
+        if (nodeKey.includes('DRONE')) {
+          const hasDrone = isRoleInGame(['drone_b', 'drone']);
+          const hasFist = isRoleInGame(['fist_r', 'iron_fist_r', 'fist']);
+          const hasBoth = hasDrone && hasFist;
+
+          if (!hasBoth) {
+            // 前一個問題為「炸彈客有和工程師分享卡片嗎?」 => 自動回答「否」
+            if (prevNodeKey && prevNodeKey.includes('ENG')) return false;
+            // 前一個問題為「總統有和醫生分享卡片嗎?」 => 自動回答「是」
+            if (prevNodeKey && prevNodeKey.includes('DOC')) return true;
+            return false;
+          }
+        }
+
+        return null; // 牌庫有此角色，保留給房長手動確認
+      }, [isRoleInGame]);
+
+      // 決策樹節點自動遞迴推進
+      const advanceToNode = useCallback((targetNodeKey, prevNodeKey = null) => {
+        let curr = targetNodeKey;
+        let prev = prevNodeKey;
+
+        while (curr) {
+          const nodeConfig = DECISION_TREE[curr];
+          if (!nodeConfig) break;
+
+          const autoAnswer = getAutoDecisionForNode(curr, prev);
+
+          if (autoAnswer !== null) {
+            const nextResult = autoAnswer ? nodeConfig.resultYes : nodeConfig.resultNo;
+            if (nextResult !== undefined) {
+              finalizeVictory(nextResult);
+              return;
+            }
+            prev = curr;
+            curr = autoAnswer ? nodeConfig.onYes : nodeConfig.onNo;
+          } else {
+            setVictoryCurrentNode(curr);
+            setShowVictoryModal(true);
+            return;
+          }
+        }
+      }, [DECISION_TREE, getAutoDecisionForNode, finalizeVictory]);
+
+      const handleDecisionChoice = (isYes) => {
+        const currentNode = DECISION_TREE[victoryCurrentNode];
+        if (!currentNode) return;
+
+        const nextResult = isYes ? currentNode.resultYes : currentNode.resultNo;
+        if (nextResult !== undefined) {
+          finalizeVictory(nextResult);
+          return;
+        }
+
+        const nextNodeKey = isYes ? currentNode.onYes : currentNode.onNo;
+        if (nextNodeKey) {
+          advanceToNode(nextNodeKey, victoryCurrentNode);
+        }
+      };
+
+      const startVictoryDetermination = useCallback(() => {
+        setVictoryCurrentNode('ROOT');
+        setShowVictoryModal(true);
+        advanceToNode('ROOT', null);
+      }, [advanceToNode]);
+
       const handleCreateRoom = () => {
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1885,10 +1986,8 @@
         setTimeLeft(0);
         setRoomStatus('ended');
 
-        setVictoryCurrentNode('ROOT');
-        setShowVictoryModal(true);
-
         broadcastLatest({ roomStatus: 'ended', timeLeft: 0, roundEndTime: 0 });
+        startVictoryDetermination();
       };
 
       const handleTogglePlayerVictory = (targetPlayerId) => {
@@ -1927,32 +2026,8 @@
           broadcastLatest({ roomStatus: 'ended', timeLeft: 0, roundEndTime: 0 });
 
           if (isHost) {
-            setVictoryCurrentNode('ROOT');
-            setShowVictoryModal(true);
+            startVictoryDetermination();
           }
-        }
-      };
-
-      const finalizeVictory = (resultText) => {
-        setGameResult(resultText);
-        setShowVictoryModal(false);
-        broadcastLatest({ gameResult: resultText });
-      };
-
-      // 決策樹選項推進
-      const handleDecisionChoice = (isYes) => {
-        const currentNode = DECISION_TREE[victoryCurrentNode];
-        if (!currentNode) return;
-
-        const nextResult = isYes ? currentNode.resultYes : currentNode.resultNo;
-        if (nextResult !== undefined) {
-          finalizeVictory(nextResult);
-          return;
-        }
-
-        const nextNodeKey = isYes ? currentNode.onYes : currentNode.onNo;
-        if (nextNodeKey) {
-          setVictoryCurrentNode(nextNodeKey);
         }
       };
 
@@ -2548,10 +2623,7 @@
                     {isHost && (
                       <div className="flex flex-wrap items-center justify-center gap-3 pt-2 border-t border-white/10">
                         <button
-                          onClick={() => {
-                            setVictoryCurrentNode('ROOT');
-                            setShowVictoryModal(true);
-                          }}
+                          onClick={startVictoryDetermination}
                           className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5"
                         >
                           <span>{gameResult ? '🏆 重新判定勝負' : '🏆 判定勝負'}</span>
@@ -2906,7 +2978,7 @@
             </div>
           )}
 
-          {/* 彈窗：雙目標賦予狀態選擇 (厄里斯 / 丘比特 / 父親 / 母親) */}
+          {/* 彈窗：雙目標賦予狀態選擇 */}
           {showDualStatusModal && dualStatusConfig && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -2983,7 +3055,7 @@
             </div>
           )}
 
-          {/* 彈窗：被選中者確認賦予雙人狀態 (厄里斯 / 丘比特 / 父親 / 母親) */}
+          {/* 彈窗：被選中者確認賦予雙人狀態 */}
           {dualStatusPendingData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
@@ -3115,7 +3187,7 @@
             </div>
           )}
 
-          {/* 彈窗：勝負判定推導（嚴格遵循圖片決策樹流程） */}
+          {/* 彈窗：勝負判定推導（具備角色自動跳過機制） */}
           {showVictoryModal && isHost && activeQuestion && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5">
