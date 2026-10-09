@@ -706,8 +706,18 @@
       const myTeamMeta = useMemo(() => getTeamMeta(myInfo.team), [myInfo.team]);
       const totalCardsInDeck = useMemo(() => Object.values(roleCounts).reduce((s, c) => s + (c || 0), 0), [roleCounts]);
       const tempTotalCardsInDeck = useMemo(() => Object.values(tempRoleCounts).reduce((s, c) => s + (c || 0), 0), [tempRoleCounts]);
+      
+      // 角色存在性檢查（支援不同 ID 命名防呆）
       const hasDoctorInGame = useMemo(() => (roleCounts['doctor'] || 0) > 0, [roleCounts]);
       const hasEngineerInGame = useMemo(() => (roleCounts['engineer'] || 0) > 0, [roleCounts]);
+      const hasPyroInGame = useMemo(() => (roleCounts['pyrotechnician'] || roleCounts['pyro'] || 0) > 0, [roleCounts]);
+      const hasFirefighterInGame = useMemo(() => (roleCounts['firefighter'] || 0) > 0, [roleCounts]);
+      const hasDroneFistInGame = useMemo(() => {
+        const hasDrone = (roleCounts['drone_b'] || roleCounts['blue_drone'] || roleCounts['drone'] || 0) > 0;
+        const hasFist = (roleCounts['fist_r'] || roleCounts['red_fist'] || roleCounts['fist'] || 0) > 0;
+        return hasDrone && hasFist;
+      }, [roleCounts]);
+
       const currentHostageCount = useMemo(() => getHostageCount(players.length, roundSettings.length, currentRoundIndex), [players.length, roundSettings.length, currentRoundIndex]);
 
       const activeRolesInDeck = useMemo(() => {
@@ -1796,36 +1806,63 @@
         }
       };
 
+      // 完整決策樹勝負推導運算
       const resolveGameResult = (ans) => {
-        const { sameRoom, engineerShared, doctorShared } = ans;
-        if (sameRoom) {
-          if (hasEngineerInGame) {
-            if (engineerShared) return '紅隊獲勝';
-            return hasDoctorInGame && doctorShared ? '藍隊獲勝' : '沒有隊伍獲勝';
+        const {
+          presBombSameRoom,
+          engineerShared,
+          doctorShared,
+          pyroShared,
+          firefighterShared,
+          droneFistSameRoom
+        } = ans;
+
+        const checkDroneFist = (ifSame, ifDiff) => (droneFistSameRoom ? ifSame : ifDiff);
+
+        if (presBombSameRoom) {
+          if (engineerShared) {
+            return checkDroneFist('沒有隊伍獲勝', '紅隊獲勝');
+          } else {
+            if (doctorShared) {
+              return checkDroneFist('藍隊獲勝', '沒有隊伍獲勝');
+            } else {
+              return '沒有隊伍獲勝';
+            }
           }
-          return '紅隊獲勝';
         } else {
-          if (hasDoctorInGame) {
-            if (doctorShared) return '藍隊獲勝';
-            return hasEngineerInGame && engineerShared ? '紅隊獲勝' : '沒有隊伍獲勝';
+          if (pyroShared) {
+            if (firefighterShared) {
+              if (doctorShared) {
+                return checkDroneFist('藍隊獲勝', '沒有隊伍獲勝');
+              } else {
+                if (engineerShared) {
+                  return checkDroneFist('沒有隊伍獲勝', '紅隊獲勝');
+                } else {
+                  return '沒有隊伍獲勝';
+                }
+              }
+            } else {
+              if (engineerShared) {
+                return '紅隊獲勝';
+              } else {
+                if (doctorShared) {
+                  return checkDroneFist('藍隊獲勝', '沒有隊伍獲勝');
+                } else {
+                  return '沒有隊伍獲勝';
+                }
+              }
+            }
+          } else {
+            if (doctorShared) {
+              return checkDroneFist('藍隊獲勝', '沒有隊伍獲勝');
+            } else {
+              if (engineerShared) {
+                return checkDroneFist('沒有隊伍獲勝', '紅隊獲勝');
+              } else {
+                return '沒有隊伍獲勝';
+              }
+            }
           }
-          return '藍隊獲勝';
-        }
-      };
-
-      const handleVictoryAnswer = (key, val) => {
-        const updatedAns = { ...victoryAns, [key]: val };
-        setVictoryAns(updatedAns);
-
-        if (key === 'sameRoom') {
-          if (val === true) hasEngineerInGame ? setVictoryStep(2) : finalizeVictory(updatedAns);
-          else hasDoctorInGame ? setVictoryStep(3) : finalizeVictory(updatedAns);
-        } else if (key === 'engineerShared') {
-          if (victoryAns.sameRoom === true && val === false && hasDoctorInGame) setVictoryStep(4);
-          else finalizeVictory(updatedAns);
-        } else if (key === 'doctorShared') {
-          if (victoryAns.sameRoom === false && val === false && hasEngineerInGame) setVictoryStep(5);
-          else finalizeVictory(updatedAns);
         }
       };
 
@@ -1834,6 +1871,70 @@
         setGameResult(result);
         setShowVictoryModal(false);
         broadcastLatest({ gameResult: result });
+      };
+
+      // 支援不在牌池的角色自動跳過穿透
+      const proceedVictoryStep = (nextStep, currentAns) => {
+        if ([2, 7, 8, 11].includes(nextStep) && !hasEngineerInGame) {
+          return handleVictoryAnswer('engineerShared', false, currentAns, nextStep);
+        }
+        if ([4, 6, 9, 10].includes(nextStep) && !hasDoctorInGame) {
+          return handleVictoryAnswer('doctorShared', false, currentAns, nextStep);
+        }
+        if (nextStep === 3 && !hasPyroInGame) {
+          return handleVictoryAnswer('pyroShared', false, currentAns, nextStep);
+        }
+        if (nextStep === 5 && !hasFirefighterInGame) {
+          return handleVictoryAnswer('firefighterShared', false, currentAns, nextStep);
+        }
+        if (nextStep === 'drone_check' && !hasDroneFistInGame) {
+          return handleVictoryAnswer('droneFistSameRoom', false, currentAns, nextStep);
+        }
+
+        setVictoryStep(nextStep);
+      };
+
+      const handleVictoryAnswer = (key, val, baseAns = victoryAns, fromStep = victoryStep) => {
+        const updatedAns = { ...baseAns, [key]: val };
+        setVictoryAns(updatedAns);
+
+        if (key === 'presBombSameRoom') {
+          proceedVictoryStep(val ? 2 : 3, updatedAns);
+        } else if (key === 'engineerShared') {
+          if (fromStep === 2) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else proceedVictoryStep(4, updatedAns);
+          } else if (fromStep === 7) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else finalizeVictory(updatedAns);
+          } else if (fromStep === 8) {
+            if (val) finalizeVictory(updatedAns);
+            else proceedVictoryStep(9, updatedAns);
+          } else if (fromStep === 11) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else finalizeVictory(updatedAns);
+          }
+        } else if (key === 'doctorShared') {
+          if (fromStep === 4) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else finalizeVictory(updatedAns);
+          } else if (fromStep === 6) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else proceedVictoryStep(7, updatedAns);
+          } else if (fromStep === 9) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else finalizeVictory(updatedAns);
+          } else if (fromStep === 10) {
+            if (val) proceedVictoryStep('drone_check', updatedAns);
+            else proceedVictoryStep(11, updatedAns);
+          }
+        } else if (key === 'pyroShared') {
+          proceedVictoryStep(val ? 5 : 10, updatedAns);
+        } else if (key === 'firefighterShared') {
+          proceedVictoryStep(val ? 6 : 8, updatedAns);
+        } else if (key === 'droneFistSameRoom') {
+          finalizeVictory(updatedAns);
+        }
       };
 
       const handleTouchMove = (e) => {
@@ -2475,7 +2576,6 @@
                         const defaultIsBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';
                         const defaultWinner = defaultIsRedWinner || defaultIsBlueWinner;
 
-                        // 判斷手動覆蓋或預設勝利
                         const isWinner = (p.manualWinner !== undefined && p.manualWinner !== null)
                           ? p.manualWinner
                           : defaultWinner;
@@ -2994,7 +3094,7 @@
             </div>
           )}
 
-          {/* 彈窗：勝負判定推導 */}
+          {/* 彈窗：勝負判定推導（依圖片流程自適應跳題） */}
           {showVictoryModal && isHost && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
@@ -3005,68 +3105,80 @@
                   <button onClick={() => setShowVictoryModal(false)} className="text-zinc-400 hover:text-white">✕</button>
                 </div>
 
+                {/* 步驟 1: 炸彈客與總統 */}
                 {victoryStep === 1 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      👔 總統 與 💣 炸彈客<br />在同一個房間嗎？
+                      💣 炸彈客 與 👔 總統<br />在同一個房間嗎？
                     </p>
                     <div className="flex gap-3">
-                      <button
-                        onClick={() => handleVictoryAnswer('sameRoom', true)}
-                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        是 (在同房間)
-                      </button>
-                      <button
-                        onClick={() => handleVictoryAnswer('sameRoom', false)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        否 (在不同房間)
-                      </button>
+                      <button onClick={() => handleVictoryAnswer('presBombSameRoom', true)} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition active:scale-95">是 (同房間)</button>
+                      <button onClick={() => handleVictoryAnswer('presBombSameRoom', false)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition active:scale-95">否 (不同房間)</button>
                     </div>
                   </div>
                 )}
 
-                {(victoryStep === 2 || victoryStep === 5) && (
+                {/* 步驟 3: 煙火專家 */}
+                {victoryStep === 3 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      💣 炸彈客 有和 ⚙️ 工程師<br />進行『卡片分享』嗎？
+                      🎆 煙火專家 有和 💣 炸彈客<br />分享卡片嗎？
                     </p>
                     <div className="flex gap-3">
-                      <button
-                        onClick={() => handleVictoryAnswer('engineerShared', true)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        是
-                      </button>
-                      <button
-                        onClick={() => handleVictoryAnswer('engineerShared', false)}
-                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        否
-                      </button>
+                      <button onClick={() => handleVictoryAnswer('pyroShared', true)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95">是</button>
+                      <button onClick={() => handleVictoryAnswer('pyroShared', false)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95">否</button>
                     </div>
                   </div>
                 )}
 
-                {(victoryStep === 3 || victoryStep === 4) && (
+                {/* 步驟 5: 消防員 */}
+                {victoryStep === 5 && (
                   <div className="space-y-4 text-center">
                     <p className="text-base font-black text-white">
-                      👔 總統 有和 🩺 醫生<br />進行『卡片分享』嗎？
+                      🧑‍🚒 消防員 有和 👔 總統<br />分享卡片嗎？
                     </p>
                     <div className="flex gap-3">
-                      <button
-                        onClick={() => handleVictoryAnswer('doctorShared', true)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        是
-                      </button>
-                      <button
-                        onClick={() => handleVictoryAnswer('doctorShared', false)}
-                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95"
-                      >
-                        否
-                      </button>
+                      <button onClick={() => handleVictoryAnswer('firefighterShared', true)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95">是</button>
+                      <button onClick={() => handleVictoryAnswer('firefighterShared', false)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95">否</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 工程師確認 (步驟 2, 7, 8, 11) */}
+                {[2, 7, 8, 11].includes(victoryStep) && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      💣 炸彈客 有和 ⚙️ 工程師<br />分享卡片嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleVictoryAnswer('engineerShared', true)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95">是</button>
+                      <button onClick={() => handleVictoryAnswer('engineerShared', false)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95">否</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 醫生確認 (步驟 4, 6, 9, 10) */}
+                {[4, 6, 9, 10].includes(victoryStep) && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      👔 總統 有和 🩺 醫生<br />分享卡片嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleVictoryAnswer('doctorShared', true)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition active:scale-95">是</button>
+                      <button onClick={() => handleVictoryAnswer('doctorShared', false)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95">否</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 藍色無人機與紅色鐵拳同房確認 */}
+                {victoryStep === 'drone_check' && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-base font-black text-white">
+                      🛸 藍色無人機 與 🥊 紅色鐵拳<br />在同一個房間嗎？
+                    </p>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleVictoryAnswer('droneFistSameRoom', true)} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl transition active:scale-95">是 (同房間)</button>
+                      <button onClick={() => handleVictoryAnswer('droneFistSameRoom', false)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl transition active:scale-95">否 (不同房間)</button>
                     </div>
                   </div>
                 )}
