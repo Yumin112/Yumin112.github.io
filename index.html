@@ -1626,26 +1626,26 @@
 
         // 1. 工程師分享相關提問
         if (nodeKey.includes('ENG')) {
-          const hasEngineer = isRoleInGame(['engineer', 'engineer_r']);
+          const hasEngineer = isRoleInGame(['engineer']);
           if (!hasEngineer) return true; // 未加入則自動回答「是」
         }
 
         // 2. 醫生分享相關提問
         if (nodeKey.includes('DOC')) {
-          const hasDoctor = isRoleInGame(['doctor', 'doctor_b']);
+          const hasDoctor = isRoleInGame(['doctor']);
           if (!hasDoctor) return true; // 未加入則自動回答「是」
         }
 
         // 3. 煙火專家相關提問
         if (nodeKey.includes('PYRO')) {
-          const hasPyro = isRoleInGame(['pyro', 'pyrotechnician', 'pyrotechnician_r']);
+          const hasPyro = isRoleInGame(['pyrotech']);
           if (!hasPyro) return false; // 未加入則自動回答「否」
         }
 
         // 4. 藍色無人機與紅色鐵拳同房提問
         if (nodeKey.includes('DRONE')) {
-          const hasDrone = isRoleInGame(['drone_b', 'drone']);
-          const hasFist = isRoleInGame(['fist_r', 'iron_fist_r', 'fist']);
+          const hasDrone = isRoleInGame(['blue_drone']);
+          const hasFist = isRoleInGame(['red_fist']);
           const hasBoth = hasDrone && hasFist;
 
           if (!hasBoth) {
