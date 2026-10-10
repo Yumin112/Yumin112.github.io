@@ -175,10 +175,10 @@
         promptText: '選擇一位玩家吸收為【會員】。對方同意後將成為光明會的成員。'
       },
       ...createPairedStatus('alien', {
-        statusId: 'card_cloaked', statusName: '隱匿', statusIcon: '😶‍🌫️',
-        btnLabel: '👽 施加角色隱匿', badge: '外星人 專屬',
+        statusId: 'card_cloaked', statusName: '遮蔽', statusIcon: '😶‍🌫️',
+        btnLabel: '👽 施加身分遮蔽', badge: '外星人 專屬',
         style: 'from-teal-600 to-cyan-800 hover:from-teal-500 hover:to-cyan-700 border-teal-400 text-white',
-        promptText: '選擇一位玩家隱匿其身分卡（對方卡牌的角色、顏色與技能資訊將被隱藏）。'
+        promptText: '選擇一位玩家遮蔽其身分卡（對方卡牌的角色、顏色與技能資訊將被隱藏）。'
       }),
       ...createPairedStatus('thug', {
         statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
@@ -292,11 +292,11 @@
 
     const ROLE_CLEAR_STATUS_ACTIONS = {
       ...createPairedStatus('psychologist', {
-        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed', 'card_cloaked'],
+        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed'],
         btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
         actionTitle: '治癒心理狀態',
         style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】、【裸露】或【隱匿】狀態。'
+        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】或【裸露】狀態。'
       }),
       loyalist_b: {
         filterStatusIds: ['traitor', 'cultist', 'enlightened', 'jury'],
@@ -2452,7 +2452,7 @@
           senderId: myPlayerId,
           initiatorId: myPlayerId,
           initiatorName: myInfo.name,
-          initiatorRoleName: isCardCloaked ? '被隱匿的玩家' : (myInfo.role?.name || '未知角色'),
+          initiatorRoleName: isCardCloaked ? '被遮蔽的玩家' : (myInfo.role?.name || '未知角色'),
           initiatorRoleIcon: isCardCloaked ? '😶‍🌫️' : (myInfo.role?.icon || '⭐'),
           targetId: targetPlayer.id,
           statusObj: {
@@ -3105,7 +3105,7 @@
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
                     {isCardCloaked 
-                      ? '🛸 你的身分與記憶已遭外星人遮蔽！卡面無法進行顏色分享。' 
+                      ? '😶‍🌫️ 你已遭到遮蔽！無法將卡片框框按住分享顏色。' 
                       : (isColorOnly ? '🤝 正在顏色分享（移開框框或放開立即復原）' : '👇 在卡片框框按住分享顏色（滑出框外立刻恢復）')}
                   </span>
                 </div>
@@ -3154,7 +3154,7 @@
                           <div className="p-3 bg-zinc-950/80 border border-teal-800/60 rounded-xl space-y-1">
                             <p className="text-xs font-bold text-teal-200">你的資訊被遮蔽！</p>
                             <p className="text-[11px] text-zinc-400 leading-relaxed">
-                              本局身分、隊伍顏色與角色能力說明已被遮蔽，無法向他人進行顏色分享。原角色技能仍可使用（按鈕專屬文字已隱匿）。
+                              本局身分、隊伍顏色與角色能力說明已被遮蔽，無法向他人進行顏色分享。原角色技能仍可使用（按鈕專屬文字已遮蔽）。
                             </p>
                           </div>
                         </div>
@@ -3393,7 +3393,7 @@
                 </p>
                 <p className="text-xs text-zinc-400">
                   {statusPromptData.statusObj.id === 'card_cloaked'
-                    ? '⚠️ 提示：你的身分卡將進入隱匿狀態。是否確認同意？'
+                    ? '⚠️ 提示：你的身分卡將被遮蔽。是否確認同意？'
                     : '若同意，此狀態將正式附加至你身上。是否確認同意？'}
                 </p>
 
