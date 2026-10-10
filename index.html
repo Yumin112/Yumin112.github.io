@@ -385,9 +385,30 @@
       };
     };
 
-    const createDualStatusGrantAction = ({ statusId, statusName, statusIcon, btnLabel, badge, style, promptDesc, firstRoundOnly }) => (ctx) => {
-      if (ctx.myPlayerState?.hasUsedDualTargetAbility) return null;
-      if (firstRoundOnly && ctx.currentRoundIndex !== 0) return null;
+    // 優化版多功能雙目標動作建構函式
+    const createDualStatusGrantAction = ({
+      statusId,
+      statusName,
+      statusIcon,
+      btnLabel,
+      badge,
+      style,
+      promptDesc,
+      onceOnly = true,             // 只能用一次 (預設為 true)
+      firstRoundOnly = false,       // 只能在第 1 輪用
+      lastRoundOnly = false,        // 只能在最後 1 輪用
+      beforeLastRoundOnly = false   // 只能在最後 1 輪以前用
+    }) => (ctx) => {
+      // 只能用一次限制
+      if (onceOnly && ctx.myPlayerState?.hasUsedDualTargetAbility) return null;
+
+      const currentRound = ctx.currentRoundIndex;
+      const lastRound = ctx.roundSettings.length - 1;
+
+      // 回合限制判定
+      if (firstRoundOnly && currentRound !== 0) return null;
+      if (lastRoundOnly && currentRound !== lastRound) return null;
+      if (beforeLastRoundOnly && currentRound >= lastRound) return null;
 
       return {
         label: btnLabel,
@@ -443,10 +464,12 @@
       },
       trader_b: {
         getActionButton: (ctx) => {
+          // 修復：已使用過則按鈕隱藏
+          if (ctx.myPlayerState?.hasUsedTraderAbility) return null;
           if (!ctx.buriedCard) return null;
           return {
             label: '📦 與埋葬卡互換身分',
-            badge: '走私商人 專屬',
+            badge: '走私商人 專屬/限一次',
             style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
             onClick: () => ctx.openDrunkModal()
           };
@@ -454,10 +477,12 @@
       },
       trader_r: {
         getActionButton: (ctx) => {
+          // 修復：已使用過則按鈕隱藏
+          if (ctx.myPlayerState?.hasUsedTraderAbility) return null;
           if (!ctx.buriedCard) return null;
           return {
             label: '📦 與埋葬卡互換身分',
-            badge: '走私商人 專屬',
+            badge: '走私商人 專屬/限一次',
             style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
             onClick: () => ctx.openDrunkModal()
           };
@@ -492,7 +517,8 @@
           statusId: 'hatred', statusName: '憎恨', statusIcon: '⚡',
           btnLabel: '⚡ 賦予兩人【憎恨】狀態', badge: '整場限一次',
           style: 'from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 border-blue-400 text-white',
-          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家，發送【憎恨】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。'
+          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家，發送【憎恨】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。',
+          onceOnly: true
         })
       },
       cupid: {
@@ -500,7 +526,8 @@
           statusId: 'in_love', statusName: '相愛', statusIcon: '💘',
           btnLabel: '💘 賦予兩人【相愛】狀態', badge: '整場限一次',
           style: 'from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 border-rose-300 text-white',
-          promptDesc: '💘 愛神規則：選擇兩名其他玩家，發送【相愛】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。'
+          promptDesc: '💘 愛神規則：選擇兩名其他玩家，發送【相愛】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。',
+          onceOnly: true
         })
       },
       father: {
@@ -509,6 +536,7 @@
           btnLabel: '👨 賦予兩人【父親的孩子】', badge: '限第1輪/限一次',
           style: 'from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 border-amber-400 text-white',
           promptDesc: '👨 父親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【父親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
+          onceOnly: true,
           firstRoundOnly: true
         })
       },
@@ -518,11 +546,13 @@
           btnLabel: '👩 賦予兩人【母親的孩子】', badge: '限第1輪/限一次',
           style: 'from-pink-600 to-purple-700 hover:from-pink-500 hover:to-purple-600 border-pink-400 text-white',
           promptDesc: '👩 母親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【母親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
+          onceOnly: true,
           firstRoundOnly: true
         })
       },
       time_lord_b: {
         getActionButton: (ctx) => {
+          // 修復：已使用過則按鈕隱藏
           if (ctx.myPlayerState?.hasUsedTimeLordAbility) return null;
           return {
             label: '⏳ 扭曲時間 (±60秒)',
@@ -534,6 +564,7 @@
       },
       time_lord_r: {
         getActionButton: (ctx) => {
+          // 修復：已使用過則按鈕隱藏
           if (ctx.myPlayerState?.hasUsedTimeLordAbility) return null;
           return {
             label: '⏳ 扭曲時間 (±60秒)',
@@ -623,6 +654,7 @@
 
         const oldRole = drunkPlayer.role;
         const newRole = curBuried;
+        const isTrader = (oldRole?.id === 'trader_b' || oldRole?.id === 'trader_r');
 
         const nextPlayers = playersList.map(p => {
           if (p.id === drunkPlayerId) {
@@ -630,7 +662,8 @@
               ...p,
               role: newRole,
               team: newRole.team,
-              hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun')
+              hasBeenLeprechaun: p.hasBeenLeprechaun || (newRole?.id === 'leprechaun'),
+              hasUsedTraderAbility: isTrader ? true : p.hasUsedTraderAbility
             };
           }
           return p;
@@ -874,7 +907,6 @@
       const [selectedDualTargets, setSelectedDualTargets] = useState([]);
       const [dualStatusPendingData, setDualStatusPendingData] = useState(null);
 
-      // 時間領主與幻形者彈窗 State
       const [showTimeLordModal, setShowTimeLordModal] = useState(false);
       const [showChangerModal, setShowChangerModal] = useState(false);
 
@@ -1043,7 +1075,7 @@
 
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
@@ -1296,7 +1328,7 @@
           if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
           };
 
           if (asHost) {
@@ -1515,7 +1547,7 @@
           // === 所有玩家通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
             return;
@@ -1526,6 +1558,9 @@
             const shiftText = data.delta > 0 ? `+${data.delta} 秒` : `${data.delta} 秒`;
             setSwapStatusMessage(`⏳ ${data.userName} 發動【時間扭曲】！當前回合時間 ${shiftText}！`);
             setTimeout(() => setSwapStatusMessage(''), 4000);
+
+            // 更新使用標記
+            setPlayers(prev => prev.map(p => p.id === data.senderId ? { ...p, hasUsedTimeLordAbility: true } : p));
 
             if (latestStateRef.current.isHost) {
               const cur = latestStateRef.current;
@@ -1899,7 +1934,7 @@
           if (initialList.length === 0) {
             initialList = [{
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
             }];
           }
           setPlayers(initialList);
@@ -2041,7 +2076,7 @@
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
-          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
+          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
         };
 
         StorageManager.saveSession(code, trimmedName, true);
@@ -2126,7 +2161,7 @@
 
             const selfPlayer = {
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
             };
             setPlayers([selfPlayer]);
             setupConnection(code, false, trimmedName, myPlayerId);
@@ -2220,6 +2255,7 @@
           hasUsedDualTargetAbility: false,
           hasUsedTimeLordAbility: false,
           hasUsedChangerAbility: false,
+          hasUsedTraderAbility: false,
           manualWinner: null,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
@@ -2262,6 +2298,7 @@
             hasUsedDualTargetAbility: false,
             hasUsedTimeLordAbility: false,
             hasUsedChangerAbility: false,
+            hasUsedTraderAbility: false,
             manualWinner: null,
             statuses: initialStatuses
           };
@@ -2410,6 +2447,8 @@
         setShowDrunkConfirmModal(false);
         if (!buriedCard) return;
 
+        const isTrader = (myInfo.role?.id === 'trader_b' || myInfo.role?.id === 'trader_r');
+
         if (latestStateRef.current.isHost) {
           const curBuried = latestStateRef.current.buriedCard;
           setPlayers(prev => {
@@ -2419,6 +2458,10 @@
             return nextPlayers;
           });
         } else {
+          // 本地優先記錄標記以立即隱藏按鈕
+          if (isTrader) {
+            setPlayers(prev => prev.map(p => p.id === myPlayerId ? { ...p, hasUsedTraderAbility: true } : p));
+          }
           publishMsg(`trb_game_sync_room_${roomId}`, {
             type: 'EXECUTE_DRUNK_SWAP', senderId: myPlayerId, playerId: myPlayerId
           });
