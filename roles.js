@@ -82,8 +82,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'bully_b', name: '惡霸 (Bully)', team: 'blue', icon: '😠', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_r' },
   { id: 'bully_r', name: '惡霸 (Bully)', team: 'red', icon: '😠', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_b' },
   //奪取卡牌的角色加機制 外星人 盜身魔 身分竊賊 獵人 異形獵手
-  //{ id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
-  //{ id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
+  { id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
+  { id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
   //{ id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
   //{ id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
   //{ id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '👥', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_r' },
