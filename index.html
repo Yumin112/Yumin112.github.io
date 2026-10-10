@@ -681,20 +681,64 @@
       </header>
     );
 
-    const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck }) => (
-      <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🃏</span>
-            <h3 className="font-bold text-white text-sm sm:text-base">本局使用角色池一覽</h3>
-          </div>
-          <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
-            總共 {totalCardsInDeck} 張卡片
-          </span>
+const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog }) => {
+  // 'deck' 代表只看本局卡池，'all' 代表查看所有角色
+  const [viewMode, setViewMode] = useState('deck');
+
+  // 整理所有官方角色的分組列表（依角色名稱合併同名不同陣營）
+  const allRolesGrouped = useMemo(() => {
+    if (!allRolesCatalog) return [];
+    const groups = {};
+    allRolesCatalog.forEach(role => {
+      if (!groups[role.name]) {
+        groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };
+      } else if (!groups[role.name].teams.includes(role.team)) {
+        groups[role.name].teams.push(role.team);
+      }
+    });
+    return Object.values(groups);
+  }, [allRolesCatalog]);
+
+  const displayRoles = viewMode === 'deck' ? activeRolesInDeck : allRolesGrouped;
+
+  return (
+    <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl transition-all">
+      <div className="flex flex-wrap items-center justify-between pb-3 mb-4 border-b border-zinc-800 gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{viewMode === 'deck' ? '🃏' : '📖'}</span>
+          <h3 className="font-bold text-white text-sm sm:text-base">
+            {viewMode === 'deck' ? '本局使用角色池一覽' : '完整官方角色總覽'}
+          </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {activeRolesInDeck.map(group => {
+        <div className="flex items-center gap-2">
+          {/* 切換檢視按鈕 */}
+          <button
+            type="button"
+            onClick={() => setViewMode(prev => prev === 'deck' ? 'all' : 'deck')}
+            className={`text-xs px-3 py-1.5 rounded-lg border font-bold transition flex items-center gap-1 active:scale-95 ${
+              viewMode === 'all'
+                ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 hover:bg-indigo-600/40'
+                : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
+            }`}
+          >
+            <span>{viewMode === 'deck' ? '🌐 查看所有角色' : '🔙 只看本局角色'}</span>
+          </button>
+
+          {/* 右側標籤 */}
+          <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full font-medium border border-indigo-500/30">
+            {viewMode === 'deck' ? `本局 ${totalCardsInDeck} 張卡片` : `共 ${allRolesGrouped.length} 種角色`}
+          </span>
+        </div>
+      </div>
+
+      {displayRoles.length === 0 ? (
+        <div className="text-center py-8 text-zinc-500 text-xs">
+          暫無啟用的角色卡片
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+          {displayRoles.map(group => {
             const hasBlue = group.teams.includes('blue');
             const hasRed = group.teams.includes('red');
             let bgStyle = 'bg-zinc-900/40 border-zinc-800';
@@ -707,7 +751,7 @@
             return (
               <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
                 <div className="flex items-start gap-2.5">
-                  <span className="text-2xl mt-0.5">{group.icon}</span>
+                  <span className="text-2xl mt-0.5 shrink-0">{group.icon}</span>
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-sm text-zinc-100">{group.name}</span>
@@ -724,8 +768,10 @@
             );
           })}
         </div>
-      </div>
-    );
+      )}
+    </div>
+  );
+};
 
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || DEFAULT_ROLES;
@@ -2614,8 +2660,11 @@
                 </div>
               </div>
 
-              <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
-            </div>
+<RoleCatalogCard
+  activeRolesInDeck={activeRolesInDeck}
+  totalCardsInDeck={totalCardsInDeck}
+  allRolesCatalog={rolesCatalog}
+/>            </div>
           )}
 
           {gameState === 'game' && (
@@ -3087,8 +3136,11 @@
                 </div>
               </div>
 
-              <RoleCatalogCard activeRolesInDeck={activeRolesInDeck} totalCardsInDeck={totalCardsInDeck} />
-            </div>
+<RoleCatalogCard
+  activeRolesInDeck={activeRolesInDeck}
+  totalCardsInDeck={totalCardsInDeck}
+  allRolesCatalog={rolesCatalog}
+/>            </div>
           )}
 
           {/* 彈窗：特殊狀態賦予目標選擇 */}
