@@ -221,7 +221,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'cult_leader', name: '邪教教主 (Cult Leader)', team: 'purple', icon: '🛐', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"信徒"狀態。遊戲結束時，若「邪教教主」曾與「猶格·索托斯」進行過『角色分享』，且信徒人數超過總人數1/3(無條件捨棄小數點)，全體"信徒"與「邪教教主」獲得共同勝利。', pairs: 'yog_sothoth' },
   { id: 'yog_sothoth', name: '猶格·索托斯 (Yog Sothoth)', team: 'purple', icon: '🌌', desc: '你是一名地位極其崇高且神祕的邪神！若你在遊戲中與"信徒"進行過『角色分享』，且你從來沒有和「邪教教主」進行過『角色分享』，即可帶著該名"信徒"玩家找到房主終止遊戲，你直接獨自獲勝。', pairs: 'cult_leader' },
   { id: 'illuminati', name: '光明會 (Illuminati)', team: 'orange', icon: '🪙', desc: '每當你與一名玩家進行『角色分享』，該玩家獲得"會員"狀態：可自由選擇要不要幫助「光明會」，"會員"仍可以維持原角色勝利條件。遊戲結束時，若房間領袖都是"會員"，且「光明會」沒有與「私家偵探」進行過『角色分享』，則世界又被暗中掌控，全體"會員"與「光明會」獲得共同勝利。', pairs: 'private_investigator' },
-  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'orange', icon: '🔍', desc: '你是一名調查地下權力的偵探！當你在遊戲中與"會員"進行『角色分享』時可以詢問一個是非題，對方必須誠實作答；若與「光明會」進行過『角色分享』，則你也獲勝', pairs: 'illuminati' },
+  { id: 'private_investigator', name: '私家偵探 (Private Investigator)', team: 'orange', icon: '🔍', desc: '你是一名調查地下權力的偵探！每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』。當你在遊戲中與"會員"進行『角色分享』時可以詢問一個是非題，對方必須誠實作答；若與「光明會」進行過『角色分享』，則你也獲勝', pairs: 'illuminati' },
   { id: 'zombie', name: '殭屍 (Zombie)', team: 'green', icon: '🧟', desc: '任何與你進行『角色分享』或『顏色分享』者皆感染"殭屍"狀態！全體存活玩家皆變成"殭屍"即獲勝。' },
   //{ id: 'amnesiac', name: '失憶症患者 (Amnesiac)', team: 'brown', icon: '😵', desc: ' 。' },
   { id: 'drunk', name: '酒鬼 (Drunk)', team: 'brown', icon: '🍺', desc: '在最後一回合開始時，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。' },
