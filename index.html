@@ -63,11 +63,7 @@
       { id: 'pres', name: '總統', team: 'blue', icon: '👔', desc: '藍隊核心。遊戲結束時若與炸彈客在同一房間則紅隊獲勝。' },
       { id: 'bomb', name: '炸彈客', team: 'red', icon: '💣', desc: '紅隊核心。遊戲結束時若與總統在同一房間則紅隊獲勝。' },
       { id: 'doctor', name: '醫生', team: 'blue', icon: '🩺', desc: '藍隊輔助。可以分享卡片給總統以保護總統。' },
-      { id: 'engineer', name: '工程師', team: 'red', icon: '⚙️', desc: '紅隊輔助。可以分享卡片給炸彈客協助安裝炸彈。' },
-      { id: 'seer_b', name: '通靈者', team: 'blue', icon: '🔮', desc: '第一輪前30秒內可透視全場身分。' },
-      { id: 'seer_r', name: '通靈者', team: 'red', icon: '🔮', desc: '第一輪前30秒內可透視全場身分。' },
-      { id: 'alien_b', name: '外星人', team: 'blue', icon: '👽', desc: '可發動降維打擊遮蔽一位玩家的記憶與身分卡。' },
-      { id: 'alien_r', name: '外星人', team: 'red', icon: '👽', desc: '可發動降維打擊遮蔽一位玩家的記憶與身分卡。' }
+      { id: 'engineer', name: '工程師', team: 'red', icon: '⚙️', desc: '紅隊輔助。可以分享卡片給炸彈客協助安裝炸彈。' }
     ];
 
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
@@ -179,7 +175,7 @@
         promptText: '選擇一位玩家吸收為【會員】。對方同意後將成為光明會的成員。'
       },
       ...createPairedStatus('alien', {
-        statusId: 'card_cloaked', statusName: '隱匿', statusIcon: '👽',
+        statusId: 'card_cloaked', statusName: '隱匿', statusIcon: '😶‍🌫️',
         btnLabel: '👽 施加角色隱匿', badge: '外星人 專屬',
         style: 'from-teal-600 to-cyan-800 hover:from-teal-500 hover:to-cyan-700 border-teal-400 text-white',
         promptText: '選擇一位玩家隱匿其身分卡（對方卡牌的角色、顏色與技能資訊將被隱藏）。'
