@@ -71,19 +71,9 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'loyalist_r', name: '效忠者 (Loyalist)', team: 'red', icon: '🛡️', desc: '免疫"叛徒"狀態，進行『角色揭露』給擁有"叛徒"、"信徒"、"會員"或"陪審團"狀態的玩家時，對方可與你『角色分享』並自行選擇是否移除這些狀態。', pairs: 'loyalist_b' },
   { id: 'medic_b', name: '醫療兵 (Medic)', team: 'blue', icon: '🏥', desc: '進行『角色揭露』給擁有"殭屍"、"咬傷"、"石化"、"連結"、"精明"或"愚蠢"狀態的玩家時，對方可與你『角色分享』並自行選擇是否治癒這些狀態。', pairs: 'medic_r' },
   { id: 'medic_r', name: '醫療兵 (Medic)', team: 'red', icon: '🏥', desc: '進行『角色揭露』給擁有"殭屍"、"咬傷"、"石化"、"連結"、"精明"或"愚蠢"狀態的玩家時，對方可與你『角色分享』並自行選擇是否治癒這些狀態。', pairs: 'medic_b' },
-  
-  // 藍/紅隊卡牌資訊類 (Blue,red)
-  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
-  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
-  { id: 'interrogator_b', name: '審訊官 (Interrogator)', team: 'blue', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_r' },
-  { id: 'interrogator_r', name: '審訊官 (Interrogator)', team: 'red', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_b' },
-  { id: 'enforcer_b', name: '執法者 (Enforcer)', team: 'blue', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_r' },
-  { id: 'enforcer_r', name: '執法者 (Enforcer)', team: 'red', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_b' },
-  { id: 'bully_b', name: '惡霸 (Bully)', team: 'blue', icon: '😠', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_r' },
-  { id: 'bully_r', name: '惡霸 (Bully)', team: 'red', icon: '😠', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_b' },
+  { id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '與你進行『角色分享』的玩家獲得"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'alien_r' },
+  { id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '與你進行『角色分享』的玩家獲得"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'alien_b' },
   //奪取卡牌的角色加機制 外星人 盜身魔 身分竊賊 獵人 異形獵手
-  { id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_r' },
-  { id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '進行『角色分享』時強行綁架扣留對方的卡牌，使其無法再向任何人亮牌。', pairs: 'alien_b' },
   //{ id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
   //{ id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
   //{ id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '👥', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_r' },
@@ -95,6 +85,16 @@ window.OFFICIAL_ROLES_CATALOG = [
   //{ id: 'hunter_r', name: '獵人 (Hunter)', team: 'red', icon: '🏹', desc: '若有非同隊陣營的玩家對你使用『角色分享』類的技能，你可以沒收其角色卡牌且不受其技能影響。', pairs: 'hunter_b' },
   //{ id: 'informer_b', name: '告密者 (Informer)', team: 'blue', icon: '✉️', desc: '紅隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_r' },
   //{ id: 'informer_r', name: '告密者 (Informer)', team: 'red', icon: '✉️', desc: '藍隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_b' },
+  
+  // 藍/紅隊卡牌資訊類 (Blue,red)
+  { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
+  { id: 'agent_r', name: '特務 (Agent)', team: 'red', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_b' },
+  { id: 'interrogator_b', name: '審訊官 (Interrogator)', team: 'blue', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_r' },
+  { id: 'interrogator_r', name: '審訊官 (Interrogator)', team: 'red', icon: '🔦', desc: '每回合只能用一次，向對方進行『角色揭露』並詢問一個是非題，對方必須誠實作答。', pairs: 'interrogator_b' },
+  { id: 'enforcer_b', name: '執法者 (Enforcer)', team: 'blue', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_r' },
+  { id: 'enforcer_r', name: '執法者 (Enforcer)', team: 'red', icon: '📋', desc: '每回合只能用一次，向兩名玩家進行『角色揭露』，告訴他們「你們必須互相進行『角色分享』！」。', pairs: 'enforcer_b' },
+  { id: 'bully_b', name: '惡霸 (Bully)', team: 'blue', icon: '😠', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_r' },
+  { id: 'bully_r', name: '惡霸 (Bully)', team: 'red', icon: '😠', desc: '當有人同意與你進行『顏色分享』時，改為『角色揭露』，強制對方也必須『角色揭露』。', pairs: 'bully_b' },
   { id: 'mad_scientist_b', name: '瘋狂科學家 (Mad Scientist)', team: 'blue', icon: '🧪', desc: '整場限一次，進行『角色揭露』給兩名玩家，強迫這兩名玩家強制互換角色卡牌。', pairs: 'mad_scientist_r' },
   { id: 'mad_scientist_r', name: '瘋狂科學家 (Mad Scientist)', team: 'red', icon: '🧪', desc: '整場限一次，進行『角色揭露』給兩名玩家，強迫這兩名玩家強制互換角色卡牌。', pairs: 'mad_scientist_b' },
   { id: 'paparazzo_b', name: '狗仔隊 (Paparazzo)', team: 'blue', icon: '📸', desc: '可以干擾玩家間的交談，可正大光明偷窺任何『分享』與『揭露』行為，但不可對他人動手動腳。', pairs: 'paparazzo_r' },
