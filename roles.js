@@ -145,8 +145,8 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'ninja_r', name: '忍者 (Ninja)', team: 'red', icon: '🥷', desc: '整場遊戲只能使用一次，在最後一回合開始前，你可以『公開角色』後衝入對面房間抓走一名玩家，雙方一同移出遊戲(離開遊戲場地)。', pairs: 'ninja_b' },
   { id: 'ambassador_b', name: '大使 (Ambassador)', team: 'blue', icon: '🕊️', desc: '你可以『公開角色』，你永久免疫所有技能且可以在回合進行時任意於兩房間走動，不能當人質也不算投票人數。', pairs: 'ambassador_r' },
   { id: 'ambassador_r', name: '大使 (Ambassador)', team: 'red', icon: '🕊️', desc: '你可以『公開角色』，你永久免疫所有技能且可以在回合進行時任意於兩房間走動，不能當人質也不算投票人數。', pairs: 'ambassador_b' },
-  //{ id: 'time_lord_b', name: '時間領主 (Time Lord)', team: 'blue', icon: '⏳', desc: '整場遊戲只能使用一次，『公開角色』後。', pairs: 'time_lord_r' },
-  //{ id: 'time_lord_r', name: '時間領主 (Time Lord)', team: 'red', icon: '⏳', desc: '整場遊戲只能使用一次，『公開角色』後。', pairs: 'time_lord_b' },
+  { id: 'time_lord_b', name: '時間領主 (Time Lord)', team: 'blue', icon: '⏳', desc: '整場遊戲只能使用一次，你可以『公開角色』發動時間扭曲使當前倒數[增加 60 秒]或[減少 60 秒]，發動時會通知所有玩家。', pairs: 'time_lord_r' },
+  { id: 'time_lord_r', name: '時間領主 (Time Lord)', team: 'red', icon: '⏳', desc: '整場遊戲只能使用一次，你可以『公開角色』發動時間扭曲使當前倒數[增加 60 秒]或[減少 60 秒]，發動時會通知所有玩家。', pairs: 'time_lord_b' },
   
   // 藍/紅隊特殊行為類 (Blue,red)
   { id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_r' },
@@ -210,7 +210,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'agoraphobe', name: '懼曠症患者 (Agoraphobe)', team: 'grey', icon: '🏠', desc: '在遊戲結束時，自己從來沒有離開過初始的房間時則你也獲勝。' },
   { id: 'born_leader', name: '天生領袖 (Born Leader)', team: 'grey', icon: '👑', desc: '遊戲結束時，若你身為所在房間的現任領袖則你也獲勝。' },
   { id: 'telepath', name: '心靈感應者 (Telepath)', team: 'grey', icon: '🔮', desc: '你可以『公開角色』，每回合結束前，猜測進入本房間的人質玩家是誰，猜中則你也獲勝。' },
-  //{ id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '遊戲中必須將卡牌隨機換成歡樂牌庫(沒用到的角色)中的一張牌，以新牌目標結算。' },
+  { id: 'changer', name: '幻形者 (Changer)', team: 'grey', icon: '🤹', desc: '整場遊戲只能使用一次，可啟動幻形儀式，隨機變身為本局角色池以外的全新角色，並立即繼承其陣營與勝利目標！。' },
   //{ id: 'grey_team', name: '灰隊成員 (Grey Team)', team: 'grey', icon: '⚪', desc: '。' },
   { id: 'director', name: '導演 (Director)', team: 'grey', icon: '🎥', desc: '在遊戲結束公開玩家角色卡牌前，依序點名猜測全場每一位玩家的卡牌顏色，全對則你獨自獲勝。' },
   { id: 'gambler', name: '賭徒 (Gambler)', team: 'grey', icon: '🎰', desc: '在遊戲結束後公開玩家角色卡牌前，猜測哪一隊獲勝（紅/藍/無），猜對獲勝。' },
