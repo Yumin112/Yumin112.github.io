@@ -11,7 +11,7 @@
   <!-- MQTT.js (跨裝置中繼) -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- 引入獨立隊伍與角色資料庫 (可選，已提供預設防呆) -->
+  <!-- 引入獨立隊伍與角色資料庫 (已提供預設防呆) -->
   <script src="./team.js"></script>
   <script src="./roles.js"></script>
 
@@ -80,7 +80,7 @@
     };
 
     const safeJsonParse = (str, fallback = null) => {
-      try { return JSON.parse(str); } catch (e) { return fallback; }
+      try { return JSON.parse(str); } catch { return fallback; }
     };
 
     const StorageManager = {
@@ -102,10 +102,9 @@
       },
       getContext: () => safeJsonParse(localStorage.getItem(STORAGE_KEYS.CONTEXT), {}),
       clearSession: () => {
-        localStorage.removeItem(STORAGE_KEYS.ROOM_ID);
-        localStorage.removeItem(STORAGE_KEYS.PLAYER_NAME);
-        localStorage.removeItem(STORAGE_KEYS.IS_HOST);
-        localStorage.removeItem(STORAGE_KEYS.CONTEXT);
+        Object.values(STORAGE_KEYS).forEach(k => {
+          if (k !== STORAGE_KEYS.UID) localStorage.removeItem(k);
+        });
       }
     };
 
@@ -125,42 +124,36 @@
 
     const getHostageCount = (playerCount, totalRounds, roundIndex) => {
       let schedule = [1, 1, 1, 1, 1];
-      if (playerCount <= 10) schedule = [1, 1, 1, 1, 1];
-      else if (playerCount <= 13) schedule = [2, 2, 2, 1, 1];
-      else if (playerCount <= 17) schedule = [3, 2, 2, 1, 1];
-      else if (playerCount <= 21) schedule = [4, 3, 2, 1, 1];
-      else schedule = [5, 4, 3, 2, 1];
+      if (playerCount > 21) schedule = [5, 4, 3, 2, 1];
+      else if (playerCount > 17) schedule = [4, 3, 2, 1, 1];
+      else if (playerCount > 13) schedule = [3, 2, 2, 1, 1];
+      else if (playerCount > 10) schedule = [2, 2, 2, 1, 1];
 
-      if (totalRounds === 3) {
-        return schedule.slice(2)[roundIndex] || 1;
-      }
-      return schedule[roundIndex] || 1;
+      return (totalRounds === 3 ? schedule.slice(2) : schedule)[roundIndex] || 1;
     };
 
     const formatTime = (secs) => {
       const safeSecs = Math.max(0, secs);
       const m = Math.floor(safeSecs / 60);
       const s = safeSecs % 60;
-      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    // 建立紅藍雙陣營重複狀態配置輔助函式
+    const createPairedStatus = (baseKey, statusObj) => ({
+      [`${baseKey}_b`]: statusObj,
+      [`${baseKey}_r`]: statusObj
+    });
+
     const INITIAL_ROLE_STATUSES = {
-      shy_b: { id: 'shy', name: '害羞', icon: '🙈' },
-      shy_r: { id: 'shy', name: '害羞', icon: '🙈' },
-      coy_b: { id: 'coy', name: '靦腆', icon: '😳' },
-      coy_r: { id: 'coy', name: '靦腆', icon: '😳' },
-      fool_b: { id: 'foolish', name: '愚蠢', icon: '🤪' },
-      fool_r: { id: 'foolish', name: '愚蠢', icon: '🤪' },
-      negotiator_b: { id: 'shrewd', name: '精明', icon: '🤝' },
-      negotiator_r: { id: 'shrewd', name: '精明', icon: '🤝' },
-      exhibitionist_b: { id: 'exposed', name: '裸露', icon: '🥼' },
-      exhibitionist_r: { id: 'exposed', name: '裸露', icon: '🥼' },
-      paranoid_b: { id: 'paranoid', name: '妄想', icon: '👀' },
-      paranoid_r: { id: 'paranoid', name: '妄想', icon: '👀' },
-      seer_b: { id: 'psychic', name: '通靈', icon: '🔮' },
-      seer_r: { id: 'psychic', name: '通靈', icon: '🔮' },
-      immunologist_b: { id: 'immune', name: '免疫', icon: '💊' },
-      immunologist_r: { id: 'immune', name: '免疫', icon: '💊' }
+      ...createPairedStatus('shy', { id: 'shy', name: '害羞', icon: '🙈' }),
+      ...createPairedStatus('coy', { id: 'coy', name: '靦腆', icon: '😳' }),
+      ...createPairedStatus('fool', { id: 'foolish', name: '愚蠢', icon: '🤪' }),
+      ...createPairedStatus('negotiator', { id: 'shrewd', name: '精明', icon: '🤝' }),
+      ...createPairedStatus('exhibitionist', { id: 'exposed', name: '裸露', icon: '🥼' }),
+      ...createPairedStatus('paranoid', { id: 'paranoid', name: '妄想', icon: '👀' }),
+      ...createPairedStatus('seer', { id: 'psychic', name: '通靈', icon: '🔮' }),
+      ...createPairedStatus('immunologist', { id: 'immune', name: '免疫', icon: '💊' })
     };
 
     const ROLE_STATUS_ACTIONS = {
@@ -182,42 +175,24 @@
         style: 'from-amber-600 to-yellow-800 hover:from-amber-500 hover:to-yellow-700 border-amber-400 text-amber-50',
         promptText: '選擇一位玩家吸收為【會員】。對方同意後將成為光明會的成員。'
       },
-      thug_b: {
+      ...createPairedStatus('thug', {
         statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
         btnLabel: '🥊 賦予靦腆狀態', badge: '暴徒 專屬',
         style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
         promptText: '選擇一位玩家施加【靦腆】屬性（使其僅能進行顏色分享）。'
-      },
-      thug_r: {
-        statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
-        btnLabel: '🥊 賦予靦腆狀態', badge: '暴徒 專屬',
-        style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
-        promptText: '選擇一位玩家施加【靦腆】屬性（使其僅能進行顏色分享）。'
-      },
-      dealer_b: {
+      }),
+      ...createPairedStatus('dealer', {
         statusId: 'foolish', statusName: '愚蠢', statusIcon: '🃏',
         btnLabel: '🃏 賦予愚蠢狀態', badge: '荷官 專屬',
         style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400 text-zinc-950',
         promptText: '選擇一位玩家施加【愚蠢】屬性（不能拒絕任何分享）。'
-      },
-      dealer_r: {
-        statusId: 'foolish', statusName: '愚蠢', statusIcon: '🃏',
-        btnLabel: '🃏 賦予愚蠢狀態', badge: '荷官 專屬',
-        style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-400 text-zinc-950',
-        promptText: '選擇一位玩家施加【愚蠢】屬性（不能拒絕任何分享）。'
-      },
-      criminal_b: {
+      }),
+      ...createPairedStatus('criminal', {
         statusId: 'shy', statusName: '害羞', statusIcon: '🦹',
         btnLabel: '🦹 賦予害羞狀態', badge: '罪犯 專屬',
         style: 'from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 border-indigo-400 text-white',
         promptText: '選擇一位玩家施加【害羞】屬性（不能進行任何揭露）。'
-      },
-      criminal_r: {
-        statusId: 'shy', statusName: '害羞', statusIcon: '🦹',
-        btnLabel: '🦹 賦予害羞狀態', badge: '罪犯 專屬',
-        style: 'from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 border-indigo-400 text-white',
-        promptText: '選擇一位玩家施加【害羞】屬性（不能進行任何揭露）。'
-      },
+      }),
       professor_b: {
         statusId: 'shrewd', statusName: '精明', statusIcon: '🎓',
         btnLabel: '🎓 賦予精明狀態', badge: '教授 專屬',
@@ -242,30 +217,18 @@
         style: 'from-rose-800 to-red-900 hover:from-rose-700 hover:to-red-800 border-rose-400 text-white',
         promptText: '選擇一位玩家施加【咬傷】狀態（被咬者必須誠實回答狼人問題）。'
       },
-      gorgon_b: {
+      ...createPairedStatus('gorgon', {
         statusId: 'petrified', statusName: '石化', statusIcon: '🐍',
         btnLabel: '🐍 施加石化狀態', badge: '蛇髮女妖 專屬',
         style: 'from-teal-700 to-emerald-800 hover:from-teal-600 hover:to-emerald-700 border-teal-400 text-white',
         promptText: '選擇一位玩家施加【石化】狀態（使其領袖投票時雙臂垂下並喪失投票權）。'
-      },
-      gorgon_r: {
-        statusId: 'petrified', statusName: '石化', statusIcon: '🐍',
-        btnLabel: '🐍 施加石化狀態', badge: '蛇髮女妖 專屬',
-        style: 'from-stone-700 to-red-800 hover:from-stone-600 hover:to-red-700 border-stone-400 text-white',
-        promptText: '選擇一位玩家施加【石化】狀態（使其領袖投票時雙臂垂下並喪失投票權）。'
-      },
-      centipede_b: {
+      }),
+      ...createPairedStatus('centipede', {
         statusId: 'linked', statusName: '連結', statusIcon: '🐛',
         btnLabel: '🐛 施加連結狀態', badge: '人形蜈蚣 專屬',
         style: 'from-lime-700 to-emerald-800 hover:from-lime-600 hover:to-emerald-700 border-lime-400 text-white',
         promptText: '選擇一位玩家施加【連結】狀態（若與你在不同房間則對方必須公開角色）。'
-      },
-      centipede_r: {
-        statusId: 'linked', statusName: '連結', statusIcon: '🐛',
-        btnLabel: '🐛 施加連結狀態', badge: '人形蜈蚣 專屬',
-        style: 'from-amber-700 to-orange-800 hover:from-amber-600 hover:to-orange-700 border-amber-400 text-white',
-        promptText: '選擇一位玩家施加【連結】狀態（若與你在不同房間則對方必須公開角色）。'
-      },
+      }),
       piper_b: {
         statusId: 'blind_follower', statusName: '盲從', statusIcon: '🪈',
         btnLabel: '🪈 施加盲從狀態', badge: '吹笛人 專屬',
@@ -322,22 +285,14 @@
       }
     };
 
-    // 狀態清除/治癒專用配置（心理醫生、效忠者、醫療兵）
     const ROLE_CLEAR_STATUS_ACTIONS = {
-      psychologist_b: {
+      ...createPairedStatus('psychologist', {
         filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed'],
         btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
         actionTitle: '治癒心理狀態',
         style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
         promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】或【裸露】狀態。'
-      },
-      psychologist_r: {
-        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed'],
-        btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
-        actionTitle: '治癒心理狀態',
-        style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】或【裸露】狀態。'
-      },
+      }),
       loyalist_b: {
         filterStatusIds: ['traitor', 'cultist', 'enlightened', 'jury'],
         btnLabel: '🛡️ 消除身分狀態', badge: '效忠者 專屬',
@@ -352,20 +307,13 @@
         style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
         promptText: '選擇一位玩家消除其【叛徒】、【信徒】、【會員】或【陪審團】狀態。'
       },
-      medic_b: {
-        filterStatusIds: ['infected', 'bitten', 'petrified','linked', 'shrewd', 'foolish'],
+      ...createPairedStatus('medic', {
+        filterStatusIds: ['infected', 'bitten', 'petrified', 'linked', 'shrewd', 'foolish'],
         btnLabel: '🏥 治療身上狀態', badge: '醫療兵 專屬',
         actionTitle: '治療身上狀態',
         style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
         promptText: '選擇一位玩家治癒並移除其【殭屍】、【咬傷】、【石化】、【連結】、【精明】或【愚蠢】狀態。'
-      },
-      medic_r: {
-        filterStatusIds: ['infected', 'bitten', 'petrified','linked', 'shrewd', 'foolish'],
-        btnLabel: '🏥 治療身上狀態', badge: '醫療兵 專屬',
-        actionTitle: '治療身上狀態',
-        style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【殭屍】、【咬傷】、【石化】、【連結】、【精明】或【愚蠢】狀態。'
-      }
+      })
     };
 
     const createMadScientistAction = (badgeText) => (ctx) => {
@@ -375,54 +323,52 @@
         badge: badgeText,
         style: 'from-lime-500 to-emerald-600 hover:from-lime-400 hover:to-emerald-500 border-lime-300/40 text-zinc-950',
         onClick: () => {
-          if (ctx.openMadScientistModal) {
-            ctx.openMadScientistModal({
-              ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，發送對調請求。必須經過「雙方均同意」後才會交換角色（限用一次）。',
-              onConfirm: (p1Id, p2Id) => ctx.triggerMadScientistSwap(p1Id, p2Id)
-            });
-          }
+          ctx.openMadScientistModal?.({
+            ruleDesc: '🧪 瘋狂科學家規則：選擇任意兩位其他玩家，發送對調請求。必須經過「雙方均同意」後才會交換角色（限用一次）。',
+            onConfirm: (p1Id, p2Id) => ctx.triggerMadScientistSwap(p1Id, p2Id)
+          });
         }
       };
     };
 
-    // 優化版多功能雙目標動作建構函式
     const createDualStatusGrantAction = ({
-      statusId,
-      statusName,
-      statusIcon,
-      btnLabel,
-      badge,
-      style,
-      promptDesc,
-      onceOnly = true,             // 只能用一次 (預設為 true)
-      firstRoundOnly = false,       // 只能在第 1 輪用
-      lastRoundOnly = false,        // 只能在最後 1 輪用
-      beforeLastRoundOnly = false   // 只能在最後 1 輪以前用
+      statusId, statusName, statusIcon, btnLabel, badge, style, promptDesc,
+      onceOnly = true, firstRoundOnly = false
     }) => (ctx) => {
-      // 只能用一次限制
       if (onceOnly && ctx.myPlayerState?.hasUsedDualTargetAbility) return null;
-
-      const currentRound = ctx.currentRoundIndex;
-      const lastRound = ctx.roundSettings.length - 1;
-
-      // 回合限制判定
-      if (firstRoundOnly && currentRound !== 0) return null;
-      if (lastRoundOnly && currentRound !== lastRound) return null;
-      if (beforeLastRoundOnly && currentRound >= lastRound) return null;
+      if (firstRoundOnly && ctx.currentRoundIndex !== 0) return null;
 
       return {
         label: btnLabel,
         badge,
         style,
         onClick: () => {
-          if (ctx.openDualStatusModal) {
-            ctx.openDualStatusModal({
-              statusId, statusName, statusIcon,
-              ruleDesc: promptDesc,
-              onConfirm: (t1Id, t2Id) => ctx.triggerDualStatusGrant(t1Id, t2Id, { id: statusId, name: statusName, icon: statusIcon })
-            });
-          }
+          ctx.openDualStatusModal?.({
+            statusId, statusName, statusIcon,
+            ruleDesc: promptDesc,
+            onConfirm: (t1Id, t2Id) => ctx.triggerDualStatusGrant(t1Id, t2Id, { id: statusId, name: statusName, icon: statusIcon })
+          });
         }
+      };
+    };
+
+    const createTraderAction = () => (ctx) => {
+      if (ctx.myPlayerState?.hasUsedTraderAbility || !ctx.buriedCard) return null;
+      return {
+        label: '📦 與埋葬卡互換身分',
+        badge: '走私商人 專屬/限一次',
+        style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
+        onClick: () => ctx.openDrunkModal()
+      };
+    };
+
+    const createVoyeurAction = () => (ctx) => {
+      if (!ctx.buriedCard) return null;
+      return {
+        label: '🫣 偷看埋葬卡',
+        badge: '偷窺狂 專屬',
+        style: 'from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 border-purple-400 text-white',
+        onClick: () => ctx.openVoyeurModal()
       };
     };
 
@@ -462,54 +408,10 @@
           };
         }
       },
-      trader_b: {
-        getActionButton: (ctx) => {
-          // 修復：已使用過則按鈕隱藏
-          if (ctx.myPlayerState?.hasUsedTraderAbility) return null;
-          if (!ctx.buriedCard) return null;
-          return {
-            label: '📦 與埋葬卡互換身分',
-            badge: '走私商人 專屬/限一次',
-            style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
-            onClick: () => ctx.openDrunkModal()
-          };
-        }
-      },
-      trader_r: {
-        getActionButton: (ctx) => {
-          // 修復：已使用過則按鈕隱藏
-          if (ctx.myPlayerState?.hasUsedTraderAbility) return null;
-          if (!ctx.buriedCard) return null;
-          return {
-            label: '📦 與埋葬卡互換身分',
-            badge: '走私商人 專屬/限一次',
-            style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
-            onClick: () => ctx.openDrunkModal()
-          };
-        }
-      },
-      voyeur_b: {
-        getActionButton: (ctx) => {
-          if (!ctx.buriedCard) return null;
-          return {
-            label: '🫣 偷看埋葬卡',
-            badge: '偷窺狂 專屬',
-            style: 'from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 border-purple-400 text-white',
-            onClick: () => ctx.openVoyeurModal()
-          };
-        }
-      },
-      voyeur_r: {
-        getActionButton: (ctx) => {
-          if (!ctx.buriedCard) return null;
-          return {
-            label: '🫣 偷看埋葬卡',
-            badge: '偷窺狂 專屬',
-            style: 'from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 border-purple-400 text-white',
-            onClick: () => ctx.openVoyeurModal()
-          };
-        }
-      },
+      trader_b: { getActionButton: createTraderAction() },
+      trader_r: { getActionButton: createTraderAction() },
+      voyeur_b: { getActionButton: createVoyeurAction() },
+      voyeur_r: { getActionButton: createVoyeurAction() },
       mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },
       mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') },
       eris: {
@@ -517,8 +419,7 @@
           statusId: 'hatred', statusName: '憎恨', statusIcon: '⚡',
           btnLabel: '⚡ 賦予兩人【憎恨】狀態', badge: '整場限一次',
           style: 'from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 border-blue-400 text-white',
-          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家，發送【憎恨】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。',
-          onceOnly: true
+          promptDesc: '⚡ 紛爭女神規則：選擇兩名其他玩家，發送【憎恨】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。'
         })
       },
       cupid: {
@@ -526,8 +427,7 @@
           statusId: 'in_love', statusName: '相愛', statusIcon: '💘',
           btnLabel: '💘 賦予兩人【相愛】狀態', badge: '整場限一次',
           style: 'from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 border-rose-300 text-white',
-          promptDesc: '💘 愛神規則：選擇兩名其他玩家，發送【相愛】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。',
-          onceOnly: true
+          promptDesc: '💘 愛神規則：選擇兩名其他玩家，發送【相愛】狀態請求。必須經過「雙方均同意」後才會生效（限用一次）。'
         })
       },
       father: {
@@ -536,7 +436,6 @@
           btnLabel: '👨 賦予兩人【父親的孩子】', badge: '限第1輪/限一次',
           style: 'from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 border-amber-400 text-white',
           promptDesc: '👨 父親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【父親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
-          onceOnly: true,
           firstRoundOnly: true
         })
       },
@@ -546,13 +445,11 @@
           btnLabel: '👩 賦予兩人【母親的孩子】', badge: '限第1輪/限一次',
           style: 'from-pink-600 to-purple-700 hover:from-pink-500 hover:to-purple-600 border-pink-400 text-white',
           promptDesc: '👩 母親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【母親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
-          onceOnly: true,
           firstRoundOnly: true
         })
       },
       time_lord_b: {
         getActionButton: (ctx) => {
-          // 修復：已使用過則按鈕隱藏
           if (ctx.myPlayerState?.hasUsedTimeLordAbility) return null;
           return {
             label: '⏳ 扭曲時間 (±60秒)',
@@ -564,7 +461,6 @@
       },
       time_lord_r: {
         getActionButton: (ctx) => {
-          // 修復：已使用過則按鈕隱藏
           if (ctx.myPlayerState?.hasUsedTimeLordAbility) return null;
           return {
             label: '⏳ 扭曲時間 (±60秒)',
@@ -681,11 +577,10 @@
         });
       },
       applyClearStatus(playersList, targetPlayerId, clearConfig) {
+        const idsToRemove = clearConfig.filterStatusIds || [];
         return playersList.map(p => {
           if (p.id === targetPlayerId) {
-            const currentStatuses = p.statuses || [];
-            const idsToRemove = clearConfig.filterStatusIds || [];
-            const nextStatuses = currentStatuses.filter(s => !idsToRemove.includes(s.id));
+            const nextStatuses = (p.statuses || []).filter(s => !idsToRemove.includes(s.id));
             return { ...p, statuses: nextStatuses };
           }
           return p;
@@ -693,9 +588,7 @@
       },
       applyDualStatusGrant(playersList, t1Id, t2Id, statusObj, initiatorId = null) {
         return playersList.map(p => {
-          let hasUsedDualTargetAbility = p.hasUsedDualTargetAbility;
-          if (initiatorId && p.id === initiatorId) hasUsedDualTargetAbility = true;
-
+          const hasUsedDualTargetAbility = (initiatorId && p.id === initiatorId) ? true : p.hasUsedDualTargetAbility;
           if (p.id === t1Id || p.id === t2Id) {
             const currentStatuses = p.statuses || [];
             const nextStatuses = currentStatuses.some(s => s.id === statusObj.id)
@@ -707,7 +600,6 @@
         });
       }
     };
-    window.RoleMechanics = RoleMechanics;
 
     const Header = ({ connStatus, roomId, playersCount, isHost, onLeave }) => (
       <header className="flex justify-between items-center py-4 border-b border-zinc-800 mb-6">
@@ -763,11 +655,9 @@
 
       const handleToggleViewMode = () => {
         setViewMode(prev => {
-          const nextMode = prev === 'deck' ? 'all' : 'deck';
-          if (listContainerRef.current) {
-            listContainerRef.current.scrollTop = 0;
-          }
-          return nextMode;
+          const next = prev === 'deck' ? 'all' : 'deck';
+          if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
+          return next;
         });
       };
 
@@ -1075,7 +965,9 @@
 
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false,
+          hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false,
+          hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
@@ -1146,7 +1038,7 @@
 
       const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
         setPlayers(prev => {
-          const next = window.RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);
+          const next = RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);
           publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
             type: 'SWAP_SUCCESS',
             player1Id: id1,
@@ -1159,7 +1051,7 @@
 
       const executeGrantStatusOnHost = useCallback((targetId, statusObj, initiatorId = null) => {
         setPlayers(prev => {
-          const next = window.RoleMechanics.applyGrantStatus(prev, targetId, statusObj);
+          const next = RoleMechanics.applyGrantStatus(prev, targetId, statusObj);
           publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
             type: 'STATUS_GRANTED_SUCCESS',
             targetId,
@@ -1173,7 +1065,7 @@
 
       const executeClearStatusOnHost = useCallback((targetId, clearConfig, initiatorId = null) => {
         setPlayers(prev => {
-          const next = window.RoleMechanics.applyClearStatus(prev, targetId, clearConfig);
+          const next = RoleMechanics.applyClearStatus(prev, targetId, clearConfig);
           publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
             type: 'STATUS_CLEARED_SUCCESS',
             targetId,
@@ -1187,7 +1079,7 @@
 
       const executeDualGrantOnHost = useCallback((t1Id, t2Id, statusObj, initiatorId = null) => {
         setPlayers(prev => {
-          const next = window.RoleMechanics.applyDualStatusGrant(prev, t1Id, t2Id, statusObj, initiatorId);
+          const next = RoleMechanics.applyDualStatusGrant(prev, t1Id, t2Id, statusObj, initiatorId);
           publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
             type: 'DUAL_STATUS_GRANTED_SUCCESS',
             t1Id,
@@ -1220,7 +1112,6 @@
         setSwapStatusMessage(`已向 ${t1.name} 與 ${t2.name} 發送賦予【${statusObj.name}】請求，等待雙方同意中...`);
       }, [players, myPlayerId, myInfo.name, myInfo.role?.name, roomId, publishMsg]);
 
-      // 時間領主：發動扭曲時間增減 60 秒
       const handleTriggerTimeShift = (deltaSeconds) => {
         setShowTimeLordModal(false);
         setPlayers(prev => prev.map(p => p.id === myPlayerId ? { ...p, hasUsedTimeLordAbility: true } : p));
@@ -1232,7 +1123,6 @@
         });
       };
 
-      // 幻形者：變身為牌庫外未出場的全新角色
       const handleTriggerChangerMorph = () => {
         setShowChangerModal(false);
         const unusedRoles = rolesCatalog.filter(r => !roleCounts[r.id] || roleCounts[r.id] <= 0);
@@ -1269,7 +1159,7 @@
       const resetToHome = useCallback(() => {
         if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
         if (clientRef.current) {
-          try { clientRef.current.end(true); } catch (e) {}
+          try { clientRef.current.end(true); } catch {}
           clientRef.current = null;
         }
         StorageManager.clearSession();
@@ -1310,11 +1200,11 @@
         const topic = `trb_game_sync_room_${code}`;
 
         if (clientRef.current) {
-          try { clientRef.current.end(true); } catch (e) {}
+          try { clientRef.current.end(true); } catch {}
         }
 
         const client = mqtt.connect(BROKER_URL, {
-          clientId: `trb_${uid}_${Math.random().toString(16).substr(2, 6)}`,
+          clientId: `trb_${uid}_${Math.random().toString(16).substring(2, 8)}`,
           username: MQTT_USER,
           password: MQTT_PASS,
           clean: true,
@@ -1328,7 +1218,10 @@
           if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null,
+            hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false,
+            hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false,
+            manualWinner: null, statuses: []
           };
 
           if (asHost) {
@@ -1399,7 +1292,7 @@
               const curBuried = latestStateRef.current.buriedCard;
               if (curBuried) {
                 setPlayers(prev => {
-                  const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);
+                  const { nextPlayers, newBuried } = RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, data.playerId);
                   setBuriedCard(newBuried);
                   setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
                   return nextPlayers;
@@ -1409,15 +1302,7 @@
             }
             
             if (data.type === 'MAD_SCIENTIST_INITIATE') {
-              madScientistVoteTrackerRef.current = {
-                initiatorId: data.initiatorId,
-                initiatorName: data.initiatorName,
-                p1Id: data.p1Id,
-                p1Name: data.p1Name,
-                p2Id: data.p2Id,
-                p2Name: data.p2Name,
-                approvals: {}
-              };
+              madScientistVoteTrackerRef.current = { ...data, approvals: {} };
               publishMsg(topic, {
                 type: 'MAD_SCIENTIST_PROMPT_TARGETS',
                 initiatorId: data.initiatorId,
@@ -1469,17 +1354,7 @@
             }
 
             if (data.type === 'DUAL_STATUS_INITIATE') {
-              dualStatusVoteTrackerRef.current = {
-                initiatorId: data.initiatorId,
-                initiatorName: data.initiatorName,
-                initiatorRoleName: data.initiatorRoleName,
-                t1Id: data.t1Id,
-                t1Name: data.t1Name,
-                t2Id: data.t2Id,
-                t2Name: data.t2Name,
-                statusObj: data.statusObj,
-                approvals: {}
-              };
+              dualStatusVoteTrackerRef.current = { ...data, approvals: {} };
               publishMsg(topic, {
                 type: 'DUAL_STATUS_PROMPT_TARGETS',
                 initiatorId: data.initiatorId,
@@ -1547,19 +1422,20 @@
           // === 所有玩家通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null,
+              hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false,
+              hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false,
+              manualWinner: null, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
             return;
           }
 
-          // 時間領主：時空扭曲同步
           if (data.type === 'TIME_LORD_SHIFT') {
             const shiftText = data.delta > 0 ? `+${data.delta} 秒` : `${data.delta} 秒`;
             setSwapStatusMessage(`⏳ ${data.userName} 發動【時間扭曲】！當前回合時間 ${shiftText}！`);
             setTimeout(() => setSwapStatusMessage(''), 4000);
 
-            // 更新使用標記
             setPlayers(prev => prev.map(p => p.id === data.senderId ? { ...p, hasUsedTimeLordAbility: true } : p));
 
             if (latestStateRef.current.isHost) {
@@ -1573,7 +1449,6 @@
             return;
           }
 
-          // 幻形者：變身成功同步
           if (data.type === 'CHANGER_MORPH_SUCCESS') {
             setPlayers(prev => prev.map(p => p.id === data.playerId ? {
               ...p,
@@ -1603,9 +1478,7 @@
           }
 
           if (data.type === 'MAD_SCIENTIST_WAITING_OTHER') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage(`⏳ ${data.voterName} 已同意，正在等待另一位玩家確認...`);
-            }
+            if (data.initiatorId === uid) setSwapStatusMessage(`⏳ ${data.voterName} 已同意，正在等待另一位玩家確認...`);
             return;
           }
 
@@ -1624,11 +1497,11 @@
 
           if (data.type === 'MAD_SCIENTIST_SWAP_COMPLETED') {
             setMadScientistPendingData(null);
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage('🎉 雙方均已同意，角色成功對調！');
-              setTimeout(() => setSwapStatusMessage(''), 3500);
-            } else if (data.p1Id === uid || data.p2Id === uid) {
-              setSwapStatusMessage('🎉 雙方均已同意，你的角色已被瘋狂科學家對調！');
+            const msg = data.initiatorId === uid 
+              ? '🎉 雙方均已同意，角色成功對調！' 
+              : (data.p1Id === uid || data.p2Id === uid ? '🎉 雙方均已同意，你的角色已被瘋狂科學家對調！' : '');
+            if (msg) {
+              setSwapStatusMessage(msg);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
             return;
@@ -1648,9 +1521,7 @@
           }
 
           if (data.type === 'DUAL_STATUS_WAITING_OTHER') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage(`⏳ ${data.voterName} 已同意，正在等待另一位玩家確認...`);
-            }
+            if (data.initiatorId === uid) setSwapStatusMessage(`⏳ ${data.voterName} 已同意，正在等待另一位玩家確認...`);
             return;
           }
 
@@ -1701,8 +1572,7 @@
             if (data.initiatorId === uid) {
               setSwapStatusMessage(`🎉 對方已同意，成功賦予【${data.statusName}】！`);
               setTimeout(() => setSwapStatusMessage(''), 3000);
-            }
-            if (data.targetId === uid) {
+            } else if (data.targetId === uid) {
               setSwapStatusMessage(`✨ 你已獲得【${data.statusName}】狀態！`);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
@@ -1734,8 +1604,7 @@
             if (data.initiatorId === uid) {
               setSwapStatusMessage(`🎉 對方已同意，成功執行【${data.actionTitle}】！`);
               setTimeout(() => setSwapStatusMessage(''), 3000);
-            }
-            if (data.targetId === uid) {
+            } else if (data.targetId === uid) {
               setSwapStatusMessage(`✨ 你的狀態已成功被清除/治癒！`);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
@@ -1759,10 +1628,7 @@
                   const existing = prev.find(p => p.id === data.player.id);
                   let next;
                   if (existing) {
-                    next = prev.map(p => p.id === data.player.id ? { 
-                      ...p, 
-                      name: data.player.name || p.name 
-                    } : p);
+                    next = prev.map(p => p.id === data.player.id ? { ...p, name: data.player.name || p.name } : p);
                   } else {
                     const isGameRunning = ['round_active', 'round_paused', 'round_manual_paused', 'ended'].includes(latestStateRef.current.roomStatus);
                     next = [...prev, {
@@ -1860,8 +1726,6 @@
                 }
               }
               break;
-            default:
-              break;
           }
         });
 
@@ -1934,7 +1798,9 @@
           if (initialList.length === 0) {
             initialList = [{
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
+              hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
+              hasUsedTraderAbility: false, manualWinner: null, statuses: []
             }];
           }
           setPlayers(initialList);
@@ -1994,18 +1860,15 @@
         if (!nodeKey) return null;
 
         if (nodeKey.includes('ENG')) {
-          const hasEngineer = isRoleInGame(['engineer']);
-          if (!hasEngineer) return true;
+          if (!isRoleInGame(['engineer'])) return true;
         }
 
         if (nodeKey.includes('DOC')) {
-          const hasDoctor = isRoleInGame(['doctor']);
-          if (!hasDoctor) return true;
+          if (!isRoleInGame(['doctor'])) return true;
         }
 
         if (nodeKey.includes('PYRO')) {
-          const hasPyro = isRoleInGame(['pyrotech']);
-          if (!hasPyro) return false;
+          if (!isRoleInGame(['pyrotech'])) return false;
         }
 
         if (nodeKey.includes('DRONE')) {
@@ -2076,7 +1939,9 @@
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
-          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
+          hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
+          hasUsedTraderAbility: false, manualWinner: null, statuses: []
         };
 
         StorageManager.saveSession(code, trimmedName, true);
@@ -2113,7 +1978,7 @@
         let verified = false;
         const timeoutTimer = setTimeout(() => {
           if (!verified) {
-            try { tempClient.end(true); } catch (e) {}
+            try { tempClient.end(true); } catch {}
             setIsVerifying(false);
             setConnStatus('未連線');
             alert(`找不到房間「${code}」或房長不在線！\n（若使用 Instagram/LINE 開啟，請點選右上角改用 Safari 或 Chrome 瀏覽器）`);
@@ -2138,7 +2003,7 @@
           if (data.type === 'ROOM_JOIN_REJECTED' && (!data.targetId || data.targetId === myPlayerId)) {
             verified = true;
             clearTimeout(timeoutTimer);
-            try { tempClient.end(true); } catch (e) {}
+            try { tempClient.end(true); } catch {}
             setIsVerifying(false);
             setConnStatus('未連線');
             alert(data.reason === 'NAME_DUPLICATED'
@@ -2150,7 +2015,7 @@
           if (data.type === 'ROOM_VERIFIED' && (!data.targetId || data.targetId === myPlayerId)) {
             verified = true;
             clearTimeout(timeoutTimer);
-            try { tempClient.end(true); } catch (e) {}
+            try { tempClient.end(true); } catch {}
             setIsVerifying(false);
             setShowRoomsModal(false);
 
@@ -2161,7 +2026,9 @@
 
             const selfPlayer = {
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
+              hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
+              hasUsedTraderAbility: false, manualWinner: null, statuses: []
             };
             setPlayers([selfPlayer]);
             setupConnection(code, false, trimmedName, myPlayerId);
@@ -2172,7 +2039,7 @@
           clearTimeout(timeoutTimer);
           setIsVerifying(false);
           setConnStatus('未連線');
-          try { tempClient.end(true); } catch (e) {}
+          try { tempClient.end(true); } catch {}
           alert('伺服器連線失敗，請檢查網路或確認帳號密碼設定！');
         });
       };
@@ -2199,7 +2066,7 @@
         setConnStatus('連線伺服器中...');
 
         if (discoveryClientRef.current) {
-          try { discoveryClientRef.current.end(true); } catch (e) {}
+          try { discoveryClientRef.current.end(true); } catch {}
         }
 
         const discClient = mqtt.connect(BROKER_URL, {
@@ -2232,7 +2099,7 @@
       const handleCloseRoomsModal = () => {
         setShowRoomsModal(false);
         if (discoveryClientRef.current) {
-          try { discoveryClientRef.current.end(true); } catch (e) {}
+          try { discoveryClientRef.current.end(true); } catch {}
           discoveryClientRef.current = null;
         }
         if (gameState === 'home') setConnStatus('未連線');
@@ -2393,9 +2260,7 @@
           setRoundEndTime(0);
           broadcastLatest({ roomStatus: 'ended', timeLeft: 0, roundEndTime: 0 });
 
-          if (isHost) {
-            startVictoryDetermination();
-          }
+          if (isHost) startVictoryDetermination();
         }
       };
 
@@ -2452,13 +2317,12 @@
         if (latestStateRef.current.isHost) {
           const curBuried = latestStateRef.current.buriedCard;
           setPlayers(prev => {
-            const { nextPlayers, newBuried } = window.RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, myPlayerId);
+            const { nextPlayers, newBuried } = RoleMechanics.applyDrunkBuriedSwap(prev, curBuried, myPlayerId);
             setBuriedCard(newBuried);
             setTimeout(() => broadcastLatest({ players: nextPlayers, buriedCard: newBuried }), 50);
             return nextPlayers;
           });
         } else {
-          // 本地優先記錄標記以立即隱藏按鈕
           if (isTrader) {
             setPlayers(prev => prev.map(p => p.id === myPlayerId ? { ...p, hasUsedTraderAbility: true } : p));
           }
@@ -3238,7 +3102,7 @@
                       )}
 
                       {roomStatus !== 'ended' && (() => {
-                        const action = window.RoleMechanics?.getRoleAction(myInfo.role, {
+                        const action = RoleMechanics.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
                           openSwapModal: (config) => {
                             setSwapModalConfig(config);
