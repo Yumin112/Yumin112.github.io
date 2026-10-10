@@ -63,7 +63,11 @@
       { id: 'pres', name: '總統', team: 'blue', icon: '👔', desc: '藍隊核心。遊戲結束時若與炸彈客在同一房間則紅隊獲勝。' },
       { id: 'bomb', name: '炸彈客', team: 'red', icon: '💣', desc: '紅隊核心。遊戲結束時若與總統在同一房間則紅隊獲勝。' },
       { id: 'doctor', name: '醫生', team: 'blue', icon: '🩺', desc: '藍隊輔助。可以分享卡片給總統以保護總統。' },
-      { id: 'engineer', name: '工程師', team: 'red', icon: '⚙️', desc: '紅隊輔助。可以分享卡片給炸彈客協助安裝炸彈。' }
+      { id: 'engineer', name: '工程師', team: 'red', icon: '⚙️', desc: '紅隊輔助。可以分享卡片給炸彈客協助安裝炸彈。' },
+      { id: 'seer_b', name: '通靈者', team: 'blue', icon: '🔮', desc: '第一輪前30秒內可透視全場身分。' },
+      { id: 'seer_r', name: '通靈者', team: 'red', icon: '🔮', desc: '第一輪前30秒內可透視全場身分。' },
+      { id: 'alien_b', name: '外星人', team: 'blue', icon: '👽', desc: '可發動降維打擊遮蔽一位玩家的記憶與身分卡。' },
+      { id: 'alien_r', name: '外星人', team: 'red', icon: '👽', desc: '可發動降維打擊遮蔽一位玩家的記憶與身分卡。' }
     ];
 
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
@@ -139,7 +143,6 @@
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
-    // 建立紅藍雙陣營重複狀態配置輔助函式
     const createPairedStatus = (baseKey, statusObj) => ({
       [`${baseKey}_b`]: statusObj,
       [`${baseKey}_r`]: statusObj
@@ -175,6 +178,12 @@
         style: 'from-amber-600 to-yellow-800 hover:from-amber-500 hover:to-yellow-700 border-amber-400 text-amber-50',
         promptText: '選擇一位玩家吸收為【會員】。對方同意後將成為光明會的成員。'
       },
+      ...createPairedStatus('alien', {
+        statusId: 'card_cloaked', statusName: '隱匿(被遮蔽)', statusIcon: '🛸',
+        btnLabel: '🛸 施加記憶遮蔽', badge: '外星人 專屬',
+        style: 'from-teal-600 to-cyan-800 hover:from-teal-500 hover:to-cyan-700 border-teal-400 text-white',
+        promptText: '選擇一位玩家遮蔽其身分卡（對方將遺忘身分且卡牌呈現隱匿狀態）。'
+      }),
       ...createPairedStatus('thug', {
         statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
         btnLabel: '🥊 賦予靦腆狀態', badge: '暴徒 專屬',
@@ -287,11 +296,11 @@
 
     const ROLE_CLEAR_STATUS_ACTIONS = {
       ...createPairedStatus('psychologist', {
-        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed'],
+        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed', 'card_cloaked'],
         btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
         actionTitle: '治癒心理狀態',
         style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】或【裸露】狀態。'
+        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】、【裸露】或【隱匿】狀態。'
       }),
       loyalist_b: {
         filterStatusIds: ['traitor', 'cultist', 'enlightened', 'jury'],
@@ -372,7 +381,24 @@
       };
     };
 
+    // 通靈者專屬行為：第一輪前 30 秒內可用
+    const createSeerAction = (badgeText) => (ctx) => {
+      if (ctx.currentRoundIndex !== 0) return null;
+      const initialTotalSecs = (ctx.roundSettings[0] || 3) * 60;
+      const elapsed = initialTotalSecs - ctx.timeLeft;
+      if (elapsed > 30 || ctx.timeLeft <= 0) return null;
+
+      return {
+        label: '🔮 窺探全場身分 (限前30秒)',
+        badge: badgeText,
+        style: 'from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 border-purple-300 text-white',
+        onClick: () => ctx.openSeerModal()
+      };
+    };
+
     const ROLE_PLUGINS = {
+      seer_b: { getActionButton: createSeerAction('通靈者(藍) 專屬') },
+      seer_r: { getActionButton: createSeerAction('通靈者(紅) 專屬') },
       hot_potato: {
         getActionButton: (ctx) => ({
           label: '🔄 發起身分交換',
@@ -792,6 +818,10 @@
 
       const [showVoyeurModal, setShowVoyeurModal] = useState(false);
 
+      // 通靈者 (Seer) 專用視窗狀態與倒數計時
+      const [showSeerModal, setShowSeerModal] = useState(false);
+      const [seerCountdown, setSeerCountdown] = useState(30);
+
       const [showDualStatusModal, setShowDualStatusModal] = useState(false);
       const [dualStatusConfig, setDualStatusConfig] = useState(null);
       const [selectedDualTargets, setSelectedDualTargets] = useState([]);
@@ -807,6 +837,7 @@
       const clientRef = useRef(null);
       const discoveryClientRef = useRef(null);
       const timerIntervalRef = useRef(null);
+      const seerTimerRef = useRef(null);
       const cardRef = useRef(null);
       const latestStateRef = useRef({});
       const debounceBroadcastTimerRef = useRef(null);
@@ -970,6 +1001,11 @@
           hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
+
+      // 檢查是否被施加外星人遮蔽狀態
+      const isCardCloaked = useMemo(() => {
+        return Boolean(myInfo.statuses?.some(s => s.id === 'card_cloaked'));
+      }, [myInfo.statuses]);
 
       const roomAPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room A')), [players]);
       const roomBPlayers = useMemo(() => players.filter(p => p.gameRoom?.includes('Room B')), [players]);
@@ -1156,8 +1192,36 @@
         setDualStatusPendingData(null);
       };
 
+      // 通靈者開啟與倒數計時防呆處理
+      const handleOpenSeerModal = () => {
+        setSeerCountdown(30);
+        setShowSeerModal(true);
+      };
+
+      useEffect(() => {
+        if (showSeerModal) {
+          if (seerTimerRef.current) clearInterval(seerTimerRef.current);
+          seerTimerRef.current = setInterval(() => {
+            setSeerCountdown(prev => {
+              if (prev <= 1) {
+                clearInterval(seerTimerRef.current);
+                setShowSeerModal(false);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        } else {
+          if (seerTimerRef.current) clearInterval(seerTimerRef.current);
+        }
+        return () => {
+          if (seerTimerRef.current) clearInterval(seerTimerRef.current);
+        };
+      }, [showSeerModal]);
+
       const resetToHome = useCallback(() => {
         if (debounceBroadcastTimerRef.current) clearTimeout(debounceBroadcastTimerRef.current);
+        if (seerTimerRef.current) clearInterval(seerTimerRef.current);
         if (clientRef.current) {
           try { clientRef.current.end(true); } catch {}
           clientRef.current = null;
@@ -1182,6 +1246,7 @@
         setActiveClearConfig(null);
         setClearStatusPromptData(null);
         setShowVoyeurModal(false);
+        setShowSeerModal(false);
         setShowDualStatusModal(false);
         setDualStatusConfig(null);
         setSelectedDualTargets([]);
@@ -1579,27 +1644,6 @@
             return;
           }
 
-          if (data.type === 'CLEAR_STATUS_PROMPT_TARGET') {
-            if (data.targetId === uid) {
-              setClearStatusPromptData({
-                initiatorId: data.initiatorId,
-                initiatorName: data.initiatorName,
-                initiatorRoleName: data.initiatorRoleName,
-                initiatorRoleIcon: data.initiatorRoleIcon,
-                clearConfig: data.clearConfig
-              });
-            }
-            return;
-          }
-
-          if (data.type === 'CLEAR_STATUS_REJECTED') {
-            if (data.initiatorId === uid) {
-              setSwapStatusMessage(`❌ ${data.rejectorName} 拒絕了狀態清除！`);
-              setTimeout(() => setSwapStatusMessage(''), 3500);
-            }
-            return;
-          }
-
           if (data.type === 'STATUS_CLEARED_SUCCESS') {
             if (data.initiatorId === uid) {
               setSwapStatusMessage(`🎉 對方已同意，成功執行【${data.actionTitle}】！`);
@@ -1686,6 +1730,7 @@
                 setShowClearStatusModal(false);
                 setClearStatusPromptData(null);
                 setShowVoyeurModal(false);
+                setShowSeerModal(false);
                 setShowSwapTargetModal(false);
                 setShowMadScientistModal(false);
                 setShowDrunkConfirmModal(false);
@@ -3039,27 +3084,33 @@
                 </div>
               )}
 
-              {/* 核心身分卡 */}
+              {/* 核心身分卡（支援外星人遮蔽判定） */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
-                    {isColorOnly ? '🤝 正在顏色分享（移開框框或放開立即復原）' : '👇 在卡片框框按住分享顏色（滑出框外立刻恢復）'}
+                    {isCardCloaked 
+                      ? '🛸 你的身分與記憶已遭外星人遮蔽！卡面無法進行顏色分享。' 
+                      : (isColorOnly ? '🤝 正在顏色分享（移開框框或放開立即復原）' : '👇 在卡片框框按住分享顏色（滑出框外立刻恢復）')}
                   </span>
                 </div>
 
                 <div
                   ref={cardRef}
                   onContextMenu={(e) => e.preventDefault()}
-                  onMouseDown={() => setIsColorOnly(true)}
-                  onMouseUp={() => setIsColorOnly(false)}
-                  onMouseLeave={() => setIsColorOnly(false)}
-                  onTouchStart={() => setIsColorOnly(true)}
-                  onTouchEnd={() => setIsColorOnly(false)}
-                  onTouchCancel={() => setIsColorOnly(false)}
+                  onMouseDown={() => !isCardCloaked && setIsColorOnly(true)}
+                  onMouseUp={() => !isCardCloaked && setIsColorOnly(false)}
+                  onMouseLeave={() => !isCardCloaked && setIsColorOnly(false)}
+                  onTouchStart={() => !isCardCloaked && setIsColorOnly(true)}
+                  onTouchEnd={() => !isCardCloaked && setIsColorOnly(false)}
+                  onTouchCancel={() => !isCardCloaked && setIsColorOnly(false)}
                   onTouchMove={handleTouchMove}
-                  className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[350px] transition-all duration-150 ${myTeamMeta.cardBg}`}
+                  className={`select-none cursor-pointer rounded-2xl p-6 flex flex-col justify-between shadow-2xl border-2 min-h-[350px] transition-all duration-150 ${
+                    isCardCloaked 
+                      ? 'bg-gradient-to-br from-teal-950 via-zinc-950 to-cyan-950 border-teal-500/70 shadow-cyan-950/50' 
+                      : myTeamMeta.cardBg
+                  }`}
                 >
-                  {isColorOnly ? (
+                  {isColorOnly && !isCardCloaked ? (
                     <div className="my-auto flex flex-col items-center justify-center text-center space-y-4 pointer-events-none">
                       <span className={`text-xl px-6 py-2 rounded-full font-black tracking-widest uppercase border shadow-lg ${myTeamMeta.badge}`}>
                         {myTeamMeta.label}
@@ -3072,19 +3123,35 @@
                   ) : (
                     <React.Fragment>
                       <div className="flex justify-between items-start pointer-events-none">
-                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${myTeamMeta.badge}`}>
-                          {myTeamMeta.label}
+                        <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${
+                          isCardCloaked ? 'bg-teal-500/20 text-teal-300 border-teal-400/40' : myTeamMeta.badge
+                        }`}>
+                          {isCardCloaked ? '??? 陣營未知' : myTeamMeta.label}
                         </span>
-                        <span className="text-3xl">{myInfo.role?.icon || '⭐'}</span>
+                        <span className="text-3xl">{isCardCloaked ? '🛸' : (myInfo.role?.icon || '⭐')}</span>
                       </div>
 
-                      <div className="text-center my-3 pointer-events-none">
-                        <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
-                        <p className="text-xs text-zinc-200 mt-2.5 px-3 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800 break-words">
-                          {myInfo.role?.desc || '暫無專屬說明'}
-                        </p>
-                      </div>
+                      {/* 依據 card_cloaked 狀態決定是否遮蔽身分細節 */}
+                      {isCardCloaked ? (
+                        <div className="text-center my-4 pointer-events-none space-y-2">
+                          <h2 className="text-2xl font-black text-teal-300 tracking-wider">🛸 身分已被遮蔽</h2>
+                          <div className="p-3 bg-zinc-950/80 border border-teal-800/60 rounded-xl space-y-1">
+                            <p className="text-xs font-bold text-teal-200">你的記憶被外星人降維打擊消除！</p>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                              本局身分、隊伍顏色與角色能力說明已被遮蔽，無法向他人進行顏色分享。原角色功能按鈕仍可使用（按鈕專屬文字已隱匿）。
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center my-3 pointer-events-none">
+                          <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
+                          <p className="text-xs text-zinc-200 mt-2.5 px-3 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800 break-words">
+                            {myInfo.role?.desc || '暫無專屬說明'}
+                          </p>
+                        </div>
+                      )}
 
+                      {/* 附加狀態標籤一律保留展示 */}
                       {myInfo.statuses && myInfo.statuses.length > 0 && (
                         <div className="bg-zinc-950/80 border border-purple-500/40 rounded-xl p-2.5 my-2 space-y-1">
                           <div className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
@@ -3101,15 +3168,17 @@
                         </div>
                       )}
 
+                      {/* 角色技能按鈕：被遮蔽時仍可使用，但自動隱藏 badge 角色名稱文字 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = RoleMechanics.getRoleAction(myInfo.role, {
-                          currentRoundIndex, roundSettings, buriedCard, myPlayerState: myInfo,
+                          currentRoundIndex, roundSettings, buriedCard, timeLeft, myPlayerState: myInfo,
                           openSwapModal: (config) => {
                             setSwapModalConfig(config);
                             setShowSwapTargetModal(true);
                           },
                           openDrunkModal: () => setShowDrunkConfirmModal(true),
                           openVoyeurModal: () => setShowVoyeurModal(true),
+                          openSeerModal: handleOpenSeerModal,
                           openClearStatusModal: (config) => {
                             setActiveClearConfig(config);
                             setShowClearStatusModal(true);
@@ -3146,9 +3215,14 @@
                               className={`w-full bg-gradient-to-r ${action.style} font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border`}
                             >
                               <span>{action.label}</span>
-                              {action.badge && (
+                              {action.badge && !isCardCloaked && (
                                 <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
                                   {action.badge}
+                                </span>
+                              )}
+                              {isCardCloaked && (
+                                <span className="text-xs bg-zinc-950/40 px-2 py-0.5 rounded-full text-teal-200">
+                                  功能保留
                                 </span>
                               )}
                             </button>
@@ -3172,7 +3246,68 @@
             </div>
           )}
 
-          {/* 彈窗：特殊狀態賦予目標選擇 */}
+          {/* 彈窗：通靈者專屬全場透視視窗（含 30 秒自動關閉防呆） */}
+          {showSeerModal && (
+            <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-3">
+              <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-2xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+                <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-purple-950/40">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl animate-pulse">🔮</span>
+                    <div>
+                      <h3 className="font-black text-white text-base">通靈之眼：全場身分透視</h3>
+                      <p className="text-[11px] text-purple-300">限第一輪前 30 秒查驗全體玩家陣營與角色</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-rose-500/20 border border-rose-500/40 text-rose-300 px-3 py-1 rounded-lg text-xs font-bold animate-pulse">
+                      ⏳ 剩餘 {seerCountdown} 秒自動關閉
+                    </div>
+                    <button onClick={() => setShowSeerModal(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 overflow-y-auto space-y-2 flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {players.map(p => {
+                      const meta = getTeamMeta(p.team);
+                      return (
+                        <div key={p.id} className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${meta.listBg}`}>
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-2xl shrink-0">{p.role?.icon || '❓'}</span>
+                            <div>
+                              <div className="font-bold text-sm text-zinc-100 flex items-center gap-1.5">
+                                <span>{p.name}</span>
+                                {p.id === myPlayerId && <span className="text-xs text-indigo-400">(你)</span>}
+                                {p.isHost && <span className="text-xs text-amber-400">👑</span>}
+                              </div>
+                              <div className="text-xs text-zinc-300 font-semibold">{p.role?.name || '未知角色'}</div>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold border shrink-0 ${meta.badge}`}>
+                            {meta.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-950/60 border-t border-zinc-800 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowSeerModal(false)}
+                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2 rounded-xl text-xs transition active:scale-95 border border-zinc-700"
+                  >
+                    立即記住並關閉視窗
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：特殊狀態賦予目標選擇 (外星人/殭屍/暴徒等) */}
           {showGrantStatusModal && activeStatusConfig && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -3217,7 +3352,7 @@
             </div>
           )}
 
-          {/* 彈窗：被賦予狀態者的確認請求 */}
+          {/* 彈窗：被賦予狀態者的確認請求 (含外星人記憶遮蔽同意) */}
           {statusPromptData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
@@ -3241,7 +3376,11 @@
                     【{statusPromptData.statusObj.name}】
                   </span>
                 </p>
-                <p className="text-xs text-zinc-400">若同意，此狀態將正式附加至你身上。是否確認同意？</p>
+                <p className="text-xs text-zinc-400">
+                  {statusPromptData.statusObj.id === 'card_cloaked'
+                    ? '⚠️ 提示：若同意，你的身分卡將進入隱匿遮蔽狀態（遺忘原本名稱說明與陣營顏色）。是否確認同意？'
+                    : '若同意，此狀態將正式附加至你身上。是否確認同意？'}
+                </p>
 
                 <div className="flex gap-3 pt-2">
                   <button
