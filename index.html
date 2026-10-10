@@ -684,6 +684,8 @@
 const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog }) => {
   // 'deck' 代表只看本局卡池，'all' 代表查看所有角色
   const [viewMode, setViewMode] = useState('deck');
+  // 建立捲軸容器的 ref 以便在切換時重置捲軸位置
+  const listContainerRef = useRef(null);
 
   // 整理所有官方角色的分組列表（依角色名稱合併同名不同陣營）
   const allRolesGrouped = useMemo(() => {
@@ -699,6 +701,17 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
     return Object.values(groups);
   }, [allRolesCatalog]);
 
+  // 切換模式的函式：切換時同時將捲軸瞬間拉回最上方
+  const handleToggleViewMode = () => {
+    setViewMode(prev => {
+      const nextMode = prev === 'deck' ? 'all' : 'deck';
+      if (listContainerRef.current) {
+        listContainerRef.current.scrollTop = 0;
+      }
+      return nextMode;
+    });
+  };
+
   const displayRoles = viewMode === 'deck' ? activeRolesInDeck : allRolesGrouped;
 
   return (
@@ -707,7 +720,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
         <div className="flex items-center gap-2">
           <span className="text-lg">{viewMode === 'deck' ? '🃏' : '📖'}</span>
           <h3 className="font-bold text-white text-sm sm:text-base">
-            {viewMode === 'deck' ? '本局使用角色池一覽' : '完整角色池總覽'}
+            {viewMode === 'deck' ? '本局使用角色池一覽' : '完整官方角色總覽'}
           </h3>
         </div>
 
@@ -715,7 +728,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
           {/* 切換檢視按鈕 */}
           <button
             type="button"
-            onClick={() => setViewMode(prev => prev === 'deck' ? 'all' : 'deck')}
+            onClick={handleToggleViewMode}
             className={`text-xs px-3 py-1.5 rounded-lg border font-bold transition flex items-center gap-1 active:scale-95 ${
               viewMode === 'all'
                 ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 hover:bg-indigo-600/40'
@@ -737,7 +750,12 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
           暫無啟用的角色卡片
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+        /* 掛載 listContainerRef，並加上 key={viewMode} 強制重設滾動狀態 */
+        <div 
+          ref={listContainerRef}
+          key={viewMode}
+          className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1"
+        >
           {displayRoles.map(group => {
             const hasBlue = group.teams.includes('blue');
             const hasRed = group.teams.includes('red');
