@@ -292,11 +292,11 @@
 
     const ROLE_CLEAR_STATUS_ACTIONS = {
       ...createPairedStatus('psychologist', {
-        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed'],
+        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized', 'exposed', 'card_cloaked'],
         btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
         actionTitle: '治癒心理狀態',
         style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】、【催眠】或【裸露】狀態。'
+        promptText: '選擇一位玩家治癒並移除其心理異常狀態或【遮蔽】。'
       }),
       loyalist_b: {
         filterStatusIds: ['traitor', 'cultist', 'enlightened', 'jury'],
@@ -392,8 +392,112 @@
     };
 
     const ROLE_PLUGINS = {
-      seer_b: { getActionButton: createSeerAction('通靈者(藍) 專屬') },
-      seer_r: { getActionButton: createSeerAction('通靈者(紅) 專屬') },
+      seer_b: { getActionButton: createSeerAction('先知(藍) 專屬') },
+      seer_r: { getActionButton: createSeerAction('先知(紅) 專屬') },
+      // 盜身魔：交換卡牌並賦予對方害羞狀態
+      body_snatcher_b: {
+        getActionButton: (ctx) => ({
+          label: '👤 盜取身分並施加害羞',
+          badge: '盜身魔(藍) 專屬',
+          style: 'from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 border-blue-400 text-white',
+          onClick: () => ctx.openSwapModal({
+            ruleDesc: '👤 盜身魔：選擇一位玩家交換卡牌，交換後對方將獲得【害羞】狀態（無法分享或揭露卡片）。需經過對方同意。',
+            isTargetDisabled: () => false,
+            extraActionType: 'BODY_SNATCH'
+          })
+        })
+      },
+      body_snatcher_r: {
+        getActionButton: (ctx) => ({
+          label: '👤 盜取身分並施加害羞',
+          badge: '盜身魔(紅) 專屬',
+          style: 'from-red-700 to-rose-900 hover:from-red-600 hover:to-rose-800 border-red-400 text-white',
+          onClick: () => ctx.openSwapModal({
+            ruleDesc: '👤 盜身魔：選擇一位玩家交換卡牌，交換後對方將獲得【害羞】狀態（無法分享或揭露卡片）。需經過對方同意。',
+            isTargetDisabled: () => false,
+            extraActionType: 'BODY_SNATCH'
+          })
+        })
+      },
+      // 身分竊賊：將對方卡牌作為自己卡牌展示，受害者卡牌賦予遮蔽狀態
+      identity_thief_b: {
+        getActionButton: (ctx) => ({
+          label: '🎭 竊取身分並遮蔽對方',
+          badge: '身分竊賊(藍) 專屬',
+          style: 'from-cyan-700 to-blue-800 hover:from-cyan-600 hover:to-blue-700 border-cyan-400 text-white',
+          onClick: () => ctx.openSwapModal({
+            ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將竊取其卡牌作為自己卡牌，受害者將被賦予【遮蔽】狀態。',
+            isTargetDisabled: () => false,
+            extraActionType: 'IDENTITY_THEFT'
+          })
+        })
+      },
+      identity_thief_r: {
+        getActionButton: (ctx) => ({
+          label: '🎭 竊取身分並遮蔽對方',
+          badge: '身分竊賊(紅) 專屬',
+          style: 'from-rose-700 to-red-800 hover:from-rose-600 hover:to-red-700 border-rose-400 text-white',
+          onClick: () => ctx.openSwapModal({
+            ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將竊取其卡牌作為自己卡牌，受害者將被賦予【遮蔽】狀態。',
+            isTargetDisabled: () => false,
+            extraActionType: 'IDENTITY_THEFT'
+          })
+        })
+      },
+      // 資本家：整場限一次，強迫對方換成藍隊成員
+      capitalist: {
+        getActionButton: (ctx) => {
+          if (ctx.myPlayerState?.hasUsedCapitalistAbility) return null;
+          return {
+            label: '🔵 強迫轉為藍隊成員',
+            badge: '資本家 限一次',
+            style: 'from-blue-600 to-sky-700 hover:from-blue-500 hover:to-sky-600 border-blue-300 text-white',
+            onClick: () => ctx.openSwapModal({
+              ruleDesc: '💰 資本家：選擇一名玩家發送請求，對方同意後其角色卡牌將換為「藍隊成員」。整場限用一次。',
+              isTargetDisabled: () => false,
+              extraActionType: 'CAPITALIST_FORCE_BLUE'
+            })
+          };
+        }
+      },
+      // 社會主義者：整場限一次，強迫對方換成紅隊成員
+      socialist: {
+        getActionButton: (ctx) => {
+          if (ctx.myPlayerState?.hasUsedSocialistAbility) return null;
+          return {
+            label: '🔴 強迫轉為紅隊成員',
+            badge: '社會主義者 限一次',
+            style: 'from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 border-red-300 text-white',
+            onClick: () => ctx.openSwapModal({
+              ruleDesc: '🚩 社會主義者：選擇一名玩家發送請求，對方同意後其角色卡牌將換為「紅隊成員」。整場限用一次。',
+              isTargetDisabled: () => false,
+              extraActionType: 'SOCIALIST_FORCE_RED'
+            })
+          };
+        }
+      },
+      // 白隊成員：在最後一輪可自主選邊換成藍隊或紅隊成員
+      white_team: {
+        getActionButton: (ctx) => {
+          const isLastRound = ctx.currentRoundIndex === ctx.roundSettings.length - 1;
+          if (!isLastRound) return null;
+          return {
+            label: '🏳️ 轉換所屬隊伍 (選邊)',
+            badge: '最後一輪專屬',
+            style: 'from-zinc-100 to-slate-300 hover:from-white hover:to-slate-200 border-zinc-400 text-zinc-950 font-black',
+            onClick: () => ctx.openWhiteTeamModal()
+          };
+        }
+      },
+      // 賭徒：預測終局獲勝陣營
+      gambler: {
+        getActionButton: (ctx) => ({
+          label: ctx.myPlayerState?.gamblerBet ? `🎲 賭徒已下注：${ctx.myPlayerState.gamblerBet}` : '🎲 賭徒下注預測',
+          badge: '賭徒 專屬',
+          style: 'from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 border-amber-300 text-zinc-950 font-bold',
+          onClick: () => ctx.openGamblerModal()
+        })
+      },
       hot_potato: {
         getActionButton: (ctx) => ({
           label: '🔄 發起身分交換',
@@ -792,6 +896,8 @@
       const [deckViewMode, setDeckViewMode] = useState('detailed');
 
       const [isColorOnly, setIsColorOnly] = useState(false);
+
+      // 身分交換與特殊技能彈窗狀態
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
       const [swapModalConfig, setSwapModalConfig] = useState(null);
       const [swapRequestData, setSwapRequestData] = useState(null); 
@@ -816,6 +922,10 @@
       // 通靈者 (Seer) 專用視窗狀態與倒數計時
       const [showSeerModal, setShowSeerModal] = useState(false);
       const [seerCountdown, setSeerCountdown] = useState(30);
+
+      // 白隊與賭徒專用彈窗
+      const [showWhiteTeamModal, setShowWhiteTeamModal] = useState(false);
+      const [showGamblerModal, setShowGamblerModal] = useState(false);
 
       const [showDualStatusModal, setShowDualStatusModal] = useState(false);
       const [dualStatusConfig, setDualStatusConfig] = useState(null);
@@ -993,11 +1103,12 @@
         return players.find(p => p.id === myPlayerId) || {
           name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false,
           hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false,
-          hasUsedChangerAbility: false, hasUsedTraderAbility: false, manualWinner: null, statuses: []
+          hasUsedChangerAbility: false, hasUsedTraderAbility: false, hasUsedCapitalistAbility: false,
+          hasUsedSocialistAbility: false, gamblerBet: null, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
-      // 檢查是否被施加外星人遮蔽狀態
+      // 檢查是否被施加遮蔽狀態
       const isCardCloaked = useMemo(() => {
         return Boolean(myInfo.statuses?.some(s => s.id === 'card_cloaked'));
       }, [myInfo.statuses]);
@@ -1242,6 +1353,8 @@
         setClearStatusPromptData(null);
         setShowVoyeurModal(false);
         setShowSeerModal(false);
+        setShowWhiteTeamModal(false);
+        setShowGamblerModal(false);
         setShowDualStatusModal(false);
         setDualStatusConfig(null);
         setSelectedDualTargets([]);
@@ -1281,6 +1394,7 @@
             id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null,
             hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false,
             hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false,
+            hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false, gamblerBet: null,
             manualWinner: null, statuses: []
           };
 
@@ -1360,7 +1474,37 @@
               }
               return;
             }
-            
+
+            // 特殊強制轉化身分邏輯 (資本家 / 社會主義者 / 白隊成員)
+            if (data.type === 'EXECUTE_FORCE_TRANSFORM') {
+              setPlayers(prev => {
+                const next = prev.map(p => {
+                  if (p.id === data.targetId) {
+                    const newTeamKey = data.newTeam;
+                    return {
+                      ...p,
+                      team: newTeamKey,
+                      role: {
+                        id: `${newTeamKey}_team`,
+                        name: `${newTeamKey === 'blue' ? '藍' : '紅'}隊成員`,
+                        team: newTeamKey,
+                        icon: newTeamKey === 'blue' ? '🔵' : '🔴',
+                        desc: '由特殊能力轉化組成的普通隊員。'
+                      }
+                    };
+                  }
+                  if (p.id === data.initiatorId) {
+                    if (data.abilityKey === 'capitalist') return { ...p, hasUsedCapitalistAbility: true };
+                    if (data.abilityKey === 'socialist') return { ...p, hasUsedSocialistAbility: true };
+                  }
+                  return p;
+                });
+                setTimeout(() => broadcastLatest({ players: next }), 50);
+                return next;
+              });
+              return;
+            }
+
             if (data.type === 'MAD_SCIENTIST_INITIATE') {
               madScientistVoteTrackerRef.current = { ...data, approvals: {} };
               publishMsg(topic, {
@@ -1485,6 +1629,7 @@
               id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null,
               hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false,
               hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false,
+              hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false, gamblerBet: null,
               manualWinner: null, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
@@ -1712,14 +1857,18 @@
               });
               break;
             case 'SWAP_REQUEST':
-              if (data.targetId === uid) {
-                setSwapRequestData({ fromId: data.fromId, fromName: data.fromName, fromRoleName: data.fromRoleName });
+              if (String(data.targetId) === String(uid)) {
+                setSwapRequestData(data);
               }
               break;
             case 'SWAP_REJECTED':
               if (data.fromId === uid) {
-                setSwapStatusMessage('對方拒絕了身分交換請求！');
-                setTimeout(() => setSwapStatusMessage(''), 3000);
+                if (data.isHunterCounter) {
+                  setSwapStatusMessage('🏹 對方是獵人！你的請求被拒絕，且你的身分卡已被遮蔽！');
+                } else {
+                  setSwapStatusMessage('❌ 對方拒絕了身分請求！');
+                }
+                setTimeout(() => setSwapStatusMessage(''), 3500);
               }
               break;
             case 'SWAP_SUCCESS':
@@ -1747,6 +1896,8 @@
                 setClearStatusPromptData(null);
                 setShowVoyeurModal(false);
                 setShowSeerModal(false);
+                setShowWhiteTeamModal(false);
+                setShowGamblerModal(false);
                 setShowSwapTargetModal(false);
                 setShowMadScientistModal(false);
                 setShowDrunkConfirmModal(false);
@@ -1861,7 +2012,8 @@
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
               hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
-              hasUsedTraderAbility: false, manualWinner: null, statuses: []
+              hasUsedTraderAbility: false, hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false,
+              gamblerBet: null, manualWinner: null, statuses: []
             }];
           }
           setPlayers(initialList);
@@ -2002,7 +2154,8 @@
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
           gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
           hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
-          hasUsedTraderAbility: false, manualWinner: null, statuses: []
+          hasUsedTraderAbility: false, hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false,
+          gamblerBet: null, manualWinner: null, statuses: []
         };
 
         StorageManager.saveSession(code, trimmedName, true);
@@ -2089,7 +2242,8 @@
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
               hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
-              hasUsedTraderAbility: false, manualWinner: null, statuses: []
+              hasUsedTraderAbility: false, hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false,
+              gamblerBet: null, manualWinner: null, statuses: []
             };
             setPlayers([selfPlayer]);
             setupConnection(code, false, trimmedName, myPlayerId);
@@ -2184,6 +2338,9 @@
           hasUsedTimeLordAbility: false,
           hasUsedChangerAbility: false,
           hasUsedTraderAbility: false,
+          hasUsedCapitalistAbility: false,
+          hasUsedSocialistAbility: false,
+          gamblerBet: null,
           manualWinner: null,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
@@ -2227,6 +2384,9 @@
             hasUsedTimeLordAbility: false,
             hasUsedChangerAbility: false,
             hasUsedTraderAbility: false,
+            hasUsedCapitalistAbility: false,
+            hasUsedSocialistAbility: false,
+            gamblerBet: null,
             manualWinner: null,
             statuses: initialStatuses
           };
@@ -2335,38 +2495,99 @@
         }
       };
 
+      // 支援額外動作類型 (BODY_SNATCH, IDENTITY_THEFT, CAPITALIST_FORCE_BLUE, SOCIALIST_FORCE_RED)
       const handleSendSwapRequest = (targetPlayer) => {
         setShowSwapTargetModal(false);
         if (targetPlayer.id === myPlayerId) return;
 
-        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送交換請求，等待對方確認中...`);
+        setSwapStatusMessage(`已向 ${targetPlayer.name} 發送請求，等待對方確認中...`);
         publishMsg(`trb_game_sync_room_${roomId}`, {
-          type: 'SWAP_REQUEST', senderId: myPlayerId, fromId: myPlayerId,
-          fromName: myInfo.name, fromRoleName: myInfo.role?.name, targetId: targetPlayer.id
+          type: 'SWAP_REQUEST',
+          senderId: myPlayerId,
+          fromId: myPlayerId,
+          fromName: myInfo.name,
+          fromRoleName: isCardCloaked ? '神秘玩家' : (myInfo.role?.name || '未知角色'),
+          fromTeam: myInfo.team,
+          targetId: targetPlayer.id,
+          extraActionType: swapModalConfig?.extraActionType || null
         });
       };
 
+      // 接受身分請求
       const handleAcceptSwap = () => {
         if (!swapRequestData) return;
-        const { fromId: p1Id } = swapRequestData;
+        const { fromId: p1Id, extraActionType } = swapRequestData;
         const p2Id = myPlayerId;
         setSwapRequestData(null);
 
-        if (latestStateRef.current.isHost) {
-          executeSwapOnHost(p1Id, p2Id);
+        if (extraActionType === 'CAPITALIST_FORCE_BLUE') {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: p1Id, targetId: p2Id, newTeam: 'blue', abilityKey: 'capitalist'
+          });
+        } else if (extraActionType === 'SOCIALIST_FORCE_RED') {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: p1Id, targetId: p2Id, newTeam: 'red', abilityKey: 'socialist'
+          });
         } else {
           publishMsg(`trb_game_sync_room_${roomId}`, {
-            type: 'EXECUTE_SWAP', senderId: myPlayerId, player1Id: p1Id, player2Id: p2Id
+            type: 'EXECUTE_SWAP', senderId: myPlayerId, player1Id: p1Id, player2Id: p2Id, extraActionType
           });
         }
       };
 
-      const handleRejectSwap = () => {
+      // 拒絕身分請求（支援獵人專屬反擊）
+      const handleRejectSwap = (isHunterCounter = false) => {
         if (!swapRequestData) return;
         publishMsg(`trb_game_sync_room_${roomId}`, {
-          type: 'SWAP_REJECTED', senderId: myPlayerId, fromId: swapRequestData.fromId
+          type: 'SWAP_REJECTED',
+          senderId: myPlayerId,
+          fromId: swapRequestData.fromId,
+          isHunterCounter
         });
+
+        if (isHunterCounter) {
+          publishMsg(`trb_game_sync_room_${roomId}`, {
+            type: 'EXECUTE_GRANT_STATUS',
+            senderId: myPlayerId,
+            targetId: swapRequestData.fromId,
+            statusObj: { id: 'card_cloaked', name: '遮蔽', icon: '😶‍🌫️' }
+          });
+          setSwapStatusMessage('🏹 獵人反擊成功！已將發起者的身分卡遮蔽！');
+          setTimeout(() => setSwapStatusMessage(''), 3000);
+        }
         setSwapRequestData(null);
+      };
+
+      // 白隊自主轉隊
+      const handleWhiteTeamTransform = (chosenTeam) => {
+        setShowWhiteTeamModal(false);
+        setPlayers(prev => prev.map(p => {
+          if (p.id === myPlayerId) {
+            return {
+              ...p,
+              team: chosenTeam,
+              role: {
+                id: `${chosenTeam}_team`,
+                name: `${chosenTeam === 'blue' ? '藍' : '紅'}隊成員`,
+                team: chosenTeam,
+                icon: chosenTeam === 'blue' ? '🔵' : '🔴',
+                desc: '由白隊成員轉化而成。'
+              }
+            };
+          }
+          return p;
+        }));
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: myPlayerId, targetId: myPlayerId, newTeam: chosenTeam, abilityKey: 'white_team'
+        });
+      };
+
+      // 賭徒下注預測
+      const handleGamblerBet = (betChoice) => {
+        setShowGamblerModal(false);
+        setPlayers(prev => prev.map(p => p.id === myPlayerId ? { ...p, gamblerBet: betChoice } : p));
+        setSwapStatusMessage(`🎲 下注成功！你預測【${betChoice}】獲勝。`);
+        setTimeout(() => setSwapStatusMessage(''), 3000);
       };
 
       const handleConfirmDrunkSwap = () => {
@@ -2452,8 +2673,8 @@
           senderId: myPlayerId,
           initiatorId: myPlayerId,
           initiatorName: myInfo.name,
-          initiatorRoleName: isCardCloaked ? '被遮蔽的玩家' : (myInfo.role?.name || '未知角色'),
-          initiatorRoleIcon: isCardCloaked ? '😶‍🌫️' : (myInfo.role?.icon || '⭐'),
+          initiatorRoleName: isCardCloaked ? '神秘玩家' : (myInfo.role?.name || '未知角色'),
+          initiatorRoleIcon: isCardCloaked ? '🛸' : (myInfo.role?.icon || '⭐'),
           targetId: targetPlayer.id,
           statusObj: {
             id: activeStatusConfig.statusId,
@@ -3002,7 +3223,8 @@
                         const meta = getTeamMeta(p.team);
                         const defaultIsRedWinner = gameResult === '紅隊獲勝' && p.team === 'red';
                         const defaultIsBlueWinner = gameResult === '藍隊獲勝' && p.team === 'blue';
-                        const defaultWinner = defaultIsRedWinner || defaultIsBlueWinner;
+                        const isGamblerWinner = p.role?.id === 'gambler' && Boolean(p.gamblerBet) && p.gamblerBet === gameResult;
+                        const defaultWinner = defaultIsRedWinner || defaultIsBlueWinner || isGamblerWinner;
 
                         const isWinner = (p.manualWinner !== undefined && p.manualWinner !== null)
                           ? p.manualWinner
@@ -3047,6 +3269,12 @@
                                     {st.icon} {st.name}
                                   </span>
                                 ))}
+                              </div>
+                            )}
+
+                            {p.gamblerBet && (
+                              <div className="text-[10px] text-amber-300 bg-amber-950/60 border border-amber-500/40 px-1.5 py-0.5 rounded truncate">
+                                🎲 押注：{p.gamblerBet}
                               </div>
                             )}
 
@@ -3100,7 +3328,7 @@
                 </div>
               )}
 
-              {/* 核心身分卡（支援外星人遮蔽判定） */}
+              {/* 核心身分卡（支援遮蔽判定） */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -3184,7 +3412,7 @@
                         </div>
                       )}
 
-                      {/* 角色技能按鈕：被外星人遮蔽時，按鈕顏色與樣式統一，名稱強制變更為「⚡ 發動技能」 */}
+                      {/* 角色技能按鈕 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = RoleMechanics.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, timeLeft, myPlayerState: myInfo,
@@ -3195,6 +3423,8 @@
                           openDrunkModal: () => setShowDrunkConfirmModal(true),
                           openVoyeurModal: () => setShowVoyeurModal(true),
                           openSeerModal: handleOpenSeerModal,
+                          openWhiteTeamModal: () => setShowWhiteTeamModal(true),
+                          openGamblerModal: () => setShowGamblerModal(true),
                           openClearStatusModal: (config) => {
                             setActiveClearConfig(config);
                             setShowClearStatusModal(true);
@@ -3261,6 +3491,74 @@
             </div>
           )}
 
+          {/* 彈窗：白隊成員轉隊 */}
+          {showWhiteTeamModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🏳️</div>
+                <h3 className="text-lg font-black text-white">白隊成員：最終陣營選擇</h3>
+                <p className="text-xs text-zinc-300">
+                  依照規則，在最後一輪結束前你必須選擇歸屬於「藍隊成員」或「紅隊成員」：
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleWhiteTeamTransform('blue')}
+                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition active:scale-95 text-sm shadow"
+                  >
+                    🔵 成為藍隊成員
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleWhiteTeamTransform('red')}
+                    className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl transition active:scale-95 text-sm shadow"
+                  >
+                    🔴 成為紅隊成員
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：賭徒下注預測 */}
+          {showGamblerModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-spin">🎲</div>
+                <h3 className="text-lg font-black text-amber-300">賭徒：預測終局獲勝陣營</h3>
+                <p className="text-xs text-zinc-300">
+                  猜測遊戲結束時的獲勝隊伍，若最終判定與你的猜測相符，你將一起獲勝：
+                </p>
+
+                <div className="grid grid-cols-2 gap-2.5 pt-2">
+                  {['特殊陣營獲勝', '藍隊獲勝', '紅隊獲勝', '沒有隊伍獲勝'].map(choice => (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => handleGamblerBet(choice)}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition active:scale-95 ${
+                        myInfo.gamblerBet === choice
+                          ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700'
+                      }`}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowGamblerModal(false)}
+                  className="w-full text-zinc-400 hover:text-white text-xs py-1"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 彈窗：通靈者專屬全場透視視窗（含 30 秒自動關閉防呆） */}
           {showSeerModal && (
             <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-3">
@@ -3322,7 +3620,7 @@
             </div>
           )}
 
-          {/* 彈窗：特殊狀態賦予目標選擇 (外星人/殭屍/暴徒等) */}
+          {/* 彈窗：特殊狀態賦予目標選擇 */}
           {showGrantStatusModal && activeStatusConfig && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -3367,7 +3665,7 @@
             </div>
           )}
 
-          {/* 彈窗：被賦予狀態者的確認請求 (含外星人記憶遮蔽同意) */}
+          {/* 彈窗：被賦予狀態者的確認請求 */}
           {statusPromptData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
@@ -3417,7 +3715,7 @@
             </div>
           )}
 
-          {/* 彈窗：選擇要清除/治癒狀態的玩家 (心理醫生 / 效忠者 / 醫療兵) */}
+          {/* 彈窗：選擇要清除/治癒狀態的玩家 */}
           {showClearStatusModal && activeClearConfig && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-teal-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
@@ -3962,33 +4260,52 @@
             </div>
           )}
 
-          {/* 彈窗：被動身分交換確認請求 */}
+          {/* 彈窗：被動身分請求確認（含獵人反擊機制） */}
           {swapRequestData && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-amber-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
-                <div className="text-4xl animate-bounce">🔄</div>
-                <h3 className="text-lg font-black text-white">身分交換請求！</h3>
+                <div className="text-4xl animate-bounce">⚡</div>
+                <h3 className="text-lg font-black text-white">收到身分 / 技能請求！</h3>
                 <p className="text-sm text-zinc-300 leading-relaxed">
                   玩家 <strong className="text-amber-400 font-bold">{swapRequestData.fromName}</strong> 
-                  （持有身分：<strong className="text-emerald-400">{swapRequestData.fromRoleName}</strong>）想要與你交換身分卡。
+                  （持有身分：<strong className="text-emerald-400">{swapRequestData.fromRoleName}</strong>）想要對你發動：
+                  <span className="block mt-1 font-bold text-indigo-300">
+                    {swapRequestData.extraActionType === 'BODY_SNATCH' && '「交換卡牌，並將你變為【害羞】狀態」'}
+                    {swapRequestData.extraActionType === 'IDENTITY_THEFT' && '「竊取你的身分，並將你的卡牌【遮蔽】」'}
+                    {swapRequestData.extraActionType === 'CAPITALIST_FORCE_BLUE' && '「強迫將你的角色卡牌換為【藍隊成員】」'}
+                    {swapRequestData.extraActionType === 'SOCIALIST_FORCE_RED' && '「強迫將你的角色卡牌換為【紅隊成員】」'}
+                    {!swapRequestData.extraActionType && '「身分交換」'}
+                  </span>
                 </p>
-                <p className="text-xs text-zinc-400">若同意，你的身分將立刻轉變為對方的身分！</p>
 
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleRejectSwap}
-                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
-                  >
-                    拒絕
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAcceptSwap}
-                    className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
-                  >
-                    確認交換
-                  </button>
+                <div className="flex flex-col gap-2 pt-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRejectSwap(false)}
+                      className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                    >
+                      拒絕
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAcceptSwap}
+                      className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black py-2.5 rounded-xl shadow transition active:scale-95 text-sm"
+                    >
+                      同意
+                    </button>
+                  </div>
+
+                  {/* 獵人反擊判定：若非同隊玩家對獵人發動請求，獵人可選擇反擊並遮蔽對方 */}
+                  {(myInfo.role?.id === 'hunter_b' || myInfo.role?.id === 'hunter_r') && swapRequestData.fromTeam !== myInfo.team && (
+                    <button
+                      type="button"
+                      onClick={() => handleRejectSwap(true)}
+                      className="w-full bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white font-bold py-2.5 rounded-xl border border-red-400 transition active:scale-95 text-xs shadow"
+                    >
+                      🏹 獵人反擊：拒絕並遮蔽對方
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
