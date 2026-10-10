@@ -520,6 +520,39 @@
           promptDesc: '👩 母親規則：只能在第 1 回合使用，選擇兩名其他玩家發送【母親的孩子】請求。必須經過「雙方均同意」後生效（限用一次）。',
           firstRoundOnly: true
         })
+      },
+      time_lord_b: {
+        getActionButton: (ctx) => {
+          if (ctx.myPlayerState?.hasUsedTimeLordAbility) return null;
+          return {
+            label: '⏳ 扭曲時間 (±60秒)',
+            badge: '整場限一次',
+            style: 'from-blue-600 to-cyan-700 hover:from-blue-500 hover:to-cyan-600 border-blue-400 text-white',
+            onClick: () => ctx.openTimeLordModal()
+          };
+        }
+      },
+      time_lord_r: {
+        getActionButton: (ctx) => {
+          if (ctx.myPlayerState?.hasUsedTimeLordAbility) return null;
+          return {
+            label: '⏳ 扭曲時間 (±60秒)',
+            badge: '整場限一次',
+            style: 'from-rose-600 to-amber-700 hover:from-rose-500 hover:to-amber-600 border-rose-400 text-white',
+            onClick: () => ctx.openTimeLordModal()
+          };
+        }
+      },
+      changer: {
+        getActionButton: (ctx) => {
+          if (ctx.myPlayerState?.hasUsedChangerAbility) return null;
+          return {
+            label: '🤹 啟動幻形儀式',
+            badge: '整場限一次',
+            style: 'from-fuchsia-600 to-pink-600 hover:from-fuchsia-500 hover:to-pink-500 border-pink-400 text-white',
+            onClick: () => ctx.openChangerModal()
+          };
+        }
       }
     };
 
@@ -619,10 +652,7 @@
           if (p.id === targetPlayerId) {
             const currentStatuses = p.statuses || [];
             const idsToRemove = clearConfig.filterStatusIds || [];
-            
-            // 只要存在於 filterStatusIds 的狀態就過濾移除
             const nextStatuses = currentStatuses.filter(s => !idsToRemove.includes(s.id));
-            
             return { ...p, statuses: nextStatuses };
           }
           return p;
@@ -681,115 +711,108 @@
       </header>
     );
 
-const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog }) => {
-  // 'deck' 代表只看本局卡池，'all' 代表查看所有角色
-  const [viewMode, setViewMode] = useState('deck');
-  // 建立捲軸容器的 ref 以便在切換時重置捲軸位置
-  const listContainerRef = useRef(null);
+    const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog }) => {
+      const [viewMode, setViewMode] = useState('deck');
+      const listContainerRef = useRef(null);
 
-  // 整理所有官方角色的分組列表（依角色名稱合併同名不同陣營）
-  const allRolesGrouped = useMemo(() => {
-    if (!allRolesCatalog) return [];
-    const groups = {};
-    allRolesCatalog.forEach(role => {
-      if (!groups[role.name]) {
-        groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };
-      } else if (!groups[role.name].teams.includes(role.team)) {
-        groups[role.name].teams.push(role.team);
-      }
-    });
-    return Object.values(groups);
-  }, [allRolesCatalog]);
+      const allRolesGrouped = useMemo(() => {
+        if (!allRolesCatalog) return [];
+        const groups = {};
+        allRolesCatalog.forEach(role => {
+          if (!groups[role.name]) {
+            groups[role.name] = { name: role.name, icon: role.icon, desc: role.desc, teams: [role.team] };
+          } else if (!groups[role.name].teams.includes(role.team)) {
+            groups[role.name].teams.push(role.team);
+          }
+        });
+        return Object.values(groups);
+      }, [allRolesCatalog]);
 
-  // 切換模式的函式：切換時同時將捲軸瞬間拉回最上方
-  const handleToggleViewMode = () => {
-    setViewMode(prev => {
-      const nextMode = prev === 'deck' ? 'all' : 'deck';
-      if (listContainerRef.current) {
-        listContainerRef.current.scrollTop = 0;
-      }
-      return nextMode;
-    });
-  };
+      const handleToggleViewMode = () => {
+        setViewMode(prev => {
+          const nextMode = prev === 'deck' ? 'all' : 'deck';
+          if (listContainerRef.current) {
+            listContainerRef.current.scrollTop = 0;
+          }
+          return nextMode;
+        });
+      };
 
-  const displayRoles = viewMode === 'deck' ? activeRolesInDeck : allRolesGrouped;
+      const displayRoles = viewMode === 'deck' ? activeRolesInDeck : allRolesGrouped;
 
-  return (
-    <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl transition-all">
-      <div className="flex flex-wrap items-center justify-between pb-3 mb-4 border-b border-zinc-800 gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{viewMode === 'deck' ? '🃏' : '📖'}</span>
-          <h3 className="font-bold text-white text-sm sm:text-base">
-            {viewMode === 'deck' ? '本局使用角色池一覽' : '完整官方角色總覽'}
-          </h3>
-        </div>
+      return (
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl transition-all">
+          <div className="flex flex-wrap items-center justify-between pb-3 mb-4 border-b border-zinc-800 gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{viewMode === 'deck' ? '🃏' : '📖'}</span>
+              <h3 className="font-bold text-white text-sm sm:text-base">
+                {viewMode === 'deck' ? '本局使用角色池一覽' : '完整官方角色總覽'}
+              </h3>
+            </div>
 
-        <div className="flex items-center gap-2">
-          {/* 切換檢視按鈕 */}
-          <button
-            type="button"
-            onClick={handleToggleViewMode}
-            className={`text-xs px-3 py-1.5 rounded-lg border font-bold transition flex items-center gap-1 active:scale-95 ${
-              viewMode === 'all'
-                ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 hover:bg-indigo-600/40'
-                : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
-            }`}
-          >
-            <span>{viewMode === 'deck' ? '🌐 查看所有角色' : '🔙 只看本局角色'}</span>
-          </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleToggleViewMode}
+                className={`text-xs px-3 py-1.5 rounded-lg border font-bold transition flex items-center gap-1 active:scale-95 ${
+                  viewMode === 'all'
+                    ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 hover:bg-indigo-600/40'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
+                }`}
+              >
+                <span>{viewMode === 'deck' ? '🌐 查看所有角色' : '🔙 只看本局角色'}</span>
+              </button>
 
-          {/* 右側標籤 */}
-          <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full font-medium border border-indigo-500/30">
-            {viewMode === 'deck' ? `本局 ${totalCardsInDeck} 張卡片` : `共 ${allRolesGrouped.length} 種角色`}
-          </span>
-        </div>
-      </div>
+              <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full font-medium border border-indigo-500/30">
+                {viewMode === 'deck' ? `本局 ${totalCardsInDeck} 張卡片` : `共 ${allRolesGrouped.length} 種角色`}
+              </span>
+            </div>
+          </div>
 
-      {displayRoles.length === 0 ? (
-        <div className="text-center py-8 text-zinc-500 text-xs">
-          暫無啟用的角色卡片
-        </div>
-      ) : (
-        /* 掛載 listContainerRef，並加上 key={viewMode} 強制重設滾動狀態 */
-        <div 
-          ref={listContainerRef}
-          key={viewMode}
-          className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1"
-        >
-          {displayRoles.map(group => {
-            const hasBlue = group.teams.includes('blue');
-            const hasRed = group.teams.includes('red');
-            let bgStyle = 'bg-zinc-900/40 border-zinc-800';
+          {displayRoles.length === 0 ? (
+            <div className="text-center py-8 text-zinc-500 text-xs">
+              暫無啟用的角色卡片
+            </div>
+          ) : (
+            <div 
+              ref={listContainerRef}
+              key={viewMode}
+              className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1"
+            >
+              {displayRoles.map(group => {
+                const hasBlue = group.teams.includes('blue');
+                const hasRed = group.teams.includes('red');
+                let bgStyle = 'bg-zinc-900/40 border-zinc-800';
 
-            if (hasBlue && hasRed) bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
-            else if (hasBlue) bgStyle = getTeamMeta('blue').listBg;
-            else if (hasRed) bgStyle = getTeamMeta('red').listBg;
-            else if (group.teams.length > 0) bgStyle = getTeamMeta(group.teams[0]).listBg;
+                if (hasBlue && hasRed) bgStyle = 'bg-gradient-to-r from-blue-950/30 via-zinc-900/40 to-red-950/30 border-indigo-500/30';
+                else if (hasBlue) bgStyle = getTeamMeta('blue').listBg;
+                else if (hasRed) bgStyle = getTeamMeta('red').listBg;
+                else if (group.teams.length > 0) bgStyle = getTeamMeta(group.teams[0]).listBg;
 
-            return (
-              <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
-                <div className="flex items-start gap-2.5">
-                  <span className="text-2xl mt-0.5 shrink-0">{group.icon}</span>
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-sm text-zinc-100">{group.name}</span>
-                      {group.teams.map(t => (
-                        <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
-                          {getTeamMeta(t).label}
-                        </span>
-                      ))}
+                return (
+                  <div key={group.name} className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${bgStyle}`}>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-2xl mt-0.5 shrink-0">{group.icon}</span>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-sm text-zinc-100">{group.name}</span>
+                          {group.teams.map(t => (
+                            <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${getTeamMeta(t).badge}`}>
+                              {getTeamMeta(t).label}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed break-words">{group.desc}</p>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
-};
+      );
+    };
 
     function App() {
       const rolesCatalog = window.OFFICIAL_ROLES_CATALOG || DEFAULT_ROLES;
@@ -840,19 +863,20 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
-      // 清除狀態相關 Modal State (心理醫生 / 效忠者 / 醫療兵)
       const [showClearStatusModal, setShowClearStatusModal] = useState(false);
       const [activeClearConfig, setActiveClearConfig] = useState(null);
       const [clearStatusPromptData, setClearStatusPromptData] = useState(null);
 
-      // 偷窺狂查看埋葬卡 Modal State
       const [showVoyeurModal, setShowVoyeurModal] = useState(false);
 
-      // 雙目標賦予狀態 Modal State (厄里斯 / 丘比特 / 父親 / 母親)
       const [showDualStatusModal, setShowDualStatusModal] = useState(false);
       const [dualStatusConfig, setDualStatusConfig] = useState(null);
       const [selectedDualTargets, setSelectedDualTargets] = useState([]);
       const [dualStatusPendingData, setDualStatusPendingData] = useState(null);
+
+      // 時間領主與幻形者彈窗 State
+      const [showTimeLordModal, setShowTimeLordModal] = useState(false);
+      const [showChangerModal, setShowChangerModal] = useState(false);
 
       const [showVictoryModal, setShowVictoryModal] = useState(false);
       const [victoryCurrentNode, setVictoryCurrentNode] = useState('ROOT');
@@ -867,7 +891,6 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
       const madScientistVoteTrackerRef = useRef(null);
       const dualStatusVoteTrackerRef = useRef(null);
 
-      // 完整決策樹節點定義
       const DECISION_TREE = useMemo(() => ({
         ROOT: {
           question: '🌟 有特殊陣營獨自獲勝嗎？',
@@ -1020,7 +1043,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
 
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
 
@@ -1165,6 +1188,40 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
         setSwapStatusMessage(`已向 ${t1.name} 與 ${t2.name} 發送賦予【${statusObj.name}】請求，等待雙方同意中...`);
       }, [players, myPlayerId, myInfo.name, myInfo.role?.name, roomId, publishMsg]);
 
+      // 時間領主：發動扭曲時間增減 60 秒
+      const handleTriggerTimeShift = (deltaSeconds) => {
+        setShowTimeLordModal(false);
+        setPlayers(prev => prev.map(p => p.id === myPlayerId ? { ...p, hasUsedTimeLordAbility: true } : p));
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'TIME_LORD_SHIFT',
+          senderId: myPlayerId,
+          userName: myInfo.name,
+          delta: deltaSeconds
+        });
+      };
+
+      // 幻形者：變身為牌庫外未出場的全新角色
+      const handleTriggerChangerMorph = () => {
+        setShowChangerModal(false);
+        const unusedRoles = rolesCatalog.filter(r => !roleCounts[r.id] || roleCounts[r.id] <= 0);
+        const candidates = unusedRoles.length > 0 ? unusedRoles : rolesCatalog.filter(r => r.id !== 'changer');
+        const newRole = candidates[Math.floor(Math.random() * candidates.length)];
+
+        setPlayers(prev => prev.map(p => p.id === myPlayerId ? {
+          ...p,
+          role: newRole,
+          team: newRole.team,
+          hasUsedChangerAbility: true
+        } : p));
+
+        publishMsg(`trb_game_sync_room_${roomId}`, {
+          type: 'CHANGER_MORPH_SUCCESS',
+          senderId: myPlayerId,
+          playerId: myPlayerId,
+          newRole
+        });
+      };
+
       const handleDualStatusTargetVote = (accepted) => {
         if (!dualStatusPendingData) return;
         publishMsg(`trb_game_sync_room_${roomId}`, {
@@ -1207,6 +1264,8 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
         setDualStatusConfig(null);
         setSelectedDualTargets([]);
         setDualStatusPendingData(null);
+        setShowTimeLordModal(false);
+        setShowChangerModal(false);
         setSwapStatusMessage('');
         setIsVerifying(false);
         setConnStatus('未連線');
@@ -1237,7 +1296,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
           if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
           };
 
           if (asHost) {
@@ -1456,9 +1515,44 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
           // === 所有玩家通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
             };
             publishMsg(topic, { type: 'REPORT_PRESENCE', senderId: uid, player: myCurrent });
+            return;
+          }
+
+          // 時間領主：時空扭曲同步
+          if (data.type === 'TIME_LORD_SHIFT') {
+            const shiftText = data.delta > 0 ? `+${data.delta} 秒` : `${data.delta} 秒`;
+            setSwapStatusMessage(`⏳ ${data.userName} 發動【時間扭曲】！當前回合時間 ${shiftText}！`);
+            setTimeout(() => setSwapStatusMessage(''), 4000);
+
+            if (latestStateRef.current.isHost) {
+              const cur = latestStateRef.current;
+              const nextTime = Math.max(5, cur.timeLeft + data.delta);
+              const nextEndTime = cur.roundEndTime > 0 ? (cur.roundEndTime + data.delta * 1000) : 0;
+              setTimeLeft(nextTime);
+              setRoundEndTime(nextEndTime);
+              setTimeout(() => broadcastLatest({ timeLeft: nextTime, roundEndTime: nextEndTime }), 50);
+            }
+            return;
+          }
+
+          // 幻形者：變身成功同步
+          if (data.type === 'CHANGER_MORPH_SUCCESS') {
+            setPlayers(prev => prev.map(p => p.id === data.playerId ? {
+              ...p,
+              role: data.newRole,
+              team: data.newRole.team,
+              hasUsedChangerAbility: true
+            } : p));
+            if (data.playerId === uid) {
+              setSwapStatusMessage(`🎉 幻形成功！你已變身為【${data.newRole.name}】！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            if (latestStateRef.current.isHost) {
+              setTimeout(() => broadcastLatest(), 50);
+            }
             return;
           }
 
@@ -1696,6 +1790,8 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
                 setShowDrunkConfirmModal(false);
                 setShowDualStatusModal(false);
                 setDualStatusPendingData(null);
+                setShowTimeLordModal(false);
+                setShowChangerModal(false);
               }
 
               if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
@@ -1803,7 +1899,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
           if (initialList.length === 0) {
             initialList = [{
               id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
             }];
           }
           setPlayers(initialList);
@@ -1945,7 +2041,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
           id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
-          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
+          gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
         };
 
         StorageManager.saveSession(code, trimmedName, true);
@@ -2030,7 +2126,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
 
             const selfPlayer = {
               id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
-              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, manualWinner: null, statuses: []
+              gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, manualWinner: null, statuses: []
             };
             setPlayers([selfPlayer]);
             setupConnection(code, false, trimmedName, myPlayerId);
@@ -2122,6 +2218,8 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
           hasBeenLeprechaun: false, 
           hasUsedMadScientistAbility: false,
           hasUsedDualTargetAbility: false,
+          hasUsedTimeLordAbility: false,
+          hasUsedChangerAbility: false,
           manualWinner: null,
           gameRoom: idx < half ? '房間 A (Room A)' : '房間 B (Room B)'
         }));
@@ -2162,6 +2260,8 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
             hasBeenLeprechaun: r.id === 'leprechaun',
             hasUsedMadScientistAbility: false,
             hasUsedDualTargetAbility: false,
+            hasUsedTimeLordAbility: false,
+            hasUsedChangerAbility: false,
             manualWinner: null,
             statuses: initialStatuses
           };
@@ -2678,11 +2778,12 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
                 </div>
               </div>
 
-<RoleCatalogCard
-  activeRolesInDeck={activeRolesInDeck}
-  totalCardsInDeck={totalCardsInDeck}
-  allRolesCatalog={rolesCatalog}
-/>            </div>
+              <RoleCatalogCard
+                activeRolesInDeck={activeRolesInDeck}
+                totalCardsInDeck={totalCardsInDeck}
+                allRolesCatalog={rolesCatalog}
+              />
+            </div>
           )}
 
           {gameState === 'game' && (
@@ -3023,7 +3124,7 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
 
               {swapStatusMessage && (
                 <div className={`max-w-sm mx-auto border text-xs px-4 py-2.5 rounded-xl text-center font-bold animate-pulse ${
-                  swapStatusMessage.includes('成功') || swapStatusMessage.includes('獲得')
+                  swapStatusMessage.includes('成功') || swapStatusMessage.includes('獲得') || swapStatusMessage.includes('扭曲')
                     ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
                     : 'bg-amber-500/20 border-amber-500 text-amber-300'
                 }`}>
@@ -3118,7 +3219,9 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
                             setSelectedDualTargets([]);
                             setShowDualStatusModal(true);
                           },
-                          triggerDualStatusGrant: handleTriggerDualStatusGrant
+                          triggerDualStatusGrant: handleTriggerDualStatusGrant,
+                          openTimeLordModal: () => setShowTimeLordModal(true),
+                          openChangerModal: () => setShowChangerModal(true)
                         });
 
                         if (!action) return null;
@@ -3154,11 +3257,12 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
                 </div>
               </div>
 
-<RoleCatalogCard
-  activeRolesInDeck={activeRolesInDeck}
-  totalCardsInDeck={totalCardsInDeck}
-  allRolesCatalog={rolesCatalog}
-/>            </div>
+              <RoleCatalogCard
+                activeRolesInDeck={activeRolesInDeck}
+                totalCardsInDeck={totalCardsInDeck}
+                allRolesCatalog={rolesCatalog}
+              />
+            </div>
           )}
 
           {/* 彈窗：特殊狀態賦予目標選擇 */}
@@ -3372,6 +3476,74 @@ const RoleCatalogCard = ({ activeRolesInDeck, totalCardsInDeck, allRolesCatalog 
                     className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
                   >
                     同意清除
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：時間領主調整時間 */}
+          {showTimeLordModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-cyan-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-spin">⏳</div>
+                <h3 className="text-lg font-black text-cyan-300">發動時間扭曲</h3>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  身為時間領主，你可以扭曲本輪時空。請選擇要為全場增加或縮短當前的剩餘時間（整場限用一次）：
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleTriggerTimeShift(-60)}
+                    className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black py-3 rounded-xl border border-rose-500 transition active:scale-95 text-sm shadow"
+                  >
+                    ⏩ 快轉 -60秒
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTriggerTimeShift(60)}
+                    className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-black py-3 rounded-xl border border-cyan-500 transition active:scale-95 text-sm shadow"
+                  >
+                    ⏪ 延長 +60秒
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTimeLordModal(false)}
+                  className="w-full text-zinc-400 hover:text-white text-xs py-1"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：幻形者變身確認 */}
+          {showChangerModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-pink-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">🤹</div>
+                <h3 className="text-lg font-black text-pink-300">啟動幻形儀式？</h3>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  你將隨機變身為牌庫外未出場的任意一個全新角色，並立即繼承該角色的<strong className="text-pink-400">所有技能、陣營與勝利目標</strong>！
+                </p>
+                <p className="text-[11px] text-zinc-400">變身後將無法復原為幻形者，是否確定進行？</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowChangerModal(false)}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTriggerChangerMorph}
+                    className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-90 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    確定變身
                   </button>
                 </div>
               </div>
