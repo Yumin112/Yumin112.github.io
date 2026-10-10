@@ -65,12 +65,12 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'hypnotist_r', name: '催眠師 (Hypnotist)', team: 'red', icon: '🌀', desc: '進行『角色分享』時對其施加"催眠"狀態：強制對方在行為上必須扮演你指定的角色(盲人、小丑、默劇演員、木乃伊)。', pairs: 'hypnotist_b' },
   { id: 'conspirator_b', name: '共謀者 (Conspirator)', team: 'blue', icon: '🗡️', desc: '與非同隊陣營的玩家進行『角色分享』時，對其施加"叛徒"狀態：使其獲勝目標倒戈向你的隊伍。', pairs: 'conspirator_r' },
   { id: 'conspirator_r', name: '共謀者 (Conspirator)', team: 'red', icon: '🗡️', desc: '與非同隊陣營的玩家進行『角色分享』時，對其施加"叛徒"狀態：使其獲勝目標倒戈向你的隊伍。', pairs: 'conspirator_b' },
-  //{ id: 'psychologist_b', name: '心理醫生 (Psychologist)', team: 'blue', icon: '🛋️', desc: '進行『角色揭露』給"害羞"或"靦腆"或"妄想"玩家時，對方可與你『角色分享』並治癒移除這些狀態。', pairs: 'psychologist_r' },
-  //{ id: 'psychologist_r', name: '心理醫生 (Psychologist)', team: 'red', icon: '🛋️', desc: '進行『角色揭露』給"害羞"或"靦腆"或"妄想"玩家時，對方可與你『角色分享』並治癒移除這些狀態。', pairs: 'psychologist_b' },
-  //{ id: 'loyalist_b', name: '效忠者 (Loyalist)', team: 'blue', icon: '🛡️', desc: '免疫"叛徒"狀態，且能透過『角色分享』消除他人身上的"叛徒"狀態。', pairs: 'loyalist_r' },
-  //{ id: 'loyalist_r', name: '效忠者 (Loyalist)', team: 'red', icon: '🛡️', desc: '免疫"叛徒"狀態，且能透過『角色分享』消除他人身上的"叛徒"狀態。', pairs: 'loyalist_b' },
-  //{ id: 'medic_b', name: '醫療兵 (Medic)', team: 'blue', icon: '🏥', desc: '與你進行『角色分享』的玩家清除身上額外狀態，不包含角色本身自帶的狀態以及"叛徒"狀態。', pairs: 'medic_r' },
-  //{ id: 'medic_r', name: '醫療兵 (Medic)', team: 'red', icon: '🏥', desc: '與你進行『角色分享』的玩家清除身上額外狀態，不包含角色本身自帶的狀態以及"叛徒"狀態。', pairs: 'medic_b' },
+  { id: 'psychologist_b', name: '心理醫生 (Psychologist)', team: 'blue', icon: '🛋️', desc: '進行『角色揭露』給"害羞"或"靦腆"或"妄想"玩家時，對方可與你『角色分享』並治癒移除這些狀態。', pairs: 'psychologist_r' },
+  { id: 'psychologist_r', name: '心理醫生 (Psychologist)', team: 'red', icon: '🛋️', desc: '進行『角色揭露』給"害羞"或"靦腆"或"妄想"玩家時，對方可與你『角色分享』並治癒移除這些狀態。', pairs: 'psychologist_b' },
+  { id: 'loyalist_b', name: '效忠者 (Loyalist)', team: 'blue', icon: '🛡️', desc: '免疫"叛徒"狀態，且能透過『角色分享』消除他人身上的"叛徒"狀態。', pairs: 'loyalist_r' },
+  { id: 'loyalist_r', name: '效忠者 (Loyalist)', team: 'red', icon: '🛡️', desc: '免疫"叛徒"狀態，且能透過『角色分享』消除他人身上的"叛徒"狀態。', pairs: 'loyalist_b' },
+  { id: 'medic_b', name: '醫療兵 (Medic)', team: 'blue', icon: '🏥', desc: '與你進行『角色分享』的玩家清除身上額外狀態，不包含角色本身自帶的狀態以及"叛徒"狀態。', pairs: 'medic_r' },
+  { id: 'medic_r', name: '醫療兵 (Medic)', team: 'red', icon: '🏥', desc: '與你進行『角色分享』的玩家清除身上額外狀態，不包含角色本身自帶的狀態以及"叛徒"狀態。', pairs: 'medic_b' },
   
   // 藍/紅隊卡牌資訊類 (Blue,red)
   { id: 'agent_b', name: '特務 (Agent)', team: 'blue', icon: '🕶️', desc: '每回合只能用一次，可找一名玩家進行『角色揭露』，強制對方與你進行『角色分享』，無法拒絕。', pairs: 'agent_r' },
@@ -149,10 +149,10 @@ window.OFFICIAL_ROLES_CATALOG = [
   //{ id: 'time_lord_r', name: '時間領主 (Time Lord)', team: 'red', icon: '⏳', desc: '整場遊戲只能使用一次，『公開角色』後。', pairs: 'time_lord_b' },
   
   // 藍/紅隊特殊行為類 (Blue,red)
-  //{ id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_r' },
-  //{ id: 'trader_r', name: '走私商人 (Trader)', team: 'red', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_b' },
-  //{ id: 'voyeur_b', name: '偷窺狂 (Voyeur)', team: 'blue', icon: '🫣', desc: '在遊戲過程中的任何時刻，皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_r' },
-  //{ id: 'voyeur_r', name: '偷窺狂 (Voyeur)', team: 'red', icon: '🫣', desc: '在遊戲過程中的任何時刻，皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_b' },
+  { id: 'trader_b', name: '走私商人 (Trader)', team: 'blue', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_r' },
+  { id: 'trader_r', name: '走私商人 (Trader)', team: 'red', icon: '📦', desc: '整場遊戲只能使用一次，你可以跟本局遊戲的埋葬卡互換，並繼承角色卡牌與勝利條件。', pairs: 'trader_b' },
+  { id: 'voyeur_b', name: '偷窺狂 (Voyeur)', team: 'blue', icon: '🫣', desc: '在遊戲過程中的任何時刻，皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_r' },
+  { id: 'voyeur_r', name: '偷窺狂 (Voyeur)', team: 'red', icon: '🫣', desc: '在遊戲過程中的任何時刻，皆可直接偷看本局遊戲的埋葬卡。', pairs: 'voyeur_b' },
   { id: 'mayor_b', name: '市長 (Mayor)', team: 'blue', icon: '🎩', desc: '投票選擇領隊時，你可以『公開角色』之後你的投票永遠算作兩票。', pairs: 'mayor_r' },
   { id: 'mayor_r', name: '市長 (Mayor)', team: 'red', icon: '🎩', desc: '投票選擇領隊時，你可以『公開角色』之後你的投票永遠算作兩票。', pairs: 'mayor_b' },
   { id: 'tues_knight', name: '星期二騎士 (Tuesday Knight)', team: 'blue', icon: '⚔️', desc: '若你與「炸彈客」進行了『角色分享』，房內除了「總統」以外，其他玩家包含自己立即死亡，請帶著「炸彈客」找到房主終止遊戲，藍隊直接獲勝。', pairs: 'dr_boom' },
