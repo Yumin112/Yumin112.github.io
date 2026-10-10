@@ -322,6 +322,52 @@
       }
     };
 
+    // 狀態清除/治癒專用配置（心理醫生、效忠者、醫療兵）
+    const ROLE_CLEAR_STATUS_ACTIONS = {
+      psychologist_b: {
+        filterStatusIds: ['shy', 'coy', 'paranoid'],
+        btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
+        actionTitle: '治癒心理狀態',
+        style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
+        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】或【妄想】狀態。'
+      },
+      psychologist_r: {
+        filterStatusIds: ['shy', 'coy', 'paranoid'],
+        btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
+        actionTitle: '治癒心理狀態',
+        style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
+        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】或【妄想】狀態。'
+      },
+      loyalist_b: {
+        filterStatusIds: ['traitor'],
+        btnLabel: '🛡️ 消除叛徒狀態', badge: '效忠者 專屬',
+        actionTitle: '消除叛徒狀態',
+        style: 'from-blue-600 to-sky-700 hover:from-blue-500 hover:to-sky-600 border-blue-400 text-white',
+        promptText: '選擇一位玩家消除其【叛徒】狀態。'
+      },
+      loyalist_r: {
+        filterStatusIds: ['traitor'],
+        btnLabel: '🛡️ 消除叛徒狀態', badge: '效忠者 專屬',
+        actionTitle: '消除叛徒狀態',
+        style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
+        promptText: '選擇一位玩家消除其【叛徒】狀態。'
+      },
+      medic_b: {
+        clearMedicRule: true,
+        btnLabel: '🏥 清除身上狀態', badge: '醫療兵 專屬',
+        actionTitle: '清除額外狀態',
+        style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
+        promptText: '選擇一位玩家清除其身上所有非自帶的額外狀態（不包含叛徒狀態）。'
+      },
+      medic_r: {
+        clearMedicRule: true,
+        btnLabel: '🏥 清除身上狀態', badge: '醫療兵 專屬',
+        actionTitle: '清除額外狀態',
+        style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
+        promptText: '選擇一位玩家清除其身上所有非自帶的額外狀態（不包含叛徒狀態）。'
+      }
+    };
+
     const createMadScientistAction = (badgeText) => (ctx) => {
       if (ctx.myPlayerState?.hasUsedMadScientistAbility) return null;
       return {
@@ -395,6 +441,50 @@
           };
         }
       },
+      trader_b: {
+        getActionButton: (ctx) => {
+          if (!ctx.buriedCard) return null;
+          return {
+            label: '📦 與埋葬卡互換身分',
+            badge: '走私商人 專屬',
+            style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
+            onClick: () => ctx.openDrunkModal()
+          };
+        }
+      },
+      trader_r: {
+        getActionButton: (ctx) => {
+          if (!ctx.buriedCard) return null;
+          return {
+            label: '📦 與埋葬卡互換身分',
+            badge: '走私商人 專屬',
+            style: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-300/40 text-zinc-950',
+            onClick: () => ctx.openDrunkModal()
+          };
+        }
+      },
+      voyeur_b: {
+        getActionButton: (ctx) => {
+          if (!ctx.buriedCard) return null;
+          return {
+            label: '🫣 偷看埋葬卡',
+            badge: '偷窺狂 專屬',
+            style: 'from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 border-purple-400 text-white',
+            onClick: () => ctx.openVoyeurModal()
+          };
+        }
+      },
+      voyeur_r: {
+        getActionButton: (ctx) => {
+          if (!ctx.buriedCard) return null;
+          return {
+            label: '🫣 偷看埋葬卡',
+            badge: '偷窺狂 專屬',
+            style: 'from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 border-purple-400 text-white',
+            onClick: () => ctx.openVoyeurModal()
+          };
+        }
+      },
       mad_scientist_r: { getActionButton: createMadScientistAction('瘋狂科學家(紅) 專屬') },
       mad_scientist_b: { getActionButton: createMadScientistAction('瘋狂科學家(藍) 專屬') },
       eris: {
@@ -447,6 +537,17 @@
             onClick: () => context.openGrantStatusModal(statusConfig)
           };
         }
+
+        const clearConfig = ROLE_CLEAR_STATUS_ACTIONS[myRole.id];
+        if (clearConfig) {
+          return {
+            label: clearConfig.btnLabel,
+            badge: clearConfig.badge,
+            style: clearConfig.style,
+            onClick: () => context.openClearStatusModal(clearConfig)
+          };
+        }
+
         return null;
       },
       applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
@@ -509,6 +610,32 @@
             const currentStatuses = p.statuses || [];
             if (currentStatuses.some(s => s.id === statusObj.id)) return p;
             return { ...p, statuses: [...currentStatuses, statusObj] };
+          }
+          return p;
+        });
+      },
+      applyClearStatus(playersList, targetPlayerId, clearConfig) {
+        return playersList.map(p => {
+          if (p.id === targetPlayerId) {
+            const currentStatuses = p.statuses || [];
+            let nextStatuses = [];
+
+            if (clearConfig.filterStatusIds) {
+              nextStatuses = currentStatuses.filter(s => !clearConfig.filterStatusIds.includes(s.id));
+            } else if (clearConfig.clearMedicRule) {
+              const initialStatus = p.role ? INITIAL_ROLE_STATUSES[p.role.id] : null;
+              const initialStatusId = initialStatus ? initialStatus.id : null;
+
+              nextStatuses = currentStatuses.filter(s => {
+                if (s.id === initialStatusId) return true;
+                if (s.id === 'traitor') return true;
+                return false;
+              });
+            } else {
+              nextStatuses = currentStatuses;
+            }
+
+            return { ...p, statuses: nextStatuses };
           }
           return p;
         });
@@ -661,6 +788,14 @@
       const [activeStatusConfig, setActiveStatusConfig] = useState(null);
       const [statusPromptData, setStatusPromptData] = useState(null);
 
+      // 清除狀態相關 Modal State (心理醫生 / 效忠者 / 醫療兵)
+      const [showClearStatusModal, setShowClearStatusModal] = useState(false);
+      const [activeClearConfig, setActiveClearConfig] = useState(null);
+      const [clearStatusPromptData, setClearStatusPromptData] = useState(null);
+
+      // 偷窺狂查看埋葬卡 Modal State
+      const [showVoyeurModal, setShowVoyeurModal] = useState(false);
+
       // 雙目標賦予狀態 Modal State (厄里斯 / 丘比特 / 父親 / 母親)
       const [showDualStatusModal, setShowDualStatusModal] = useState(false);
       const [dualStatusConfig, setDualStatusConfig] = useState(null);
@@ -696,7 +831,6 @@
           onYes: 'N_SAME_ENG_NY3',
           onNo: 'N_DIFF_PYRO_NN3'
         },
-        // --- 炸彈客與總統同房分支 ---
         N_SAME_ENG_NY3: {
           question: '💣 炸彈客 有和 ⚙️ 工程師 分享卡片嗎？',
           btnYes: '是',
@@ -725,7 +859,6 @@
           resultYes: '藍隊獲勝',
           resultNo: '沒有隊伍獲勝'
         },
-        // --- 炸彈客與總統不同房分支 ---
         N_DIFF_PYRO_NN3: {
           question: '🎆 煙火專家 有和 💣 炸彈客 分享卡片嗎？',
           btnYes: '是',
@@ -740,7 +873,6 @@
           onYes: 'N_FIRE_Y_DOC_NNYY5',
           onNo: 'N_FIRE_N_ENG_NNYN5'
         },
-        // 消防員 = 是
         N_FIRE_Y_DOC_NNYY5: {
           question: '👔 總統 有和 🩺 醫生 分享卡片嗎？',
           btnYes: '是',
@@ -769,7 +901,6 @@
           resultYes: '沒有隊伍獲勝',
           resultNo: '紅隊獲勝'
         },
-        // 消防員 = 否
         N_FIRE_N_ENG_NNYN5: {
           question: '💣 炸彈客 有和 ⚙️ 工程師 分享卡片嗎？',
           btnYes: '是',
@@ -791,7 +922,6 @@
           resultYes: '藍隊獲勝',
           resultNo: '沒有隊伍獲勝'
         },
-        // 煙火專家 = 否
         NN3_DOC_NNN4: {
           question: '👔 總統 有和 🩺 醫生 分享卡片嗎？',
           btnYes: '是',
@@ -934,6 +1064,20 @@
         });
       }, [publishMsg, broadcastLatest]);
 
+      const executeClearStatusOnHost = useCallback((targetId, clearConfig, initiatorId = null) => {
+        setPlayers(prev => {
+          const next = window.RoleMechanics.applyClearStatus(prev, targetId, clearConfig);
+          publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
+            type: 'STATUS_CLEARED_SUCCESS',
+            targetId,
+            initiatorId,
+            actionTitle: clearConfig.actionTitle
+          });
+          setTimeout(() => broadcastLatest({ players: next }), 50);
+          return next;
+        });
+      }, [publishMsg, broadcastLatest]);
+
       const executeDualGrantOnHost = useCallback((t1Id, t2Id, statusObj, initiatorId = null) => {
         setPlayers(prev => {
           const next = window.RoleMechanics.applyDualStatusGrant(prev, t1Id, t2Id, statusObj, initiatorId);
@@ -1003,6 +1147,10 @@
         setMadScientistPendingData(null);
         setShowGrantStatusModal(false);
         setStatusPromptData(null);
+        setShowClearStatusModal(false);
+        setActiveClearConfig(null);
+        setClearStatusPromptData(null);
+        setShowVoyeurModal(false);
         setShowDualStatusModal(false);
         setDualStatusConfig(null);
         setSelectedDualTargets([]);
@@ -1246,6 +1394,11 @@
               executeGrantStatusOnHost(data.targetId, data.statusObj, data.initiatorId);
               return;
             }
+
+            if (data.type === 'EXECUTE_CLEAR_STATUS') {
+              executeClearStatusOnHost(data.targetId, data.clearConfig, data.initiatorId);
+              return;
+            }
           }
 
           // === 所有玩家通訊接收 ===
@@ -1300,7 +1453,6 @@
             return;
           }
 
-          // 雙人狀態賦予監聽
           if (data.type === 'DUAL_STATUS_PROMPT_TARGETS') {
             if (data.t1Id === uid || data.t2Id === uid) {
               setDualStatusPendingData({
@@ -1371,6 +1523,39 @@
             }
             if (data.targetId === uid) {
               setSwapStatusMessage(`✨ 你已獲得【${data.statusName}】狀態！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
+          if (data.type === 'CLEAR_STATUS_PROMPT_TARGET') {
+            if (data.targetId === uid) {
+              setClearStatusPromptData({
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName,
+                initiatorRoleName: data.initiatorRoleName,
+                initiatorRoleIcon: data.initiatorRoleIcon,
+                clearConfig: data.clearConfig
+              });
+            }
+            return;
+          }
+
+          if (data.type === 'CLEAR_STATUS_REJECTED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`❌ ${data.rejectorName} 拒絕了狀態清除！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
+          if (data.type === 'STATUS_CLEARED_SUCCESS') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`🎉 對方已同意，成功執行【${data.actionTitle}】！`);
+              setTimeout(() => setSwapStatusMessage(''), 3000);
+            }
+            if (data.targetId === uid) {
+              setSwapStatusMessage(`✨ 你的狀態已成功被清除/治癒！`);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
             return;
@@ -1451,6 +1636,9 @@
                 setMadScientistPendingData(null);
                 setStatusPromptData(null);
                 setShowGrantStatusModal(false);
+                setShowClearStatusModal(false);
+                setClearStatusPromptData(null);
+                setShowVoyeurModal(false);
                 setShowSwapTargetModal(false);
                 setShowMadScientistModal(false);
                 setShowDrunkConfirmModal(false);
@@ -1495,7 +1683,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeDualGrantOnHost, resetToHome]);
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeClearStatusOnHost, executeDualGrantOnHost, resetToHome]);
 
       // 冷啟動還原
       useEffect(() => {
@@ -1614,53 +1802,44 @@
         broadcastLatest({ gameResult: resultText });
       }, [broadcastLatest]);
 
-      // 判斷特定角色池中是否有啟用特定角色
       const isRoleInGame = useCallback((roleKeys) => {
         const keys = Array.isArray(roleKeys) ? roleKeys : [roleKeys];
         return keys.some(key => (roleCounts[key] || 0) > 0);
       }, [roleCounts]);
 
-      // 自動判定規則：若關鍵角色未加入牌庫，自動推導答案並跳過問答
       const getAutoDecisionForNode = useCallback((nodeKey, prevNodeKey) => {
         if (!nodeKey) return null;
 
-        // 1. 工程師分享相關提問
         if (nodeKey.includes('ENG')) {
           const hasEngineer = isRoleInGame(['engineer']);
-          if (!hasEngineer) return true; // 未加入則自動回答「是」
+          if (!hasEngineer) return true;
         }
 
-        // 2. 醫生分享相關提問
         if (nodeKey.includes('DOC')) {
           const hasDoctor = isRoleInGame(['doctor']);
-          if (!hasDoctor) return true; // 未加入則自動回答「是」
+          if (!hasDoctor) return true;
         }
 
-        // 3. 煙火專家相關提問
         if (nodeKey.includes('PYRO')) {
           const hasPyro = isRoleInGame(['pyrotech']);
-          if (!hasPyro) return false; // 未加入則自動回答「否」
+          if (!hasPyro) return false;
         }
 
-        // 4. 藍色無人機與紅色鐵拳同房提問
         if (nodeKey.includes('DRONE')) {
           const hasDrone = isRoleInGame(['blue_drone']);
           const hasFist = isRoleInGame(['red_fist']);
           const hasBoth = hasDrone && hasFist;
 
           if (!hasBoth) {
-            // 前一個問題為「炸彈客有和工程師分享卡片嗎?」 => 自動回答「否」
             if (prevNodeKey && prevNodeKey.includes('ENG')) return false;
-            // 前一個問題為「總統有和醫生分享卡片嗎?」 => 自動回答「是」
             if (prevNodeKey && prevNodeKey.includes('DOC')) return true;
             return false;
           }
         }
 
-        return null; // 牌庫有此角色，保留給房長手動確認
+        return null;
       }, [isRoleInGame]);
 
-      // 決策樹節點自動遞迴推進
       const advanceToNode = useCallback((targetNodeKey, prevNodeKey = null) => {
         let curr = targetNodeKey;
         let prev = prevNodeKey;
@@ -2620,62 +2799,60 @@
                       <div className="text-3xl sm:text-4xl font-black text-white">{gameResult || '⏳ 等待房長判定勝負...'}</div>
                     </div>
 
-{isHost && (
-  <div className="flex flex-col items-center gap-3 pt-3 border-t border-white/10">
-    {/* 上排：功能按鈕 */}
-    <div className="flex flex-wrap items-center justify-center gap-3">
-      <button
-        onClick={startVictoryDetermination}
-        className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5"
-      >
-        <span>{gameResult ? '🏆 重新判定勝負' : '🏆 判定勝負'}</span>
-      </button>
+                    {isHost && (
+                      <div className="flex flex-col items-center gap-3 pt-3 border-t border-white/10">
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                          <button
+                            onClick={startVictoryDetermination}
+                            className="bg-gradient-to-r from-red-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5"
+                          >
+                            <span>{gameResult ? '🏆 重新判定勝負' : '🏆 判定勝負'}</span>
+                          </button>
 
-      <button
-        onClick={() => {
-          setRoomStatus('waiting');
-          setGameState('lobby');
-          StorageManager.clearSession();
-          broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, roundEndTime: 0, buriedCard: null, gameResult: null });
-        }}
-        className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-bold text-xs px-5 py-2.5 rounded-xl transition active:scale-95"
-      >
-        結束回大廳
-      </button>
-    </div>
+                          <button
+                            onClick={() => {
+                              setRoomStatus('waiting');
+                              setGameState('lobby');
+                              StorageManager.clearSession();
+                              broadcastLatest({ roomStatus: 'waiting', currentRoundIndex: 0, timeLeft: roundSettings[0] * 60, roundEndTime: 0, buriedCard: null, gameResult: null });
+                            }}
+                            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-bold text-xs px-5 py-2.5 rounded-xl transition active:scale-95"
+                          >
+                            結束回大廳
+                          </button>
+                        </div>
 
-    {/* 下排：手動快速指定獲勝結果 */}
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <button
-        onClick={() => finalizeVictory('特殊陣營獲勝')}
-        className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/60 text-amber-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
-      >
-        🌟 特殊
-      </button>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            onClick={() => finalizeVictory('特殊陣營獲勝')}
+                            className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/60 text-amber-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
+                          >
+                            🌟 特殊
+                          </button>
 
-      <button
-        onClick={() => finalizeVictory('藍隊獲勝')}
-        className="bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500 text-blue-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
-      >
-        🔵 藍隊
-      </button>
+                          <button
+                            onClick={() => finalizeVictory('藍隊獲勝')}
+                            className="bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500 text-blue-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
+                          >
+                            🔵 藍隊
+                          </button>
 
-      <button
-        onClick={() => finalizeVictory('紅隊獲勝')}
-        className="bg-red-600/30 hover:bg-red-600/50 border border-red-500 text-red-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
-      >
-        🔴 紅隊
-      </button>
+                          <button
+                            onClick={() => finalizeVictory('紅隊獲勝')}
+                            className="bg-red-600/30 hover:bg-red-600/50 border border-red-500 text-red-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
+                          >
+                            🔴 紅隊
+                          </button>
 
-      <button
-        onClick={() => finalizeVictory('沒有隊伍獲勝')}
-        className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
-      >
-        ⚪ 無人
-      </button>
-    </div>
-  </div>
-)}
+                          <button
+                            onClick={() => finalizeVictory('沒有隊伍獲勝')}
+                            className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 flex items-center gap-1"
+                          >
+                            ⚪ 無人
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
@@ -2869,6 +3046,11 @@
                             setShowSwapTargetModal(true);
                           },
                           openDrunkModal: () => setShowDrunkConfirmModal(true),
+                          openVoyeurModal: () => setShowVoyeurModal(true),
+                          openClearStatusModal: (config) => {
+                            setActiveClearConfig(config);
+                            setShowClearStatusModal(true);
+                          },
                           openMadScientistModal: (config) => {
                             setMadScientistConfig(config);
                             setSelectedScientistTargets([]);
@@ -3008,6 +3190,158 @@
                     確認接受
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：選擇要清除/治癒狀態的玩家 (心理醫生 / 效忠者 / 醫療兵) */}
+          {showClearStatusModal && activeClearConfig && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-teal-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                  <h3 className="text-base font-bold text-teal-300 flex items-center gap-1.5">
+                    <span>{activeClearConfig.btnLabel}</span>
+                  </h3>
+                  <button onClick={() => setShowClearStatusModal(false)} className="text-zinc-400 hover:text-white">✕</button>
+                </div>
+
+                <p className="text-xs text-zinc-300">{activeClearConfig.promptText}</p>
+
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {players.filter(p => p.id !== myPlayerId).map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setShowClearStatusModal(false);
+                        setSwapStatusMessage(`已向 ${p.name} 發送【${activeClearConfig.actionTitle}】請求，等待對方確認中...`);
+                        publishMsg(`trb_game_sync_room_${roomId}`, {
+                          type: 'CLEAR_STATUS_PROMPT_TARGET',
+                          senderId: myPlayerId,
+                          initiatorId: myPlayerId,
+                          initiatorName: myInfo.name,
+                          initiatorRoleName: myInfo.role?.name || '未知角色',
+                          initiatorRoleIcon: myInfo.role?.icon || '⭐',
+                          targetId: p.id,
+                          clearConfig: activeClearConfig
+                        });
+                      }}
+                      className="w-full text-left p-3 rounded-xl border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 hover:border-teal-400 transition flex items-center justify-between cursor-pointer active:scale-95"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm text-zinc-100">{p.name}</span>
+                        {p.isHost && <span className="text-amber-400 text-xs">👑(房長)</span>}
+                      </div>
+                      <span className="text-xs text-teal-300 bg-teal-950/60 px-2.5 py-1 rounded-md border border-teal-800/60">
+                        {p.gameRoom ? p.gameRoom.split(' ')[0] : '同場'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowClearStatusModal(false)}
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 text-xs transition active:scale-95"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：被清除狀態者的確認請求 */}
+          {clearStatusPromptData && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-teal-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-4xl animate-bounce">💊</div>
+                <h3 className="text-lg font-black text-teal-300">狀態治癒 / 清除請求！</h3>
+
+                <div className="bg-zinc-950/70 border border-zinc-700/80 rounded-xl p-3 text-left space-y-1.5">
+                  <div className="text-[11px] text-zinc-400 font-medium">來自玩家發起：</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">{clearStatusPromptData.initiatorName}</span>
+                    <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                      <span>{clearStatusPromptData.initiatorRoleIcon}</span>
+                      <span>{clearStatusPromptData.initiatorRoleName}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  對方請求為你執行：
+                  <span className="block mt-1 text-base font-black text-teal-400">
+                    【{clearStatusPromptData.clearConfig.actionTitle}】
+                  </span>
+                </p>
+                <p className="text-xs text-zinc-400">是否同意接受此狀態清除？</p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      publishMsg(`trb_game_sync_room_${roomId}`, {
+                        type: 'CLEAR_STATUS_REJECTED',
+                        senderId: myPlayerId,
+                        initiatorId: clearStatusPromptData.initiatorId,
+                        rejectorName: myInfo.name
+                      });
+                      setClearStatusPromptData(null);
+                    }}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                  >
+                    拒絕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const { initiatorId, clearConfig } = clearStatusPromptData;
+                      const targetId = myPlayerId;
+                      setClearStatusPromptData(null);
+
+                      if (latestStateRef.current.isHost) {
+                        executeClearStatusOnHost(targetId, clearConfig, initiatorId);
+                      } else {
+                        publishMsg(`trb_game_sync_room_${roomId}`, {
+                          type: 'EXECUTE_CLEAR_STATUS',
+                          senderId: myPlayerId,
+                          initiatorId,
+                          targetId,
+                          clearConfig
+                        });
+                      }
+                    }}
+                    className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-black py-2.5 rounded-xl shadow-lg transition active:scale-95 text-sm"
+                  >
+                    同意清除
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈窗：偷窺狂查看埋葬卡 */}
+          {showVoyeurModal && buriedCard && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
+                <div className="text-xs font-bold text-purple-400 uppercase tracking-wider">
+                  🫣 偷窺狂專屬視角：本局埋葬卡
+                </div>
+                <div className="text-4xl my-2">{buriedCard.icon}</div>
+                <h3 className="text-xl font-black text-white">{buriedCard.name}</h3>
+                <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase border inline-block ${getTeamMeta(buriedCard.team).badge}`}>
+                  {getTeamMeta(buriedCard.team).label}
+                </span>
+                <p className="text-xs text-zinc-300 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800 text-left leading-relaxed">
+                  {buriedCard.desc}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowVoyeurModal(false)}
+                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2.5 rounded-xl border border-zinc-700 transition active:scale-95 text-sm"
+                >
+                  關閉視窗 (請小心保密)
+                </button>
               </div>
             </div>
           )}
@@ -3221,7 +3555,7 @@
             </div>
           )}
 
-          {/* 彈窗：勝負判定推導（具備角色自動跳過機制） */}
+          {/* 彈窗：勝負判定推導 */}
           {showVictoryModal && isHost && activeQuestion && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-indigo-500 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5">
@@ -3255,14 +3589,14 @@
             </div>
           )}
 
-          {/* 彈窗：酒鬼與埋葬卡交換確認 */}
+          {/* 彈窗：酒鬼 / 走私商人 與埋葬卡交換確認 */}
           {showDrunkConfirmModal && (
             <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
               <div className="bg-zinc-900 border-2 border-purple-500 w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-center">
-                <div className="text-4xl animate-bounce">🍺</div>
-                <h3 className="text-lg font-black text-white">酒醒時刻！換取埋葬卡？</h3>
+                <div className="text-4xl animate-bounce">📦</div>
+                <h3 className="text-lg font-black text-white">換取埋葬卡身分？</h3>
                 <p className="text-sm text-zinc-300 leading-relaxed">
-                  你目前持有 <strong className="text-purple-400">酒鬼</strong> 身分。點擊確認後，你將直接換取本局未知的<strong className="text-amber-400">【埋葬卡】</strong>身分，並將酒鬼牌作為新的埋葬卡！
+                  你目前持有 <strong className="text-purple-400">{myInfo.role?.name || '專屬身分'}</strong>。點擊確認後，你將直接換取本局未知的<strong className="text-amber-400">【埋葬卡】</strong>身分，並將原本的角色作為新的埋葬卡！
                 </p>
                 <p className="text-xs text-zinc-400">此動作不可復原，是否確定交換？</p>
 
