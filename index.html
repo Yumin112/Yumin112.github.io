@@ -391,35 +391,6 @@
       };
     };
 
-    const createIdentityThiefAction = (badgeText) => (ctx) => {
-      // 若已竊取身分，原按鈕變成抄襲對方的技能按鈕外觀，點擊則切換檢視真身
-      if (ctx.myPlayerState?.stolenRole) {
-        const stolenRole = ctx.myPlayerState.stolenRole;
-        const fakeAction = RoleMechanics.getRoleAction(stolenRole, ctx);
-        const label = fakeAction ? fakeAction.label : `⚡ 使用【${stolenRole.name}】技能`;
-        const style = fakeAction ? fakeAction.style : 'from-indigo-600 to-purple-700 text-white border-purple-400';
-        const badge = fakeAction ? fakeAction.badge : `${stolenRole.name} 技能`;
-
-        return {
-          label: ctx.isViewingRealIdentity ? `🎭 切回偽裝【${stolenRole.name}】` : label,
-          badge: ctx.isViewingRealIdentity ? '身分竊賊' : badge,
-          style: ctx.isViewingRealIdentity ? 'from-amber-600 to-orange-700 text-white border-amber-400' : style,
-          onClick: () => ctx.toggleIdentityThiefView()
-        };
-      }
-
-      return {
-        label: '🎭 竊取身分並遮蔽對方',
-        badge: badgeText,
-        style: badgeText.includes('藍') ? 'from-cyan-700 to-blue-800 hover:from-cyan-600 hover:to-blue-700 border-cyan-400 text-white' : 'from-rose-700 to-red-800 hover:from-rose-600 hover:to-red-700 border-rose-400 text-white',
-        onClick: () => ctx.openSwapModal({
-          ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將竊取其卡面外觀偽裝並抄襲其技能，自身陣營保持不變，受害者將被賦予【遮蔽】。',
-          isTargetDisabled: () => false,
-          extraActionType: 'IDENTITY_THEFT'
-        })
-      };
-    };
-
     const ROLE_PLUGINS = {
       seer_b: { getActionButton: createSeerAction('先知(藍) 專屬') },
       seer_r: { getActionButton: createSeerAction('先知(紅) 專屬') },
@@ -447,8 +418,6 @@
           })
         })
       },
-      identity_thief_b: { getActionButton: createIdentityThiefAction('身分竊賊(藍) 專屬') },
-      identity_thief_r: { getActionButton: createIdentityThiefAction('身分竊賊(紅) 專屬') },
       capitalist: {
         getActionButton: (ctx) => {
           if (ctx.myPlayerState?.hasUsedCapitalistAbility) return null;
@@ -643,27 +612,6 @@
 
         const { role: role1, team: team1 } = p1;
         const { role: role2, team: team2 } = p2;
-
-        // 身分竊賊專屬邏輯：自身陣營維持不變，儲存被竊取角色至 stolenRole，受害者附加遮蔽
-        if (extraActionType === 'IDENTITY_THEFT') {
-          return playersList.map(p => {
-            if (p.id === p1Id) {
-              return {
-                ...p,
-                stolenRole: role2
-              };
-            }
-            if (p.id === p2Id) {
-              const curStatuses = p.statuses || [];
-              const hasCloaked = curStatuses.some(s => s.id === 'card_cloaked');
-              return {
-                ...p,
-                statuses: hasCloaked ? curStatuses : [...curStatuses, { id: 'card_cloaked', name: '遮蔽', icon: '😶‍🌫️' }]
-              };
-            }
-            return p;
-          });
-        }
 
         return playersList.map(p => {
           let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
@@ -925,7 +873,6 @@
       const [deckViewMode, setDeckViewMode] = useState('detailed');
 
       const [isColorOnly, setIsColorOnly] = useState(false);
-      const [isViewingRealIdentity, setIsViewingRealIdentity] = useState(false);
 
       // 身分交換與特殊技能彈窗狀態
       const [showSwapTargetModal, setShowSwapTargetModal] = useState(false);
@@ -1128,20 +1075,12 @@
 
       const myInfo = useMemo(() => {
         return players.find(p => p.id === myPlayerId) || {
-          name: playerName, team: null, role: null, stolenRole: null, gameRoom: null, hasBeenLeprechaun: false,
+          name: playerName, team: null, role: null, gameRoom: null, hasBeenLeprechaun: false,
           hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false,
           hasUsedChangerAbility: false, hasUsedTraderAbility: false, hasUsedCapitalistAbility: false,
           hasUsedSocialistAbility: false, gamblerBet: null, manualWinner: null, statuses: []
         };
       }, [players, myPlayerId, playerName]);
-
-      // 當前展示的卡片角色：若為身分竊賊且有竊取目標，依 toggle 決定顯示真身或偽裝
-      const displayedRole = useMemo(() => {
-        if (myInfo.stolenRole && !isViewingRealIdentity) {
-          return myInfo.stolenRole;
-        }
-        return myInfo.role;
-      }, [myInfo.role, myInfo.stolenRole, isViewingRealIdentity]);
 
       const isCardCloaked = useMemo(() => {
         return Boolean(myInfo.statuses?.some(s => s.id === 'card_cloaked'));
@@ -1389,6 +1328,9 @@
         setShowSeerModal(false);
         setShowWhiteTeamModal(false);
         setShowGamblerModal(false);
+        setShowSwapTargetModal(false);
+        setShowMadScientistModal(false);
+        setShowDrunkConfirmModal(false);
         setShowDualStatusModal(false);
         setDualStatusConfig(null);
         setSelectedDualTargets([]);
@@ -1398,7 +1340,6 @@
         setSwapStatusMessage('');
         setIsVerifying(false);
         setConnStatus('未連線');
-        setIsViewingRealIdentity(false);
         madScientistVoteTrackerRef.current = null;
         dualStatusVoteTrackerRef.current = null;
       }, []);
@@ -1426,7 +1367,7 @@
           if (asHost) client.subscribe(DISCOVERY_TOPIC, { qos: 0 });
 
           const currentProfile = latestStateRef.current.players?.find(p => p.id === uid) || {
-            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, stolenRole: null, gameRoom: null,
+            id: uid, name: name.trim(), isHost: asHost, team: null, role: null, gameRoom: null,
             hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false,
             hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false,
             hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false, gamblerBet: null,
@@ -1669,7 +1610,7 @@
           // === 所有玩家通訊接收 ===
           if (data.type === 'HOST_RECONNECTED' && !latestStateRef.current.isHost) {
             const myCurrent = latestStateRef.current.players?.find(p => p.id === uid) || {
-              id: uid, name: name.trim(), isHost: false, team: null, role: null, stolenRole: null, gameRoom: null,
+              id: uid, name: name.trim(), isHost: false, team: null, role: null, gameRoom: null,
               hasBeenLeprechaun: false, hasUsedMadScientistAbility: false, hasUsedDualTargetAbility: false,
               hasUsedTimeLordAbility: false, hasUsedChangerAbility: false, hasUsedTraderAbility: false,
               hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false, gamblerBet: null,
@@ -1888,7 +1829,6 @@
                       ...data.player,
                       team: isGameRunning ? data.player.team : null,
                       role: isGameRunning ? data.player.role : null,
-                      stolenRole: isGameRunning ? data.player.stolenRole : null,
                       manualWinner: isGameRunning ? data.player.manualWinner : null,
                       statuses: isGameRunning ? (data.player.statuses || []) : []
                     }];
@@ -1922,9 +1862,7 @@
               break;
             case 'SWAP_SUCCESS':
               if (data.player1Id === uid || data.player2Id === uid) {
-                if (data.extraActionType === 'IDENTITY_THEFT') {
-                  setSwapStatusMessage(data.player1Id === uid ? '🎉 身分偽裝成功！你已獲取對方的卡面與外觀技能！' : '😶‍🌫️ 你的身分已被竊取並附加遮蔽！');
-                } else if (data.extraActionType === 'BODY_SNATCH') {
+                if (data.extraActionType === 'BODY_SNATCH') {
                   setSwapStatusMessage(data.player1Id === uid ? '🎉 盜身魔成功！對方已被附加害羞！' : '🙈 你的身分已被交換並獲得害羞狀態！');
                 } else {
                   setSwapStatusMessage('🎉 身分已成功交換！');
@@ -1960,7 +1898,6 @@
                 setDualStatusPendingData(null);
                 setShowTimeLordModal(false);
                 setShowChangerModal(false);
-                setIsViewingRealIdentity(false);
               }
 
               if (data.roomStatus === 'round_active' && data.roundEndTime > 0) {
@@ -2064,7 +2001,7 @@
 
           if (initialList.length === 0) {
             initialList = [{
-              id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null, stolenRole: null,
+              id: storedId, name: savedPlayerName, isHost: savedIsHost, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
               hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
               hasUsedTraderAbility: false, hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false,
@@ -2205,7 +2142,7 @@
         const trimmedName = playerName.trim() || '房長';
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const me = {
-          id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null, stolenRole: null,
+          id: myPlayerId, name: trimmedName, isHost: true, team: null, role: null,
           gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
           hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
           hasUsedTraderAbility: false, hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false,
@@ -2293,7 +2230,7 @@
             setGameState('lobby');
 
             const selfPlayer = {
-              id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null, stolenRole: null,
+              id: myPlayerId, name: trimmedName, isHost: false, team: null, role: null,
               gameRoom: null, hasBeenLeprechaun: false, hasUsedMadScientistAbility: false,
               hasUsedDualTargetAbility: false, hasUsedTimeLordAbility: false, hasUsedChangerAbility: false,
               hasUsedTraderAbility: false, hasUsedCapitalistAbility: false, hasUsedSocialistAbility: false,
@@ -2385,7 +2322,6 @@
           ...p, 
           team: null, 
           role: null, 
-          stolenRole: null,
           statuses: [], 
           hasBeenLeprechaun: false, 
           hasUsedMadScientistAbility: false,
@@ -2433,7 +2369,6 @@
             ...p,
             team: r.team,
             role: r,
-            stolenRole: null,
             hasBeenLeprechaun: r.id === 'leprechaun',
             hasUsedMadScientistAbility: false,
             hasUsedDualTargetAbility: false,
@@ -2570,6 +2505,7 @@
         });
       };
 
+      // 接受身分請求：特別修復受害者為房長時的本地直接執行
       const handleAcceptSwap = () => {
         if (!swapRequestData) return;
         const { fromId: p1Id, extraActionType } = swapRequestData;
@@ -2577,17 +2513,52 @@
         setSwapRequestData(null);
 
         if (extraActionType === 'CAPITALIST_FORCE_BLUE') {
-          publishMsg(`trb_game_sync_room_${roomId}`, {
-            type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: p1Id, targetId: p2Id, newTeam: 'blue', abilityKey: 'capitalist'
-          });
+          if (latestStateRef.current.isHost) {
+            const blueRole = rolesCatalog.find(r => r.id === 'blue_mem') || {
+              id: 'blue_mem', name: '藍隊成員', team: 'blue', icon: '🔵', desc: '由特殊能力轉化的藍隊隊員。'
+            };
+            setPlayers(prev => {
+              const next = prev.map(p => {
+                if (p.id === p2Id) return { ...p, team: 'blue', role: { ...blueRole, team: 'blue' } };
+                if (p.id === p1Id) return { ...p, hasUsedCapitalistAbility: true };
+                return p;
+              });
+              setTimeout(() => broadcastLatest({ players: next }), 50);
+              return next;
+            });
+          } else {
+            publishMsg(`trb_game_sync_room_${roomId}`, {
+              type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: p1Id, targetId: p2Id, newTeam: 'blue', abilityKey: 'capitalist'
+            });
+          }
         } else if (extraActionType === 'SOCIALIST_FORCE_RED') {
-          publishMsg(`trb_game_sync_room_${roomId}`, {
-            type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: p1Id, targetId: p2Id, newTeam: 'red', abilityKey: 'socialist'
-          });
+          if (latestStateRef.current.isHost) {
+            const redRole = rolesCatalog.find(r => r.id === 'red_mem') || {
+              id: 'red_mem', name: '紅隊成員', team: 'red', icon: '🔴', desc: '由特殊能力轉化的紅隊隊員。'
+            };
+            setPlayers(prev => {
+              const next = prev.map(p => {
+                if (p.id === p2Id) return { ...p, team: 'red', role: { ...redRole, team: 'red' } };
+                if (p.id === p1Id) return { ...p, hasUsedSocialistAbility: true };
+                return p;
+              });
+              setTimeout(() => broadcastLatest({ players: next }), 50);
+              return next;
+            });
+          } else {
+            publishMsg(`trb_game_sync_room_${roomId}`, {
+              type: 'EXECUTE_FORCE_TRANSFORM', senderId: myPlayerId, initiatorId: p1Id, targetId: p2Id, newTeam: 'red', abilityKey: 'socialist'
+            });
+          }
         } else {
-          publishMsg(`trb_game_sync_room_${roomId}`, {
-            type: 'EXECUTE_SWAP', senderId: myPlayerId, player1Id: p1Id, player2Id: p2Id, extraActionType
-          });
+          // 若當前同意者是房長，直接在本地執行以防被 MQTT senderId 阻擋過濾
+          if (latestStateRef.current.isHost) {
+            executeSwapOnHost(p1Id, p2Id, null, extraActionType);
+          } else {
+            publishMsg(`trb_game_sync_room_${roomId}`, {
+              type: 'EXECUTE_SWAP', senderId: myPlayerId, player1Id: p1Id, player2Id: p2Id, extraActionType
+            });
+          }
         }
       };
 
@@ -2638,7 +2609,6 @@
         });
       };
 
-      // 賭徒下注預測：立即同步廣播給房長與全房間，防止結算時無數據
       const handleGamblerBet = (betChoice) => {
         setShowGamblerModal(false);
         setPlayers(prev => prev.map(p => p.id === myPlayerId ? { ...p, gamblerBet: betChoice } : p));
@@ -3400,7 +3370,7 @@
                 </div>
               )}
 
-              {/* 核心身分卡（支援身分竊賊偽裝卡面與原身切換展示） */}
+              {/* 核心身分卡 */}
               <div className="max-w-sm mx-auto">
                 <div className="text-center mb-2">
                   <span className="text-xs text-zinc-400">
@@ -3442,12 +3412,9 @@
                         <span className={`text-xs px-2.5 py-1 rounded-md font-bold uppercase tracking-wider border ${
                           isCardCloaked ? 'bg-teal-500/20 text-teal-300 border-teal-400/40' : myTeamMeta.badge
                         }`}>
-                          {isCardCloaked ? '??? 陣營未知' : (
-                            // 身分竊賊若正在展示偽裝外觀，陣營標籤維持真身顏色（依遊戲本質保留自己隊伍）
-                            myTeamMeta.label
-                          )}
+                          {isCardCloaked ? '??? 陣營未知' : myTeamMeta.label}
                         </span>
-                        <span className="text-3xl">{isCardCloaked ? '😶‍🌫️' : (displayedRole?.icon || '⭐')}</span>
+                        <span className="text-3xl">{isCardCloaked ? '😶‍🌫️' : (myInfo.role?.icon || '⭐')}</span>
                       </div>
 
                       {isCardCloaked ? (
@@ -3462,14 +3429,9 @@
                         </div>
                       ) : (
                         <div className="text-center my-3 pointer-events-none">
-                          <h2 className="text-2xl font-black text-white">{displayedRole?.name || '身分載入中...'}</h2>
-                          {myInfo.stolenRole && (
-                            <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              {isViewingRealIdentity ? '🔍 當前檢視：本體身分竊賊' : `🎭 偽裝竊取中 (真實陣營：${myTeamMeta.label})`}
-                            </span>
-                          )}
+                          <h2 className="text-2xl font-black text-white">{myInfo.role?.name || '身分載入中...'}</h2>
                           <p className="text-xs text-zinc-200 mt-2.5 px-3 leading-relaxed bg-zinc-950/60 py-2.5 rounded-xl border border-zinc-800 break-words">
-                            {displayedRole?.desc || '暫無專屬說明'}
+                            {myInfo.role?.desc || '暫無專屬說明'}
                           </p>
                         </div>
                       )}
@@ -3494,8 +3456,6 @@
                       {roomStatus !== 'ended' && (() => {
                         const action = RoleMechanics.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, timeLeft, myPlayerState: myInfo,
-                          isViewingRealIdentity,
-                          toggleIdentityThiefView: () => setIsViewingRealIdentity(prev => !prev),
                           openSwapModal: (config) => {
                             setSwapModalConfig(config);
                             setShowSwapTargetModal(true);
@@ -3673,7 +3633,7 @@
                               <div className="font-bold text-sm text-zinc-100 flex items-center gap-1.5">
                                 <span>{p.name}</span>
                                 {p.id === myPlayerId && <span className="text-xs text-indigo-400">(你)</span>}
-                                {p.isHost && <span className="text-xs text-amber-400">👑</span>}
+                                {p.isHost && <span className="text-amber-400">👑</span>}
                               </div>
                               <div className="text-xs text-zinc-300 font-semibold">{p.role?.name || '未知角色'}</div>
                             </div>
@@ -4351,7 +4311,6 @@
                   （持有身分：<strong className="text-emerald-400">{swapRequestData.fromRoleName}</strong>）想要對你發動：
                   <span className="block mt-1 font-bold text-indigo-300">
                     {swapRequestData.extraActionType === 'BODY_SNATCH' && '「交換卡牌，並將你變為【害羞】狀態」'}
-                    {swapRequestData.extraActionType === 'IDENTITY_THEFT' && '「竊取你的身分，並將你的卡牌【遮蔽】」'}
                     {swapRequestData.extraActionType === 'CAPITALIST_FORCE_BLUE' && '「強迫將你的角色卡牌換為【藍隊成員】」'}
                     {swapRequestData.extraActionType === 'SOCIALIST_FORCE_RED' && '「強迫將你的角色卡牌換為【紅隊成員】」'}
                     {!swapRequestData.extraActionType && '「身分交換」'}
