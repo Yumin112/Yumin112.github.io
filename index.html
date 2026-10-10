@@ -179,10 +179,10 @@
         promptText: '選擇一位玩家吸收為【會員】。對方同意後將成為光明會的成員。'
       },
       ...createPairedStatus('alien', {
-        statusId: 'card_cloaked', statusName: '隱匿(被遮蔽)', statusIcon: '🛸',
-        btnLabel: '🛸 施加記憶遮蔽', badge: '外星人 專屬',
+        statusId: 'card_cloaked', statusName: '隱匿', statusIcon: '👽',
+        btnLabel: '👽 施加角色隱匿', badge: '外星人 專屬',
         style: 'from-teal-600 to-cyan-800 hover:from-teal-500 hover:to-cyan-700 border-teal-400 text-white',
-        promptText: '選擇一位玩家遮蔽其身分卡（對方將遺忘身分且卡牌呈現隱匿狀態）。'
+        promptText: '選擇一位玩家隱匿其身分卡（對方卡牌的角色、顏色與技能資訊將被隱藏）。'
       }),
       ...createPairedStatus('thug', {
         statusId: 'coy', statusName: '靦腆', statusIcon: '🥊',
@@ -3127,17 +3127,17 @@
                         }`}>
                           {isCardCloaked ? '??? 陣營未知' : myTeamMeta.label}
                         </span>
-                        <span className="text-3xl">{isCardCloaked ? '🛸' : (myInfo.role?.icon || '⭐')}</span>
+                        <span className="text-3xl">{isCardCloaked ? '😶‍🌫️' : (myInfo.role?.icon || '⭐')}</span>
                       </div>
 
                       {/* 依據 card_cloaked 狀態決定是否遮蔽身分細節 */}
                       {isCardCloaked ? (
                         <div className="text-center my-4 pointer-events-none space-y-2">
-                          <h2 className="text-2xl font-black text-teal-300 tracking-wider">🛸 身分已被遮蔽</h2>
+                          <h2 className="text-2xl font-black text-teal-300 tracking-wider">😶‍🌫️ 身分已被遮蔽</h2>
                           <div className="p-3 bg-zinc-950/80 border border-teal-800/60 rounded-xl space-y-1">
-                            <p className="text-xs font-bold text-teal-200">你的記憶被外星人降維打擊消除！</p>
+                            <p className="text-xs font-bold text-teal-200">你的資訊被遮蔽！</p>
                             <p className="text-[11px] text-zinc-400 leading-relaxed">
-                              本局身分、隊伍顏色與角色能力說明已被遮蔽，無法向他人進行顏色分享。原角色功能按鈕仍可使用（按鈕專屬文字已隱匿）。
+                              本局身分、隊伍顏色與角色能力說明已被遮蔽，無法向他人進行顏色分享。原角色技能仍可使用（按鈕專屬文字已隱匿）。
                             </p>
                           </div>
                         </div>
@@ -3376,7 +3376,7 @@ className={`w-full font-black py-2.5 px-4 rounded-xl shadow-lg transition active
                 </p>
                 <p className="text-xs text-zinc-400">
                   {statusPromptData.statusObj.id === 'card_cloaked'
-                    ? '⚠️ 提示：若同意，你的身分卡將進入隱匿遮蔽狀態（遺忘原本名稱說明與陣營顏色）。是否確認同意？'
+                    ? '⚠️ 提示：你的身分卡將進入隱匿狀態。是否確認同意？'
                     : '若同意，此狀態將正式附加至你身上。是否確認同意？'}
                 </p>
 
