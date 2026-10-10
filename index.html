@@ -63,7 +63,9 @@
       { id: 'pres', name: '總統', team: 'blue', icon: '👔', desc: '藍隊核心。遊戲結束時若與炸彈客在同一房間則紅隊獲勝。' },
       { id: 'bomb', name: '炸彈客', team: 'red', icon: '💣', desc: '紅隊核心。遊戲結束時若與總統在同一房間則紅隊獲勝。' },
       { id: 'doctor', name: '醫生', team: 'blue', icon: '🩺', desc: '藍隊輔助。可以分享卡片給總統以保護總統。' },
-      { id: 'engineer', name: '工程師', team: 'red', icon: '⚙️', desc: '紅隊輔助。可以分享卡片給炸彈客協助安裝炸彈。' }
+      { id: 'engineer', name: '工程師', team: 'red', icon: '⚙️', desc: '紅隊輔助。可以分享卡片給炸彈客協助安裝炸彈。' },
+      { id: 'blue_mem', name: '藍隊成員', team: 'blue', icon: '🔵', desc: '普通藍隊隊員。' },
+      { id: 'red_mem', name: '紅隊成員', team: 'red', icon: '🔴', desc: '普通紅隊隊員。' }
     ];
 
     const BROKER_URL = 'wss://vff8e223.ala.asia-southeast1.emqxsl.com:8084/mqtt';
@@ -419,14 +421,14 @@
           })
         })
       },
-      // 身分竊賊：將對方卡牌作為自己卡牌展示，受害者卡牌賦予遮蔽狀態
+      // 身分竊賊：竊取卡牌外觀誤導他人，維持原陣營與竊賊本質，對方被賦予【遮蔽】
       identity_thief_b: {
         getActionButton: (ctx) => ({
           label: '🎭 竊取身分並遮蔽對方',
           badge: '身分竊賊(藍) 專屬',
           style: 'from-cyan-700 to-blue-800 hover:from-cyan-600 hover:to-blue-700 border-cyan-400 text-white',
           onClick: () => ctx.openSwapModal({
-            ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將竊取其卡牌作為自己卡牌，受害者將被賦予【遮蔽】狀態。',
+            ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將取得其外觀偽裝（自身陣營不變），受害者將被賦予【遮蔽】狀態。',
             isTargetDisabled: () => false,
             extraActionType: 'IDENTITY_THEFT'
           })
@@ -438,13 +440,13 @@
           badge: '身分竊賊(紅) 專屬',
           style: 'from-rose-700 to-red-800 hover:from-rose-600 hover:to-red-700 border-rose-400 text-white',
           onClick: () => ctx.openSwapModal({
-            ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將竊取其卡牌作為自己卡牌，受害者將被賦予【遮蔽】狀態。',
+            ruleDesc: '🎭 身分竊賊：選擇一名玩家，對方同意後你將取得其外觀偽裝（自身陣營不變），受害者將被賦予【遮蔽】狀態。',
             isTargetDisabled: () => false,
             extraActionType: 'IDENTITY_THEFT'
           })
         })
       },
-      // 資本家：整場限一次，強迫對方換成藍隊成員
+      // 資本家：整場限一次，強迫對方換成藍隊成員 (使用 blue_mem)
       capitalist: {
         getActionButton: (ctx) => {
           if (ctx.myPlayerState?.hasUsedCapitalistAbility) return null;
@@ -460,7 +462,7 @@
           };
         }
       },
-      // 社會主義者：整場限一次，強迫對方換成紅隊成員
+      // 社會主義者：整場限一次，強迫對方換成紅隊成員 (使用 red_mem)
       socialist: {
         getActionButton: (ctx) => {
           if (ctx.myPlayerState?.hasUsedSocialistAbility) return null;
@@ -635,13 +637,37 @@
 
         return null;
       },
-      applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null) {
+      applyPlayerSwap(playersList, p1Id, p2Id, initiatorId = null, extraActionType = null) {
         const p1 = playersList.find(p => p.id === p1Id);
         const p2 = playersList.find(p => p.id === p2Id);
         if (!p1 || !p2) return playersList;
 
         const { role: role1, team: team1 } = p1;
         const { role: role2, team: team2 } = p2;
+
+        // 身分竊賊專屬邏輯：自身陣營不變，複製對方角色展示；受害者獲得遮蔽
+        if (extraActionType === 'IDENTITY_THEFT') {
+          return playersList.map(p => {
+            if (p.id === p1Id) {
+              return {
+                ...p,
+                role: {
+                  ...role2,
+                  team: p.team // 保留竊賊原陣營
+                }
+              };
+            }
+            if (p.id === p2Id) {
+              const curStatuses = p.statuses || [];
+              const hasCloaked = curStatuses.some(s => s.id === 'card_cloaked');
+              return {
+                ...p,
+                statuses: hasCloaked ? curStatuses : [...curStatuses, { id: 'card_cloaked', name: '遮蔽', icon: '😶‍🌫️' }]
+              };
+            }
+            return p;
+          });
+        }
 
         return playersList.map(p => {
           let hasUsedMadScientistAbility = p.hasUsedMadScientistAbility;
@@ -657,12 +683,20 @@
             };
           }
           if (p.id === p2Id) {
+            let nextStatuses = p.statuses || [];
+            // 盜身魔：給予受害者害羞狀態
+            if (extraActionType === 'BODY_SNATCH') {
+              if (!nextStatuses.some(s => s.id === 'shy')) {
+                nextStatuses = [...nextStatuses, { id: 'shy', name: '害羞', icon: '🙈' }];
+              }
+            }
             return {
               ...p,
               role: role1,
               team: team1,
               hasBeenLeprechaun: p.hasBeenLeprechaun || (role1?.id === 'leprechaun'),
-              hasUsedMadScientistAbility
+              hasUsedMadScientistAbility,
+              statuses: nextStatuses
             };
           }
           return { ...p, hasUsedMadScientistAbility };
@@ -1178,13 +1212,14 @@
         }, { qos: 0 });
       }, [publishMsg]);
 
-      const executeSwapOnHost = useCallback((id1, id2, initiatorId = null) => {
+      const executeSwapOnHost = useCallback((id1, id2, initiatorId = null, extraActionType = null) => {
         setPlayers(prev => {
-          const next = RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId);
+          const next = RoleMechanics.applyPlayerSwap(prev, id1, id2, initiatorId, extraActionType);
           publishMsg(`trb_game_sync_room_${latestStateRef.current.roomId}`, {
             type: 'SWAP_SUCCESS',
             player1Id: id1,
-            player2Id: id2
+            player2Id: id2,
+            extraActionType
           });
           setTimeout(() => broadcastLatest({ players: next }), 50);
           return next;
@@ -1475,22 +1510,23 @@
               return;
             }
 
-            // 特殊強制轉化身分邏輯 (資本家 / 社會主義者 / 白隊成員)
+            // 特殊強制轉化身分邏輯 (資本家 / 社會主義者 / 白隊成員) - 改為使用 roles.js 內的 blue_mem 與 red_mem
             if (data.type === 'EXECUTE_FORCE_TRANSFORM') {
+              const blueRole = rolesCatalog.find(r => r.id === 'blue_mem') || {
+                id: 'blue_mem', name: '藍隊成員', team: 'blue', icon: '🔵', desc: '由特殊能力轉化的藍隊隊員。'
+              };
+              const redRole = rolesCatalog.find(r => r.id === 'red_mem') || {
+                id: 'red_mem', name: '紅隊成員', team: 'red', icon: '🔴', desc: '由特殊能力轉化的紅隊隊員。'
+              };
+              const targetNewRole = data.newTeam === 'blue' ? blueRole : redRole;
+
               setPlayers(prev => {
                 const next = prev.map(p => {
                   if (p.id === data.targetId) {
-                    const newTeamKey = data.newTeam;
                     return {
                       ...p,
-                      team: newTeamKey,
-                      role: {
-                        id: `${newTeamKey}_team`,
-                        name: `${newTeamKey === 'blue' ? '藍' : '紅'}隊成員`,
-                        team: newTeamKey,
-                        icon: newTeamKey === 'blue' ? '🔵' : '🔴',
-                        desc: '由特殊能力轉化組成的普通隊員。'
-                      }
+                      team: data.newTeam,
+                      role: { ...targetNewRole, team: data.newTeam }
                     };
                   }
                   if (p.id === data.initiatorId) {
@@ -1873,12 +1909,18 @@
               break;
             case 'SWAP_SUCCESS':
               if (data.player1Id === uid || data.player2Id === uid) {
-                setSwapStatusMessage('🎉 身分已成功交換！');
+                if (data.extraActionType === 'IDENTITY_THEFT') {
+                  setSwapStatusMessage(data.player1Id === uid ? '🎉 身分偽裝成功！受害者已被遮蔽！' : '😶‍🌫️ 你的身分已被竊取並附加遮蔽！');
+                } else if (data.extraActionType === 'BODY_SNATCH') {
+                  setSwapStatusMessage(data.player1Id === uid ? '🎉 盜身魔成功！對方已被附加害羞！' : '🙈 你的身分已被交換並獲得害羞狀態！');
+                } else {
+                  setSwapStatusMessage('🎉 身分已成功交換！');
+                }
                 setTimeout(() => setSwapStatusMessage(''), 2500);
               }
               break;
             case 'EXECUTE_SWAP':
-              if (latestStateRef.current.isHost) executeSwapOnHost(data.player1Id, data.player2Id);
+              if (latestStateRef.current.isHost) executeSwapOnHost(data.player1Id, data.player2Id, null, data.extraActionType);
               break;
             case 'FULL_SYNC':
               setPlayers(data.players);
@@ -1942,7 +1984,7 @@
         });
 
         client.on('error', () => setConnStatus('連線重試中...'));
-      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeClearStatusOnHost, executeDualGrantOnHost, resetToHome]);
+      }, [publishMsg, broadcastLatest, debouncedBroadcastLatest, replyDiscoveryAsHost, executeSwapOnHost, executeGrantStatusOnHost, executeClearStatusOnHost, executeDualGrantOnHost, resetToHome, rolesCatalog]);
 
       // 冷啟動還原
       useEffect(() => {
@@ -2452,7 +2494,9 @@
         setPlayers(prev => {
           const next = prev.map(p => {
             if (p.id === targetPlayerId) {
-              const defaultWin = (gameResult === '紅隊獲勝' && p.team === 'red') || (gameResult === '藍隊獲勝' && p.team === 'blue');
+              const defaultWin = (gameResult === '紅隊獲勝' && p.team === 'red') || 
+                                 (gameResult === '藍隊獲勝' && p.team === 'blue') ||
+                                 (p.role?.id === 'gambler' && Boolean(p.gamblerBet) && p.gamblerBet === gameResult);
               const currentEffectiveWin = p.manualWinner !== undefined && p.manualWinner !== null ? p.manualWinner : defaultWin;
               return { ...p, manualWinner: !currentEffectiveWin };
             }
@@ -2558,21 +2602,23 @@
         setSwapRequestData(null);
       };
 
-      // 白隊自主轉隊
+      // 白隊自主轉隊 - 改為引用 roles.js 內的 blue_mem 與 red_mem
       const handleWhiteTeamTransform = (chosenTeam) => {
         setShowWhiteTeamModal(false);
+        const blueRole = rolesCatalog.find(r => r.id === 'blue_mem') || {
+          id: 'blue_mem', name: '藍隊成員', team: 'blue', icon: '🔵', desc: '由白隊成員轉化而成。'
+        };
+        const redRole = rolesCatalog.find(r => r.id === 'red_mem') || {
+          id: 'red_mem', name: '紅隊成員', team: 'red', icon: '🔴', desc: '由白隊成員轉化而成。'
+        };
+        const chosenRole = chosenTeam === 'blue' ? blueRole : redRole;
+
         setPlayers(prev => prev.map(p => {
           if (p.id === myPlayerId) {
             return {
               ...p,
               team: chosenTeam,
-              role: {
-                id: `${chosenTeam}_team`,
-                name: `${chosenTeam === 'blue' ? '藍' : '紅'}隊成員`,
-                team: chosenTeam,
-                icon: chosenTeam === 'blue' ? '🔵' : '🔴',
-                desc: '由白隊成員轉化而成。'
-              }
+              role: { ...chosenRole, team: chosenTeam }
             };
           }
           return p;
@@ -2734,6 +2780,17 @@
       };
 
       const activeQuestion = DECISION_TREE[victoryCurrentNode];
+
+      // 判斷獵人反擊條件：自己是獵人，且對方不是同隊
+      const isHunterTarget = useMemo(() => {
+        if (!myInfo.role) return false;
+        const rId = myInfo.role.id;
+        const isHunterRole = rId === 'hunter_b' || rId === 'hunter_r' || rId === 'hunter';
+        if (!isHunterRole || !swapRequestData) return false;
+        const reqTeam = (swapRequestData.fromTeam || '').toLowerCase();
+        const myTeam = (myInfo.team || '').toLowerCase();
+        return Boolean(reqTeam && myTeam && reqTeam !== myTeam);
+      }, [myInfo.role, myInfo.team, swapRequestData]);
 
       return (
         <div className="max-w-4xl mx-auto pb-12">
@@ -4297,7 +4354,7 @@
                   </div>
 
                   {/* 獵人反擊判定：若非同隊玩家對獵人發動請求，獵人可選擇反擊並遮蔽對方 */}
-                  {(myInfo.role?.id === 'hunter_b' || myInfo.role?.id === 'hunter_r') && swapRequestData.fromTeam !== myInfo.team && (
+                  {isHunterTarget && (
                     <button
                       type="button"
                       onClick={() => handleRejectSwap(true)}
