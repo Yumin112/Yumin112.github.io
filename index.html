@@ -1608,12 +1608,12 @@
           }
 
           if (data.type === 'STATUS_PROMPT_TARGET') {
-            if (data.targetId === uid) {
+            if (String(data.targetId) === String(uid)) {
               setStatusPromptData({
                 initiatorId: data.initiatorId,
-                initiatorName: data.initiatorName,
-                initiatorRoleName: data.initiatorRoleName,
-                initiatorRoleIcon: data.initiatorRoleIcon,
+                initiatorName: data.initiatorName || '神秘玩家',
+                initiatorRoleName: data.initiatorRoleName || '未知角色',
+                initiatorRoleIcon: data.initiatorRoleIcon || '⭐',
                 statusObj: data.statusObj
               });
             }
@@ -1634,6 +1634,27 @@
               setTimeout(() => setSwapStatusMessage(''), 3000);
             } else if (data.targetId === uid) {
               setSwapStatusMessage(`✨ 你已獲得【${data.statusName}】狀態！`);
+              setTimeout(() => setSwapStatusMessage(''), 3500);
+            }
+            return;
+          }
+
+          if (data.type === 'CLEAR_STATUS_PROMPT_TARGET') {
+            if (String(data.targetId) === String(uid)) {
+              setClearStatusPromptData({
+                initiatorId: data.initiatorId,
+                initiatorName: data.initiatorName || '神秘玩家',
+                initiatorRoleName: data.initiatorRoleName || '未知角色',
+                initiatorRoleIcon: data.initiatorRoleIcon || '⭐',
+                clearConfig: data.clearConfig
+              });
+            }
+            return;
+          }
+
+          if (data.type === 'CLEAR_STATUS_REJECTED') {
+            if (data.initiatorId === uid) {
+              setSwapStatusMessage(`❌ ${data.rejectorName} 拒絕了狀態清除！`);
               setTimeout(() => setSwapStatusMessage(''), 3500);
             }
             return;
@@ -2431,8 +2452,8 @@
           senderId: myPlayerId,
           initiatorId: myPlayerId,
           initiatorName: myInfo.name,
-          initiatorRoleName: myInfo.role?.name || '未知角色',
-          initiatorRoleIcon: myInfo.role?.icon || '⭐',
+          initiatorRoleName: isCardCloaked ? '神秘玩家' : (myInfo.role?.name || '未知角色'),
+          initiatorRoleIcon: isCardCloaked ? '🛸' : (myInfo.role?.icon || '⭐'),
           targetId: targetPlayer.id,
           statusObj: {
             id: activeStatusConfig.statusId,
@@ -3163,7 +3184,7 @@
                         </div>
                       )}
 
-                      {/* 角色技能按鈕：被外星人遮蔽時，按鈕名稱強制變更為「⚡ 發動技能」，且不顯示角色的專屬徽章 */}
+                      {/* 角色技能按鈕：被外星人遮蔽時，按鈕顏色與樣式統一，名稱強制變更為「⚡ 發動技能」 */}
                       {roomStatus !== 'ended' && (() => {
                         const action = RoleMechanics.getRoleAction(myInfo.role, {
                           currentRoundIndex, roundSettings, buriedCard, timeLeft, myPlayerState: myInfo,
@@ -3207,12 +3228,12 @@
                                 e.stopPropagation();
                                 action.onClick();
                               }}
-className={`w-full font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border ${
-  isCardCloaked
-    ? 'bg-gradient-to-r from-teal-700 via-teal-800 to-cyan-900 border-teal-400 text-teal-100 hover:from-teal-600 hover:to-cyan-800'
-    : `bg-gradient-to-r ${action.style}`
-}`}
-                              >
+                              className={`w-full font-black py-2.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-sm border ${
+                                isCardCloaked
+                                  ? 'bg-gradient-to-r from-teal-700 via-teal-800 to-cyan-900 border-teal-400 text-teal-100 hover:from-teal-600 hover:to-cyan-800'
+                                  : `bg-gradient-to-r ${action.style}`
+                              }`}
+                            >
                               <span>{isCardCloaked ? '⚡ 發動技能' : action.label}</span>
                               {action.badge && !isCardCloaked && (
                                 <span className="text-xs bg-zinc-950/30 px-2 py-0.5 rounded-full text-zinc-900">
@@ -3422,8 +3443,8 @@ className={`w-full font-black py-2.5 px-4 rounded-xl shadow-lg transition active
                           senderId: myPlayerId,
                           initiatorId: myPlayerId,
                           initiatorName: myInfo.name,
-                          initiatorRoleName: myInfo.role?.name || '未知角色',
-                          initiatorRoleIcon: myInfo.role?.icon || '⭐',
+                          initiatorRoleName: isCardCloaked ? '神秘玩家' : (myInfo.role?.name || '未知角色'),
+                          initiatorRoleIcon: isCardCloaked ? '🛸' : (myInfo.role?.icon || '⭐'),
                           targetId: p.id,
                           clearConfig: activeClearConfig
                         });
