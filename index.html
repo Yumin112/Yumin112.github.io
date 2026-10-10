@@ -325,46 +325,46 @@
     // 狀態清除/治癒專用配置（心理醫生、效忠者、醫療兵）
     const ROLE_CLEAR_STATUS_ACTIONS = {
       psychologist_b: {
-        filterStatusIds: ['shy', 'coy', 'paranoid'],
+        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized'],
         btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
         actionTitle: '治癒心理狀態',
         style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】或【妄想】狀態。'
+        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】或【催眠】狀態。'
       },
       psychologist_r: {
-        filterStatusIds: ['shy', 'coy', 'paranoid'],
+        filterStatusIds: ['shy', 'coy', 'paranoid', 'blind_follower', 'charmed', 'hypnotized'],
         btnLabel: '🛋️ 治癒心理狀態', badge: '心理醫生 專屬',
         actionTitle: '治癒心理狀態',
         style: 'from-cyan-600 to-teal-700 hover:from-cyan-500 hover:to-teal-600 border-cyan-400 text-white',
-        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】或【妄想】狀態。'
+        promptText: '選擇一位玩家治癒並移除其【害羞】、【靦腆】、【妄想】、【盲從】、【誘惑】或【催眠】狀態。'
       },
       loyalist_b: {
-        filterStatusIds: ['traitor'],
+        filterStatusIds: ['traitor', 'cultist', 'enlightened', 'jury'],
         btnLabel: '🛡️ 消除叛徒狀態', badge: '效忠者 專屬',
         actionTitle: '消除叛徒狀態',
         style: 'from-blue-600 to-sky-700 hover:from-blue-500 hover:to-sky-600 border-blue-400 text-white',
-        promptText: '選擇一位玩家消除其【叛徒】狀態。'
+        promptText: '選擇一位玩家消除其【叛徒】、【信徒】、【會員】或【陪審團】狀態。'
       },
       loyalist_r: {
-        filterStatusIds: ['traitor'],
+        filterStatusIds: ['traitor', 'cultist', 'enlightened', 'jury'],
         btnLabel: '🛡️ 消除叛徒狀態', badge: '效忠者 專屬',
         actionTitle: '消除叛徒狀態',
         style: 'from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border-rose-400 text-white',
-        promptText: '選擇一位玩家消除其【叛徒】狀態。'
+        promptText: '選擇一位玩家消除其【叛徒】、【信徒】、【會員】或【陪審團】狀態。'
       },
       medic_b: {
-        clearMedicRule: true,
+        filterStatusIds: ['infected', 'bitten', 'petrified','linked', 'shrewd', 'foolish'],
         btnLabel: '🏥 清除身上狀態', badge: '醫療兵 專屬',
         actionTitle: '清除額外狀態',
         style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
-        promptText: '選擇一位玩家清除其身上所有非自帶的額外狀態（不包含叛徒狀態）。'
+        promptText: '選擇一位玩家治癒並移除其【殭屍】、【咬傷】、【石化】、【連結】、【精明】或【愚蠢】狀態。'
       },
       medic_r: {
-        clearMedicRule: true,
+        filterStatusIds: ['infected', 'bitten', 'petrified','linked', 'shrewd', 'foolish'],
         btnLabel: '🏥 清除身上狀態', badge: '醫療兵 專屬',
         actionTitle: '清除額外狀態',
         style: 'from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 border-emerald-400 text-white',
-        promptText: '選擇一位玩家清除其身上所有非自帶的額外狀態（不包含叛徒狀態）。'
+        promptText: '選擇一位玩家治癒並移除其【殭屍】、【咬傷】、【石化】、【連結】、【精明】或【愚蠢】狀態。'
       }
     };
 
@@ -618,23 +618,11 @@
         return playersList.map(p => {
           if (p.id === targetPlayerId) {
             const currentStatuses = p.statuses || [];
-            let nextStatuses = [];
-
-            if (clearConfig.filterStatusIds) {
-              nextStatuses = currentStatuses.filter(s => !clearConfig.filterStatusIds.includes(s.id));
-            } else if (clearConfig.clearMedicRule) {
-              const initialStatus = p.role ? INITIAL_ROLE_STATUSES[p.role.id] : null;
-              const initialStatusId = initialStatus ? initialStatus.id : null;
-
-              nextStatuses = currentStatuses.filter(s => {
-                if (s.id === initialStatusId) return true;
-                if (s.id === 'traitor') return true;
-                return false;
-              });
-            } else {
-              nextStatuses = currentStatuses;
-            }
-
+            const idsToRemove = clearConfig.filterStatusIds || [];
+            
+            // 只要存在於 filterStatusIds 的狀態就過濾移除
+            const nextStatuses = currentStatuses.filter(s => !idsToRemove.includes(s.id));
+            
             return { ...p, statuses: nextStatuses };
           }
           return p;
