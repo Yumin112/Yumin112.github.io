@@ -73,16 +73,14 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'medic_r', name: '醫療兵 (Medic)', team: 'red', icon: '🏥', desc: '進行『角色揭露』給擁有"殭屍"、"咬傷"、"石化"、"連結"、"精明"或"愚蠢"狀態的玩家時，對方可與你『角色分享』並自行選擇是否治癒這些狀態。', pairs: 'medic_b' },
   { id: 'alien_b', name: '外星人 (Alien)', team: 'blue', icon: '👽', desc: '與你進行『角色分享』的玩家獲得"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'alien_r' },
   { id: 'alien_r', name: '外星人 (Alien)', team: 'red', icon: '👽', desc: '與你進行『角色分享』的玩家獲得"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'alien_b' },
-  //奪取卡牌的角色加機制 外星人 盜身魔 身分竊賊 獵人 異形獵手
-  //{ id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_r' },
-  //{ id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '🎭', desc: '進行『角色分享』時奪取對方卡牌作為假面展示，受害者失去卡牌但保有能力。', pairs: 'body_snatcher_b' },
-  //{ id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '👥', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_r' },
-  //{ id: 'identity_thief_r', name: '身分竊賊 (Identity Thief)', team: 'red', icon: '👥', desc: '進行『角色分享』時奪取對方角色卡牌，並將自帶"害羞"狀態的身分竊賊交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'identity_thief_b' },
-  //加機制換成普通隊員 資本家 社會主義者 白隊成員 
-  //{ id: 'capitalist', name: '資本家 (Capitalist)', team: 'blue', icon: '💰', desc: '每回合只能用一次，進行『角色分享』時，強迫對方將其角色卡牌換成「藍隊成員」。', pairs: 'socialist' },
-  //{ id: 'socialist', name: '社會主義者 (Socialist)', team: 'red', icon: '🚩', desc: '每回合只能用一次，進行『角色分享』時，強迫對方將其角色卡牌換成「紅隊成員」。', pairs: 'capitalist' },
-  //{ id: 'hunter_b', name: '獵人 (Hunter)', team: 'blue', icon: '🏹', desc: '若有非同隊陣營的玩家對你使用『角色分享』類的技能，你可以沒收其角色卡牌且不受其技能影響。', pairs: 'hunter_r' },
-  //{ id: 'hunter_r', name: '獵人 (Hunter)', team: 'red', icon: '🏹', desc: '若有非同隊陣營的玩家對你使用『角色分享』類的技能，你可以沒收其角色卡牌且不受其技能影響。', pairs: 'hunter_b' },
+  { id: 'body_snatcher_b', name: '盜身魔 (Body Snatcher)', team: 'blue', icon: '👥', desc: '進行『角色分享』時可以盜取對方角色卡牌，並將自帶"害羞"狀態的「盜身魔」交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'body_snatcher_r' },
+  { id: 'body_snatcher_r', name: '盜身魔 (Body Snatcher)', team: 'red', icon: '👥', desc: '進行『角色分享』時可以盜取對方角色卡牌，並將自帶"害羞"狀態的「盜身魔」交換給對方。"害羞"狀態：不能給別人看卡牌，無法進行任何『分享』或『揭露』。', pairs: 'body_snatcher_b' },
+  { id: 'identity_thief_b', name: '身分竊賊 (Identity Thief)', team: 'blue', icon: '🎭', desc: '進行『角色分享』時可以奪取對方卡牌作為假身分展示。並使該玩家獲得"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'identity_thief_r' },
+  { id: 'identity_thief_r', name: '身分竊賊 (Identity Thief)', team: 'red', icon: '🎭', desc: '進行『角色分享』時可以奪取對方卡牌作為假身分展示。並使該玩家獲得"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'identity_thief_b' },
+  { id: 'capitalist', name: '資本家 (Capitalist)', team: 'blue', icon: '💰', desc: '整場遊戲只能使用一次，進行『角色分享』時，強迫對方將其角色卡牌換成「藍隊成員」。', pairs: 'socialist' },
+  { id: 'socialist', name: '社會主義者 (Socialist)', team: 'red', icon: '🚩', desc: '整場遊戲只能使用一次，進行『角色分享』時，強迫對方將其角色卡牌換成「紅隊成員」。', pairs: 'capitalist' },
+  { id: 'hunter_b', name: '獵人 (Hunter)', team: 'blue', icon: '🏹', desc: '若有非同隊陣營的玩家對你使用『角色分享』類的技能，你可以使對方卡牌"遮蔽"且不受其技能影響。"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'hunter_r' },
+  { id: 'hunter_r', name: '獵人 (Hunter)', team: 'red', icon: '🏹', desc: '若有非同隊陣營的玩家對你使用『角色分享』類的技能，你可以使對方卡牌"遮蔽"且不受其技能影響。"遮蔽"狀態：該玩家本局身分、陣營顏色與角色能力說明被遮蔽。', pairs: 'hunter_b' },
   //{ id: 'informer_b', name: '告密者 (Informer)', team: 'blue', icon: '✉️', desc: '紅隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_r' },
   //{ id: 'informer_r', name: '告密者 (Informer)', team: 'red', icon: '✉️', desc: '藍隊向你進行『角色揭露』時必須收下；終局若平手，收受卡牌較多的一隊判負。', pairs: 'informer_b' },
   
@@ -230,6 +228,6 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'easter_bunny', name: '復活節兔 (Easter Bunny)', team: 'pink', icon: '🐰', desc: '遊戲開始時暫停倒數且所有玩家離開房間，你需要在兩間房間內各藏一個寶物，若所有玩家未能在遊戲結束前找到兩個寶藏，則你獨自獲勝。' },
   { id: 'mr_black', name: '黑先生 (Mr.Black)', team: 'black', icon: '👤', desc: '每回合偷偷將所處房間的燈關掉，沒人發現則你獨自獲勝。' },
   { id: 'beholder', name: '眼魔 (Beholder)', team: 'black', icon: '👁️‍🗨', desc: '你一旦看見任何玩家的卡面，大聲喊出他的角色即可獨自勝利。你也可以『公開角色』，獲得免疫所有角色技能的能力，開始在兩個房間中四處巡視。' },
-  //{ id: 'white_team', name: '白隊成員 (White Team)', team: 'white', icon: '⚪', desc: '在最後一回合結束前，必須將自己的卡片換為「紅隊成員」或「藍隊成員」。' },
+  { id: 'white_team', name: '白隊成員 (White Team)', team: 'white', icon: '⚪', desc: '在最後一回合結束前，必須將自己的卡片換為「紅隊成員」或「藍隊成員」。' },
   { id: 'white_paper', name: '白紙 (White Paper)', team: 'white', icon: '📃', desc: '...' }
 ];
