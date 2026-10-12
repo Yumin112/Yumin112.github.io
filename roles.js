@@ -8,9 +8,9 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'pres_d', name: '總統女兒 (President\'s Daughter)', team: 'blue', icon: '👧', desc: '妳是「總統」備選人，若「總統」被埋葬或離開遊戲時，妳必須肩負起「總統」的責任。', pairs: 'martyr' },
   { id: 'martyr', name: '烈士 (Martyr)', team: 'red', icon: '🔥', desc: '你是「炸彈客」備選人，若「炸彈客」被埋葬或離開遊戲你必須肩負起「炸彈客」的責任。', pairs: 'pres_d' },
   { id: 'blue_drone', name: '藍色無人機 (Blue Drone)', team: 'blue', icon: '🛸', desc: '你必須摧毀「紅色鐵拳」！遊戲結束時若與「紅色鐵拳」身處同一個房間，則藍隊獲勝。', pairs: 'red_fist,judge' },
-  { id: 'red_fist', name: '紅色鐵拳 (Red Fist)', team: 'red', icon: '🥊', desc: '你必須遠離「藍色無人機」！。遊戲結束時若與「藍色無人機」身處不同房間，則紅隊獲勝。', pairs: 'blue_drone,judge' },
+  { id: 'red_fist', name: '紅色鐵拳 (Red Fist)', team: 'red', icon: '🦾', desc: '你必須遠離「藍色無人機」！。遊戲結束時若與「藍色無人機」身處不同房間，則紅隊獲勝。', pairs: 'blue_drone,judge' },
   { id: 'blue_firecracker', name: '藍色爆竹 (Blue Firecracker)', team: 'blue', icon: '🧨', desc: '「藍色無人機」的替補角色。若「藍色無人機」被埋牌或移出遊戲，你必須肩負起「藍色無人機」的責任。', pairs: 'red_foot' },
-  { id: 'red_foot', name: '紅色鐵足 (Red Foot)', team: 'red', icon: '👢', desc: '「紅色鐵拳」的替補角色。若「紅色鐵拳」被埋牌或移出遊戲，你必須肩負起「紅色鐵拳」的責任。', pairs: 'blue_firecracker' },
+  { id: 'red_foot', name: '紅色鐵足 (Red Foot)', team: 'red', icon: '🦿', desc: '「紅色鐵拳」的替補角色。若「紅色鐵拳」被埋牌或移出遊戲，你必須肩負起「紅色鐵拳」的責任。', pairs: 'blue_firecracker' },
   { id: 'doctor', name: '醫生 (Doctor)', team: 'blue', icon: '🩺', desc: '遊戲結束前，你必須與「總統」進行過『角色分享』，否則藍隊強制失敗。', pairs: 'engineer,judge' },
   { id: 'engineer', name: '工程師 (Engineer)', team: 'red', icon: '⚙️', desc: '遊戲結束前，你必須與「炸彈客」進行過『角色分享』，否則紅隊強制失敗。', pairs: 'doctor,judge' },
   { id: 'nurse', name: '護士 (Nurse)', team: 'blue', icon: '💉', desc: '你是「醫生」備選人，若「醫生」被埋葬或離開遊戲時，你必須承擔「醫生」的職責。', pairs: 'tinkerer' },
@@ -162,7 +162,7 @@ window.OFFICIAL_ROLES_CATALOG = [
   { id: 'marshall', name: '法警 (Marshall)', team: 'blue', icon: '⭐', desc: '若與「獨臂人」完成『角色分享』，請帶著「獨臂人」找到房主終止遊戲，藍隊直接獲勝。', pairs: 'fugitive,one_armed_man,witness' }, 
   { id: 'fugitive', name: '逃犯 (Fugitive)', team: 'red', icon: '🏃', desc: '若與「法警」完成『角色分享』，請帶著「法警」找到房主終止遊戲，紅隊直接獲勝。', pairs: 'marshall,one_armed_man,witness' },
   { id: 'witness', name: '目擊證人 (Witness)', team: 'blue', icon: '👁️', desc: '若與「逃犯」完成『角色分享』，請帶著「逃犯」找到房主終止遊戲，藍隊直接獲勝。', pairs: 'fugitive,marshall,one_armed_man' }, 
-  { id: 'one_armed_man', name: '獨臂人 (One-Armed Man)', team: 'red', icon: '🦾', desc: '若與「目擊證人」完成『角色分享』，請帶著「目擊證人」找到房主終止遊戲，紅隊直接獲勝。', pairs: 'marshall,fugitive,witness' }, 
+  { id: 'one_armed_man', name: '獨臂人 (One-Armed Man)', team: 'red', icon: '💪', desc: '若與「目擊證人」完成『角色分享』，請帶著「目擊證人」找到房主終止遊戲，紅隊直接獲勝。', pairs: 'marshall,fugitive,witness' }, 
   
   // 灰隊房間判定類 (Grey)
   { id: 'survivor', name: '倖存者 (Survivor)', team: 'grey', icon: '🧗', desc: '遊戲結束時，自己和「炸彈客」在不同房間時你也獲勝。', pairs: 'victim' }, 
